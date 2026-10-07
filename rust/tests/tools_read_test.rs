@@ -1281,7 +1281,8 @@ async fn add_notification_script_handles_absolute_and_relative_modes() {
     assert!(absolute_script_text.contains(r#"const taskId = "t3";"#));
     assert!(absolute_script_text.contains(r#"const absoluteDate = "2026-03-03T10:30:00Z";"#));
     assert!(absolute_script_text.contains("const relativeOffset = null;"));
-    assert!(absolute_script_text.contains("const parsedAbsoluteDate = new Date(absoluteDate);"));
+    assert!(absolute_script_text
+        .contains(r#"const parsedAbsoluteDate = parseLocalDate(absoluteDate, "absoluteDate");"#));
     assert!(
         absolute_script_text.contains("notification = task.addNotification(parsedAbsoluteDate);")
     );
@@ -2016,7 +2017,7 @@ async fn list_tasks_date_filter_script_contains_expected_logic() {
     assert!(script.contains("taskStatus: (() => {"));
     assert!(script.contains("if (s.includes(\"Available\")) return \"available\";"));
     assert!(script.contains("if (s.includes(\"Available\")) return \"available\";"));
-    assert!(script.contains("must be a valid ISO 8601 date string."));
+    assert!(script.contains("must be YYYY-MM-DD or an ISO 8601 date-time; received "));
 }
 
 #[tokio::test]
