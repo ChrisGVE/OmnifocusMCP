@@ -131,8 +131,9 @@ pub const JS_PROJECT_STATUS: &str = r#"function normalizeProjectStatus(project) 
 /// field by field.
 ///
 /// Defined functions:
-/// - `formatReviewInterval(interval)`: `"<steps> <unit>"` (e.g. `"2 weeks"`),
-///   or `null` when the project has no interval.
+/// - `formatReviewInterval(interval)`: `"<steps> <unit>"` (e.g. `"2 weeks"`,
+///   `"1 week"` — singular for one step), or `null` when the project has no
+///   interval. The text parses back through `crate::review_interval`.
 /// - `updatedReviewInterval(project, requested)`: the project's interval with
 ///   `steps` and `unit` taken from `requested` (already validated in Rust, see
 ///   `crate::review_interval`). Nothing changes on the project until the
@@ -140,7 +141,9 @@ pub const JS_PROJECT_STATUS: &str = r#"function normalizeProjectStatus(project) 
 ///   update"` when the project has none to start from.
 pub const JS_REVIEW_INTERVAL: &str = r#"function formatReviewInterval(interval) {
   if (interval === null || interval === undefined) return null;
-  return interval.steps + " " + interval.unit;
+  const unit = String(interval.unit);
+  const singular = interval.steps === 1 && unit.endsWith("s") ? unit.slice(0, -1) : unit;
+  return interval.steps + " " + singular;
 }
 function updatedReviewInterval(project, requested) {
   const interval = project.reviewInterval;

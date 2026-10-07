@@ -151,6 +151,22 @@ fn format_reports_steps_and_unit() {
 }
 
 #[test]
+fn format_of_a_single_step_uses_the_singular_unit() {
+    assert_eq!(
+        run_review_js(r#"print(formatReviewInterval(new FakeReviewInterval(1, "weeks")));"#),
+        "1 week"
+    );
+}
+
+#[test]
+fn format_of_a_single_step_round_trips_through_the_parser() {
+    let reported =
+        run_review_js(r#"print(formatReviewInterval(new FakeReviewInterval(1, "months")));"#);
+    let parsed = parse_review_interval(&reported).expect("reported text must parse back");
+    assert_eq!((parsed.steps, parsed.unit), (1, "months"));
+}
+
+#[test]
 fn format_of_absent_interval_is_null() {
     assert_eq!(
         run_review_js("print(formatReviewInterval(null) === null && formatReviewInterval(undefined) === null);"),
