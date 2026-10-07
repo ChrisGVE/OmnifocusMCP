@@ -91,3 +91,32 @@ function parseWriteDate(value, fieldName, defaultTimeKey, factoryDefault) {
   return ofDateLocalDayAt(value, fieldName, bareDay, time.hours, time.minutes);
 }
 "#;
+
+/// Project status naming (upstream #10).
+///
+/// `project.status` is a `Project.Status` enum value. Its string form is
+/// `"[object Project.Status: Done]"`, so matching on text never saw
+/// "completed" and every completed project was reported as active. This
+/// compares against the enum members themselves:
+///
+/// | `Project.Status` | reported as   |
+/// | ---------------- | ------------- |
+/// | `Active`         | `"active"`    |
+/// | `Done`           | `"completed"` |
+/// | `Dropped`        | `"dropped"`   |
+/// | `OnHold`         | `"on_hold"`   |
+/// | anything else    | `"unknown"`   |
+///
+/// The fallback is deliberately `"unknown"` rather than `"active"`: a status
+/// this code does not recognise must show up as such, not as wrong data.
+///
+/// Defined function: `normalizeProjectStatus(project)`.
+pub const JS_PROJECT_STATUS: &str = r#"function normalizeProjectStatus(project) {
+  const status = project.status;
+  if (status === Project.Status.Active) return "active";
+  if (status === Project.Status.Done) return "completed";
+  if (status === Project.Status.Dropped) return "dropped";
+  if (status === Project.Status.OnHold) return "on_hold";
+  return "unknown";
+}
+"#;

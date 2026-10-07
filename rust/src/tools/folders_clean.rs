@@ -2,6 +2,7 @@ use serde_json::Value;
 
 use crate::{
     error::{OmniFocusError, Result},
+    js_helpers::JS_PROJECT_STATUS,
     jxa::{escape_for_jxa, JxaRunner},
 };
 
@@ -87,7 +88,8 @@ pub async fn get_folder<R: JxaRunner>(runner: &R, folder_name_or_id: &str) -> Re
 
     let folder_filter = escape_for_jxa(folder_name_or_id.trim());
     let script = format!(
-        r#"const folderFilter = {folder_filter};
+        r#"{JS_PROJECT_STATUS}
+const folderFilter = {folder_filter};
 
 const folder = document.flattenedFolders.find(item => {{
   return item.id.primaryKey === folderFilter || item.name === folderFilter;
@@ -121,7 +123,7 @@ return {{
     return {{
       id: project.id.primaryKey,
       name: project.name,
-      status: normalizeStatus(project.status)
+      status: normalizeProjectStatus(project)
     }};
   }}),
   subfolders: folder.folders.map(subfolder => {{

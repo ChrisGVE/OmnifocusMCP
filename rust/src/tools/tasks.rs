@@ -4,7 +4,7 @@ use std::collections::HashSet;
 
 use crate::{
     error::{OmniFocusError, Result},
-    js_helpers::JS_DATE_HELPERS,
+    js_helpers::{JS_DATE_HELPERS, JS_PROJECT_STATUS},
     jxa::{escape_for_jxa, JxaRunner},
     types::{TaskCountsResult, TaskResult},
 };
@@ -526,6 +526,7 @@ pub async fn list_tasks_with_added_changed<R: JxaRunner>(
 
     let script = format!(
         r#"{JS_DATE_HELPERS}
+{JS_PROJECT_STATUS}
 const projectFilter = {project_filter};
 const tagNames = {tag_names_filter};
 const tagFilterMode = {tag_filter_mode_filter};
@@ -616,8 +617,7 @@ const filteredTasks = document.flattenedTasks
       }} else if (statusFilter === "due_soon") {{
         statusMatches = dueDate !== null && dueDate >= now && dueDate <= soon;
       }} else if (statusFilter === "on_hold") {{
-        const projectStatus = task.containingProject ? String(task.containingProject.status || "").toLowerCase() : "";
-        statusMatches = projectStatus.includes("onhold") || projectStatus.includes("on hold") || projectStatus.includes("on_hold");
+        statusMatches = task.containingProject !== null && normalizeProjectStatus(task.containingProject) === "on_hold";
       }}
     }}
     if (!statusMatches) return false;
@@ -1297,6 +1297,7 @@ pub async fn search_tasks_with_added_changed<R: JxaRunner>(
     let query_filter = escape_for_jxa(query.trim());
     let script = format!(
         r#"{JS_DATE_HELPERS}
+{JS_PROJECT_STATUS}
 const queryFilter = {query_filter}.toLowerCase();
 const projectFilter = {project_filter};
 const tagNames = {tag_names_filter};
@@ -1392,8 +1393,7 @@ const filteredTasks = document.flattenedTasks
       }} else if (statusFilter === "due_soon") {{
         statusMatches = dueDate !== null && dueDate >= now && dueDate <= soon;
       }} else if (statusFilter === "on_hold") {{
-        const projectStatus = task.containingProject ? String(task.containingProject.status || "").toLowerCase() : "";
-        statusMatches = projectStatus.includes("onhold") || projectStatus.includes("on hold") || projectStatus.includes("on_hold");
+        statusMatches = task.containingProject !== null && normalizeProjectStatus(task.containingProject) === "on_hold";
       }}
     }}
     if (!statusMatches) return false;

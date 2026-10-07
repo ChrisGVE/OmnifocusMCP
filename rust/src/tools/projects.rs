@@ -2,7 +2,7 @@ use serde_json::Value;
 
 use crate::{
     error::{OmniFocusError, Result},
-    js_helpers::JS_DATE_HELPERS,
+    js_helpers::{JS_DATE_HELPERS, JS_PROJECT_STATUS},
     jxa::{escape_for_jxa, JxaRunner},
     types::ProjectCountsResult,
 };
@@ -84,6 +84,7 @@ pub async fn list_projects<R: JxaRunner>(
     let sort_order_filter = escape_for_jxa(effective_sort_order);
     let script = format!(
         r#"{JS_DATE_HELPERS}
+{JS_PROJECT_STATUS}
 const folderFilter = {folder_filter};
 const statusFilter = {status_filter};
 const completedBeforeRaw = {completed_before_filter};
@@ -105,25 +106,6 @@ document.flattenedTasks.forEach(task => {{
   if (!task.completed) current.remainingTaskCount += 1;
   projectCounts.set(projectId, current);
 }});
-
-const normalizeProjectStatus = (project) => {{
-  const rawStatus = String(project.status || "").toLowerCase();
-  const flattened = rawStatus
-    .replace(/^\[object_/g, "")
-    .replace(/[\[\]{{}}()]/g, " ")
-    .replace(/status/g, " ")
-    .replace(/[:.=]/g, " ")
-    .replace(/[_-]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-  if (flattened.includes("onhold") || /(^|\s)on\s*hold(\s|$)/.test(flattened)) {{
-    return "on_hold";
-  }}
-  if (flattened.includes("completed")) return "completed";
-  if (flattened.includes("dropped")) return "dropped";
-  if (flattened.includes("active")) return "active";
-  return "active";
-}};
 
 const projects = document.flattenedProjects
   .filter(project => {{
@@ -224,25 +206,8 @@ pub async fn search_projects<R: JxaRunner>(runner: &R, query: &str, limit: i32) 
 
     let query_value = escape_for_jxa(query.trim());
     let script = format!(
-        r#"const queryValue = {query_value};
-const normalizeProjectStatus = (project) => {{
-  const rawStatus = String(project.status || "").toLowerCase();
-  const flattened = rawStatus
-    .replace(/^\[object_/g, "")
-    .replace(/[\[\]{{}}()]/g, " ")
-    .replace(/status/g, " ")
-    .replace(/[:.=]/g, " ")
-    .replace(/[_-]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-  if (flattened.includes("onhold") || /(^|\s)on\s*hold(\s|$)/.test(flattened)) {{
-    return "on_hold";
-  }}
-  if (flattened.includes("completed")) return "completed";
-  if (flattened.includes("dropped")) return "dropped";
-  if (flattened.includes("active")) return "active";
-  return "active";
-}};
+        r#"{JS_PROJECT_STATUS}
+const queryValue = {query_value};
 
 return projectsMatching(queryValue)
   .slice(0, {limit})
@@ -275,26 +240,8 @@ pub async fn get_project_counts<R: JxaRunner>(
         .map(|value| escape_for_jxa(value.trim()))
         .unwrap_or_else(|| "null".to_string());
     let script = format!(
-        r#"const folderFilter = {folder_filter};
-
-const normalizeProjectStatus = (project) => {{
-  const rawStatus = String(project.status || "").toLowerCase();
-  const flattened = rawStatus
-    .replace(/^\[object_/g, "")
-    .replace(/[\[\]{{}}()]/g, " ")
-    .replace(/status/g, " ")
-    .replace(/[:.=]/g, " ")
-    .replace(/[_-]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-  if (flattened.includes("onhold") || /(^|\s)on\s*hold(\s|$)/.test(flattened)) {{
-    return "on_hold";
-  }}
-  if (flattened.includes("completed")) return "completed";
-  if (flattened.includes("dropped")) return "dropped";
-  if (flattened.includes("active")) return "active";
-  return "active";
-}};
+        r#"{JS_PROJECT_STATUS}
+const folderFilter = {folder_filter};
 
 const counts = {{
   total: 0,
@@ -340,32 +287,14 @@ pub async fn get_project<R: JxaRunner>(runner: &R, project_id_or_name: &str) -> 
 
     let project_filter = escape_for_jxa(project_id_or_name.trim());
     let script = format!(
-        r#"const projectFilter = {project_filter};
+        r#"{JS_PROJECT_STATUS}
+const projectFilter = {project_filter};
 const project = document.flattenedProjects.find(item => {{
   return item.id.primaryKey === projectFilter || item.name === projectFilter;
 }});
 if (!project) {{
   throw new Error(`Project not found: ${{projectFilter}}`);
 }}
-
-const normalizeProjectStatus = (item) => {{
-  const rawStatus = String(item.status || "").toLowerCase();
-  const flattened = rawStatus
-    .replace(/^\[object_/g, "")
-    .replace(/[\[\]{{}}()]/g, " ")
-    .replace(/status/g, " ")
-    .replace(/[:.=]/g, " ")
-    .replace(/[_-]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-  if (flattened.includes("onhold") || /(^|\s)on\s*hold(\s|$)/.test(flattened)) {{
-    return "on_hold";
-  }}
-  if (flattened.includes("completed")) return "completed";
-  if (flattened.includes("dropped")) return "dropped";
-  if (flattened.includes("active")) return "active";
-  return "active";
-}};
 
 const allProjectTasks = document.flattenedTasks.filter(task => {{
   return task.containingProject && task.containingProject.id.primaryKey === project.id.primaryKey;
@@ -883,6 +812,7 @@ pub async fn update_project<R: JxaRunner>(
     let updates_value = serde_json::to_string(&updates)?;
     let script = format!(
         r#"{JS_DATE_HELPERS}
+{JS_PROJECT_STATUS}
 const projectFilter = {project_filter};
 const updates = {updates_value};
 const project = document.flattenedProjects.find(item => {{
@@ -895,24 +825,6 @@ if (!project) {{
 const has = (key) => Object.prototype.hasOwnProperty.call(updates, key);
 const parsedDueDate = has("dueDate") ? parseWriteDate(updates.dueDate, "dueDate", "DefaultDueTime", "17:00") : null;
 const parsedDeferDate = has("deferDate") ? parseWriteDate(updates.deferDate, "deferDate", "DefaultStartTime", "00:00") : null;
-const normalizeProjectStatus = (item) => {{
-  const rawStatus = String(item.status || "").toLowerCase();
-  const flattened = rawStatus
-    .replace(/^\[object_/g, "")
-    .replace(/[\[\]{{}}()]/g, " ")
-    .replace(/status/g, " ")
-    .replace(/[:.=]/g, " ")
-    .replace(/[_-]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-  if (flattened.includes("onhold") || /(^|\s)on\s*hold(\s|$)/.test(flattened)) {{
-    return "on_hold";
-  }}
-  if (flattened.includes("completed")) return "completed";
-  if (flattened.includes("dropped")) return "dropped";
-  if (flattened.includes("active")) return "active";
-  return "active";
-}};
 const parseReviewInterval = (value) => {{
   const match = String(value).trim().match(/^(\d+)\s+([a-zA-Z_]+)$/);
   if (!match) {{
