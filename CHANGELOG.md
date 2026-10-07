@@ -8,7 +8,26 @@ All notable changes to this project are documented in this file.
 - Python and TypeScript implementations, the Homebrew formula template, their install guides,
   CI jobs, and the root `package.json`. This fork is Rust-only.
 
+### Changed
+- Tool parameters now reject unknown keys instead of silently ignoring them. A client that sends
+  a misspelled or undeclared key (e.g. `folderId` where the tool declares `folder`) gets an
+  `invalid_params` error rather than a success that ignored its argument. Every tool schema now
+  advertises `additionalProperties: false`.
+- A bare `YYYY-MM-DD` date is read as a local calendar day. On writes (`dueDate`, `deferDate` of
+  tasks and projects) it is set at your OmniFocus default time for that field (Settings
+  `DefaultDueTime` / `DefaultStartTime`, factory 17:00 / 00:00), as the OmniFocus UI does. In
+  filters (`dueBefore`, `completedAfter`, …) and `add_notification`'s `absoluteDate` it is local
+  midnight. Date-times with `Z` or an offset are unchanged.
+- Invalid dates (e.g. `2026-02-30`) now fail with an error naming the field, before anything is
+  created or changed. Previously some write paths silently stored an Invalid Date.
+- CI runs `cargo clippy --all-targets`, so test code is linted too.
+
 ### Fixed
+- Integer, number and boolean parameters accept their string encoding (`"30"`, `"true"`), as sent
+  by MCP clients that serialize every argument as a string. Integral floats (`30.0`) are accepted
+  for integers. The advertised schema is unchanged. (upstream #8, #11)
+- Bare dates were parsed as UTC midnight, deferring tasks hours late (or to the wrong day) outside
+  UTC. (upstream #13)
 - README tool counts: the server registers 48 tools (tasks 22, projects 12, tags 6, folders 6,
   forecast 1, perspectives 1), not 45.
 

@@ -15,7 +15,7 @@ Detailed install guide: `docs/install-rust.md`
 ## Running tests
 
 ```bash
-cd rust && cargo fmt --check && cargo clippy -- -D warnings && cargo test
+cd rust && cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test
 ```
 
 `cargo test` runs the mocked unit tests and never touches OmniFocus. Integration tests

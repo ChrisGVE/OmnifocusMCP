@@ -18,7 +18,7 @@ jobs:
         run: cd rust && cargo fmt --check
 
       - name: cargo clippy
-        run: cd rust && cargo clippy -- -D warnings
+        run: cd rust && cargo clippy --all-targets -- -D warnings
 
       - name: cargo test
         run: cd rust && cargo test

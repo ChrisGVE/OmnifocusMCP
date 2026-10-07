@@ -72,7 +72,7 @@ rust/
 cargo test
 
 # lint and format checks
-cargo clippy -- -D warnings
+cargo clippy --all-targets -- -D warnings
 cargo fmt --check
 
 # integration tests (requires running OmniFocus)
