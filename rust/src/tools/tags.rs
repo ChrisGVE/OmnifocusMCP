@@ -2,6 +2,7 @@ use serde_json::Value;
 
 use crate::{
     error::{OmniFocusError, Result},
+    js_helpers::{JS_PROJECT_STATUS, JS_TASK_STATUS},
     jxa::{escape_for_jxa, JxaRunner},
 };
 
@@ -41,9 +42,12 @@ pub async fn list_tags<R: JxaRunner>(
         .unwrap_or_else(|| "null".to_string());
     let sort_order_value = escape_for_jxa(sort_order);
     let script = format!(
-        r#"const statusFilter = {status_filter_value};
+        r#"{JS_PROJECT_STATUS}
+{JS_TASK_STATUS}
+const statusFilter = {status_filter_value};
 const sortBy = {sort_by_value};
 const sortOrder = {sort_order_value};
+const now = new Date();
 
 const tagCounts = new Map();
 document.flattenedTasks.forEach(task => {{
@@ -51,7 +55,7 @@ document.flattenedTasks.forEach(task => {{
     const tagId = tag.id.primaryKey;
     const current = tagCounts.get(tagId) || {{ availableTaskCount: 0, totalTaskCount: 0 }};
     current.totalTaskCount += 1;
-    if (!task.completed) current.availableTaskCount += 1;
+    if (isTaskAvailable(task, now)) current.availableTaskCount += 1;
     tagCounts.set(tagId, current);
   }});
 }});

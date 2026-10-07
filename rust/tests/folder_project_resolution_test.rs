@@ -53,8 +53,12 @@ function fakeProject(id, name, status, parentFolder) {
 function fakeTask(id, project) {
   return { id: { primaryKey: id }, name: id, containingProject: project, tags: [],
     flagged: false, completed: false, dueDate: null, deferDate: null, completionDate: null,
-    added: null, modified: null, estimatedMinutes: null };
+    added: null, modified: null, estimatedMinutes: null, taskStatus: Task.Status.Available };
 }
+var Task = { Status: { Available: new FakeStatus("Available"), Blocked: new FakeStatus("Blocked"),
+  Completed: new FakeStatus("Completed"), Dropped: new FakeStatus("Dropped"),
+  DueSoon: new FakeStatus("DueSoon"), Next: new FakeStatus("Next"),
+  Overdue: new FakeStatus("Overdue") } };
 var Project = {
   Status: { Active: new FakeStatus("Active"), Done: new FakeStatus("Done"),
     Dropped: new FakeStatus("Dropped"), OnHold: new FakeStatus("OnHold") },

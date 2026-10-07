@@ -4,7 +4,7 @@ use std::collections::HashSet;
 
 use crate::{
     error::{OmniFocusError, Result},
-    js_helpers::{JS_DATE_HELPERS, JS_PROJECT_STATUS, JS_RESOLVERS},
+    js_helpers::{JS_DATE_HELPERS, JS_PROJECT_STATUS, JS_RESOLVERS, JS_TASK_STATUS},
     jxa::{escape_for_jxa, JxaRunner},
     types::{TaskCountsResult, TaskResult},
 };
@@ -186,6 +186,8 @@ pub async fn get_task_counts_with_added_changed<R: JxaRunner>(
 
     let script = format!(
         r#"{JS_DATE_HELPERS}
+{JS_PROJECT_STATUS}
+{JS_TASK_STATUS}
 {JS_RESOLVERS}
 const projectFilter = {project_filter};
 const filterProject = projectFilter === null ? null : resolveProject(projectFilter);
@@ -287,8 +289,8 @@ for (const task of document.flattenedTasks) {{
     counts.completed += 1;
     continue;
   }}
-  const isAvailable = task.deferDate === null || task.deferDate <= now;
-  if (isAvailable) counts.available += 1;
+  if (!isTaskRemaining(task)) continue;
+  if (isTaskAvailable(task, now)) counts.available += 1;
   if (task.deferDate !== null && task.deferDate > now) counts.deferred += 1;
   if (task.dueDate !== null && task.dueDate < now) counts.overdue += 1;
   if (task.dueDate !== null && task.dueDate >= now && task.dueDate <= soon) counts.dueSoon += 1;
@@ -567,6 +569,7 @@ pub async fn list_tasks_with_added_changed<R: JxaRunner>(
     let script = format!(
         r#"{JS_DATE_HELPERS}
 {JS_PROJECT_STATUS}
+{JS_TASK_STATUS}
 {JS_RESOLVERS}
 const projectFilter = {project_filter};
 const filterProject = projectFilter === null ? null : resolveProject(projectFilter);
@@ -650,10 +653,10 @@ const filteredTasks = document.flattenedTasks
       statusMatches = task.completed;
     }} else if (task.completed) {{
       statusMatches = includeCompletedForDateFilter;
-    }} else {{
+    }} else if (isTaskRemaining(task)) {{
       const dueDate = task.dueDate;
       if (statusFilter === "available") {{
-        statusMatches = true;
+        statusMatches = isTaskAvailable(task, now);
       }} else if (statusFilter === "overdue") {{
         statusMatches = dueDate !== null && dueDate < now;
       }} else if (statusFilter === "due_soon") {{
@@ -1340,6 +1343,7 @@ pub async fn search_tasks_with_added_changed<R: JxaRunner>(
     let script = format!(
         r#"{JS_DATE_HELPERS}
 {JS_PROJECT_STATUS}
+{JS_TASK_STATUS}
 {JS_RESOLVERS}
 const queryFilter = {query_filter}.toLowerCase();
 const projectFilter = {project_filter};
@@ -1428,10 +1432,10 @@ const filteredTasks = document.flattenedTasks
       statusMatches = task.completed;
     }} else if (task.completed) {{
       statusMatches = includeCompletedForDateFilter;
-    }} else {{
+    }} else if (isTaskRemaining(task)) {{
       const dueDate = task.dueDate;
       if (statusFilter === "available") {{
-        statusMatches = true;
+        statusMatches = isTaskAvailable(task, now);
       }} else if (statusFilter === "overdue") {{
         statusMatches = dueDate !== null && dueDate < now;
       }} else if (statusFilter === "due_soon") {{

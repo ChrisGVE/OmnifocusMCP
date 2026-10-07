@@ -2,7 +2,9 @@ use serde_json::Value;
 
 use crate::{
     error::{OmniFocusError, Result},
-    js_helpers::{JS_DATE_HELPERS, JS_PROJECT_STATUS, JS_RESOLVERS, JS_REVIEW_INTERVAL},
+    js_helpers::{
+        JS_DATE_HELPERS, JS_PROJECT_STATUS, JS_RESOLVERS, JS_REVIEW_INTERVAL, JS_TASK_STATUS,
+    },
     jxa::{escape_for_jxa, JxaRunner},
     review_interval::parse_review_interval,
     types::ProjectCountsResult,
@@ -86,6 +88,7 @@ pub async fn list_projects<R: JxaRunner>(
     let script = format!(
         r#"{JS_DATE_HELPERS}
 {JS_PROJECT_STATUS}
+{JS_TASK_STATUS}
 {JS_REVIEW_INTERVAL}
 {JS_RESOLVERS}
 const folderFilter = {folder_filter};
@@ -107,7 +110,7 @@ document.flattenedTasks.forEach(task => {{
   const projectId = project.id.primaryKey;
   const current = projectCounts.get(projectId) || {{ taskCount: 0, remainingTaskCount: 0 }};
   current.taskCount += 1;
-  if (!task.completed) current.remainingTaskCount += 1;
+  if (isTaskRemaining(task)) current.remainingTaskCount += 1;
   projectCounts.set(projectId, current);
 }});
 
@@ -115,7 +118,7 @@ const projects = document.flattenedProjects
   .filter(project => {{
     const nextTask = project.nextTask;
     const isStalled = normalizeProjectStatus(project) === "active"
-      && project.flattenedTasks.some(t => !t.completed)
+      && project.flattenedTasks.some(t => isTaskRemaining(t))
       && nextTask === null;
     if (filterFolder !== null) {{
       const parent = project.parentFolder;
@@ -133,7 +136,7 @@ const mappedProjects = projects.map(project => {{
   const counts = projectCounts.get(projectId) || {{ taskCount: 0, remainingTaskCount: 0 }};
   const nextTask = project.nextTask;
   const isStalled = normalizeProjectStatus(project) === "active"
-    && project.flattenedTasks.some(t => !t.completed)
+    && project.flattenedTasks.some(t => isTaskRemaining(t))
     && nextTask === null;
   return {{
     id: projectId,
@@ -244,6 +247,7 @@ pub async fn get_project_counts<R: JxaRunner>(
         .unwrap_or_else(|| "null".to_string());
     let script = format!(
         r#"{JS_PROJECT_STATUS}
+{JS_TASK_STATUS}
 {JS_RESOLVERS}
 const folderFilter = {folder_filter};
 const filterFolder = folderFilter === null ? null : resolveFolder(folderFilter);
@@ -265,7 +269,7 @@ document.flattenedProjects.forEach(project => {{
 
   const status = normalizeProjectStatus(project);
   const isStalled = status === "active"
-    && project.flattenedTasks.some(t => !t.completed)
+    && project.flattenedTasks.some(t => isTaskRemaining(t))
     && project.nextTask === null;
 
   counts.total += 1;
@@ -293,6 +297,7 @@ pub async fn get_project<R: JxaRunner>(runner: &R, project_id_or_name: &str) -> 
     let project_filter = escape_for_jxa(project_id_or_name.trim());
     let script = format!(
         r#"{JS_PROJECT_STATUS}
+{JS_TASK_STATUS}
 {JS_REVIEW_INTERVAL}
 const projectFilter = {project_filter};
 const project = document.flattenedProjects.find(item => {{
@@ -305,9 +310,10 @@ if (!project) {{
 const allProjectTasks = document.flattenedTasks.filter(task => {{
   return task.containingProject && task.containingProject.id.primaryKey === project.id.primaryKey;
 }});
+const now = new Date();
 const nextTask = project.nextTask;
 const isStalled = normalizeProjectStatus(project) === "active"
-  && allProjectTasks.some(task => !task.completed)
+  && allProjectTasks.some(task => isTaskRemaining(task))
   && nextTask === null;
 
 const rootTasks = project.tasks.map(task => {{
@@ -330,9 +336,9 @@ return {{
   status: normalizeProjectStatus(project),
   folderName: project.parentFolder ? project.parentFolder.name : null,
   taskCount: allProjectTasks.length,
-  remainingTaskCount: allProjectTasks.filter(task => !task.completed).length,
+  remainingTaskCount: allProjectTasks.filter(task => isTaskRemaining(task)).length,
   completedTaskCount: allProjectTasks.filter(task => task.completed).length,
-  availableTaskCount: allProjectTasks.filter(task => !task.completed && (task.deferDate === null || task.deferDate <= new Date())).length,
+  availableTaskCount: allProjectTasks.filter(task => isTaskAvailable(task, now)).length,
   deferDate: project.deferDate ? project.deferDate.toISOString() : null,
   dueDate: project.dueDate ? project.dueDate.toISOString() : null,
   completionDate: project.completionDate ? project.completionDate.toISOString() : null,
@@ -806,6 +812,7 @@ pub async fn update_project<R: JxaRunner>(
     let script = format!(
         r#"{JS_DATE_HELPERS}
 {JS_PROJECT_STATUS}
+{JS_TASK_STATUS}
 {JS_REVIEW_INTERVAL}
 const projectFilter = {project_filter};
 const updates = {updates_value};
@@ -851,7 +858,7 @@ return {{
   status: normalizeProjectStatus(project),
   folderName: project.parentFolder ? project.parentFolder.name : null,
   taskCount: allProjectTasks.length,
-  remainingTaskCount: allProjectTasks.filter(task => !task.completed).length,
+  remainingTaskCount: allProjectTasks.filter(task => isTaskRemaining(task)).length,
   deferDate: project.deferDate ? project.deferDate.toISOString() : null,
   dueDate: project.dueDate ? project.dueDate.toISOString() : null,
   note: project.note,

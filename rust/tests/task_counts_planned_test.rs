@@ -222,11 +222,18 @@ async fn script_without_planned_bounds_sets_them_to_null() {
 
 // ---------------------------------------------------------------- script, run
 
-/// Four tasks: planned on 1, 10 and 20 May 2026, and one never planned.
+/// The task statuses the counts script reads, as distinct enum objects.
+const FAKE_TASK_STATUS: &str = r#"var Task = { Status: {} };
+["Available", "Blocked", "Completed", "Dropped", "DueSoon", "Next", "Overdue"].forEach(
+  function (name) { Task.Status[name] = { name: name }; });"#;
+
+/// Four available inbox tasks: planned on 1, 10 and 20 May 2026, and one never
+/// planned.
 const FAKE_DATABASE: &str = r#"function fakeTask(id, plannedDate) {
   return { id: { primaryKey: id }, name: id, containingProject: null, tags: [],
     flagged: false, completed: false, dueDate: null, deferDate: null, completionDate: null,
-    added: null, modified: null, estimatedMinutes: null, plannedDate: plannedDate };
+    added: null, modified: null, estimatedMinutes: null, plannedDate: plannedDate,
+    taskStatus: Task.Status.Available };
 }
 var document = { flattenedTasks: [
   fakeTask("t1", new Date(2026, 4, 1, 9, 0)),
@@ -240,7 +247,7 @@ var document = { flattenedTasks: [
 const FAKE_DATABASE_WITHOUT_PLANNED_DATES: &str = r#"function fakeTask(id) {
   const task = { id: { primaryKey: id }, name: id, containingProject: null, tags: [],
     flagged: false, completed: false, dueDate: null, deferDate: null, completionDate: null,
-    added: null, modified: null, estimatedMinutes: null };
+    added: null, modified: null, estimatedMinutes: null, taskStatus: Task.Status.Available };
   Object.defineProperty(task, "plannedDate", {
     get: function () { throw new Error("plannedDate is not supported"); }
   });
@@ -252,7 +259,7 @@ var document = { flattenedTasks: [fakeTask("t1"), fakeTask("t2"), fakeTask("t3")
 fn total_against(database: &str, script: &str) -> Value {
     common::assert_script_compiles("get_task_counts", script);
     let output = common::run_jsc(
-        database,
+        &format!("{FAKE_TASK_STATUS}\n{database}"),
         &format!(
             "try {{ const result = (function () {{\n{script}\n}})(); print(JSON.stringify(result)); }}\n\
              catch (error) {{ print(\"ERROR: \" + error.message); }}"
@@ -302,7 +309,7 @@ async fn invalid_planned_bound_is_reported_by_field_name() {
     let script = counts_script(Some("not a date"), None).await;
     common::assert_script_compiles("get_task_counts", &script);
     let output = common::run_jsc(
-        FAKE_DATABASE,
+        &format!("{FAKE_TASK_STATUS}\n{FAKE_DATABASE}"),
         &format!(
             "try {{ (function () {{\n{script}\n}})(); print(\"NO ERROR\"); }}\n\
              catch (error) {{ print(\"ERROR: \" + error.message); }}"

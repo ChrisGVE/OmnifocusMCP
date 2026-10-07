@@ -1931,7 +1931,7 @@ async fn get_project_script_includes_stalled_and_count_fields() {
     assert!(script
         .contains("completedTaskCount: allProjectTasks.filter(task => task.completed).length,"));
     assert!(script.contains(
-        "availableTaskCount: allProjectTasks.filter(task => !task.completed && (task.deferDate === null || task.deferDate <= new Date())).length,"
+        "availableTaskCount: allProjectTasks.filter(task => isTaskAvailable(task, now)).length,"
     ));
     assert!(script.contains(
         "completionDate: project.completionDate ? project.completionDate.toISOString() : null,"

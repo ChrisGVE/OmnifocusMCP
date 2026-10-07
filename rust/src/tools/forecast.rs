@@ -2,6 +2,7 @@ use serde_json::Value;
 
 use crate::{
     error::{OmniFocusError, Result},
+    js_helpers::{JS_PROJECT_STATUS, JS_TASK_STATUS},
     jxa::JxaRunner,
 };
 
@@ -13,7 +14,9 @@ pub async fn get_forecast<R: JxaRunner>(runner: &R, limit: i32) -> Result<Value>
     }
 
     let script = format!(
-        r#"const now = new Date();
+        r#"{JS_PROJECT_STATUS}
+{JS_TASK_STATUS}
+const now = new Date();
 const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 const endOfToday = new Date(startOfToday.getTime() + (24 * 60 * 60 * 1000));
 const endOfWeek = new Date(now.getTime() + (7 * 24 * 60 * 60 * 1000));
@@ -46,7 +49,7 @@ const toTaskSummary = (task) => {{
   }};
 }};
 
-const openTasks = document.flattenedTasks.filter(task => !task.completed);
+const openTasks = document.flattenedTasks.filter(task => isTaskRemaining(task));
 const overdue = [];
 const dueToday = [];
 const flagged = [];
