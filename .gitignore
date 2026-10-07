@@ -1,13 +1,3 @@
-# Ralph config (may contain API key)
-.cursor/ralph-config.json
-
-# Ralph runtime logs
-.ralph/activity.log
-.ralph/errors.log
-
-# internal automation state
-.ralph/
-
 # IDE-specific config
 .cursor/
 
@@ -16,6 +6,3 @@ rust/target/
 
 # OS/editor files
 .DS_Store
-
-# local task scratch file for ralph loop
-RALPH_TASK.md
