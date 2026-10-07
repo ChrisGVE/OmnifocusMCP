@@ -433,6 +433,9 @@ pub struct UpdateProjectParams {
     #[serde(rename = "completedByChildren", alias = "completed_by_children")]
     completed_by_children: Option<LenientBool>,
     #[serde(rename = "reviewInterval", alias = "review_interval")]
+    #[schemars(
+        description = "review interval as \"N unit\": N a whole number of at least 1, unit one of days, weeks, months, years (singular also accepted, case-insensitive), e.g. \"2 weeks\". the project must already have a review interval."
+    )]
     review_interval: Option<String>,
 }
 

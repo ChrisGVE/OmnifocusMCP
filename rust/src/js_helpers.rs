@@ -120,3 +120,33 @@ pub const JS_PROJECT_STATUS: &str = r#"function normalizeProjectStatus(project) 
   return "unknown";
 }
 "#;
+
+/// Project review interval helpers (upstream #12).
+///
+/// `project.reviewInterval` is a `Project.ReviewInterval` *value object*:
+/// reading it returns a copy, and OmniFocus only accepts that type back. The
+/// documented way to change it is to read it, set `steps` and `unit`, and
+/// assign it back — assigning a plain `{steps, unit}` object is rejected. Its
+/// string form is "[object Project.ReviewInterval]", so it must be formatted
+/// field by field.
+///
+/// Defined functions:
+/// - `formatReviewInterval(interval)`: `"<steps> <unit>"` (e.g. `"2 weeks"`),
+///   or `null` when the project has no interval.
+/// - `updatedReviewInterval(project, requested)`: the project's interval with
+///   `steps` and `unit` taken from `requested` (already validated in Rust, see
+///   `crate::review_interval`). Nothing changes on the project until the
+///   caller assigns the result. Throws `"Project has no review interval to
+///   update"` when the project has none to start from.
+pub const JS_REVIEW_INTERVAL: &str = r#"function formatReviewInterval(interval) {
+  if (interval === null || interval === undefined) return null;
+  return interval.steps + " " + interval.unit;
+}
+function updatedReviewInterval(project, requested) {
+  const interval = project.reviewInterval;
+  if (!interval) throw new Error("Project has no review interval to update");
+  interval.steps = requested.steps;
+  interval.unit = requested.unit;
+  return interval;
+}
+"#;

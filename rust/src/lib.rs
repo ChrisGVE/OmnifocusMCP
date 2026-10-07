@@ -5,6 +5,7 @@ pub mod jxa;
 pub mod lenient_scalars;
 pub mod prompts;
 pub mod resources;
+pub mod review_interval;
 pub mod server;
 pub mod tools;
 pub mod types;

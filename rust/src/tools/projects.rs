@@ -2,8 +2,9 @@ use serde_json::Value;
 
 use crate::{
     error::{OmniFocusError, Result},
-    js_helpers::{JS_DATE_HELPERS, JS_PROJECT_STATUS},
+    js_helpers::{JS_DATE_HELPERS, JS_PROJECT_STATUS, JS_REVIEW_INTERVAL},
     jxa::{escape_for_jxa, JxaRunner},
+    review_interval::parse_review_interval,
     types::ProjectCountsResult,
 };
 
@@ -85,6 +86,7 @@ pub async fn list_projects<R: JxaRunner>(
     let script = format!(
         r#"{JS_DATE_HELPERS}
 {JS_PROJECT_STATUS}
+{JS_REVIEW_INTERVAL}
 const folderFilter = {folder_filter};
 const statusFilter = {status_filter};
 const completedBeforeRaw = {completed_before_filter};
@@ -131,7 +133,6 @@ const mappedProjects = projects.map(project => {{
   const isStalled = normalizeProjectStatus(project) === "active"
     && project.flattenedTasks.some(t => !t.completed)
     && nextTask === null;
-  const reviewInterval = project.reviewInterval;
   return {{
     id: projectId,
     name: project.name,
@@ -147,7 +148,7 @@ const mappedProjects = projects.map(project => {{
     isStalled: isStalled,
     nextTaskId: nextTask ? nextTask.id.primaryKey : null,
     nextTaskName: nextTask ? nextTask.name : null,
-    reviewInterval: reviewInterval === null || reviewInterval === undefined ? null : String(reviewInterval)
+    reviewInterval: formatReviewInterval(project.reviewInterval)
   }};
 }});"#
     );
@@ -288,6 +289,7 @@ pub async fn get_project<R: JxaRunner>(runner: &R, project_id_or_name: &str) -> 
     let project_filter = escape_for_jxa(project_id_or_name.trim());
     let script = format!(
         r#"{JS_PROJECT_STATUS}
+{JS_REVIEW_INTERVAL}
 const projectFilter = {project_filter};
 const project = document.flattenedProjects.find(item => {{
   return item.id.primaryKey === projectFilter || item.name === projectFilter;
@@ -318,7 +320,6 @@ const rootTasks = project.tasks.map(task => {{
   }};
 }});
 
-const reviewInterval = project.reviewInterval;
 return {{
   id: project.id.primaryKey,
   name: project.name,
@@ -337,7 +338,7 @@ return {{
   isStalled: isStalled,
   nextTaskId: nextTask ? nextTask.id.primaryKey : null,
   nextTaskName: nextTask ? nextTask.name : null,
-  reviewInterval: reviewInterval === null || reviewInterval === undefined ? null : String(reviewInterval),
+  reviewInterval: formatReviewInterval(project.reviewInterval),
   rootTasks: rootTasks
 }};"#
     );
@@ -760,13 +761,7 @@ pub async fn update_project<R: JxaRunner>(
             ));
         }
     }
-    if let Some(value) = review_interval {
-        if value.trim().is_empty() {
-            return Err(OmniFocusError::Validation(
-                "reviewInterval must not be empty when provided.".to_string(),
-            ));
-        }
-    }
+    let review_interval = review_interval.map(parse_review_interval).transpose()?;
 
     let mut updates = serde_json::Map::new();
     if let Some(value) = name {
@@ -802,10 +797,7 @@ pub async fn update_project<R: JxaRunner>(
         updates.insert("completedByChildren".to_string(), Value::Bool(value));
     }
     if let Some(value) = review_interval {
-        updates.insert(
-            "reviewInterval".to_string(),
-            Value::String(value.trim().to_string()),
-        );
+        updates.insert("reviewInterval".to_string(), serde_json::to_value(value)?);
     }
 
     let project_filter = escape_for_jxa(project_id_or_name.trim());
@@ -813,6 +805,7 @@ pub async fn update_project<R: JxaRunner>(
     let script = format!(
         r#"{JS_DATE_HELPERS}
 {JS_PROJECT_STATUS}
+{JS_REVIEW_INTERVAL}
 const projectFilter = {project_filter};
 const updates = {updates_value};
 const project = document.flattenedProjects.find(item => {{
@@ -825,23 +818,9 @@ if (!project) {{
 const has = (key) => Object.prototype.hasOwnProperty.call(updates, key);
 const parsedDueDate = has("dueDate") ? parseWriteDate(updates.dueDate, "dueDate", "DefaultDueTime", "17:00") : null;
 const parsedDeferDate = has("deferDate") ? parseWriteDate(updates.deferDate, "deferDate", "DefaultStartTime", "00:00") : null;
-const parseReviewInterval = (value) => {{
-  const match = String(value).trim().match(/^(\d+)\s+([a-zA-Z_]+)$/);
-  if (!match) {{
-    throw new Error(`Invalid reviewInterval format: ${{value}}. Expected 'N unit'.`);
-  }}
-  const steps = Number(match[1]);
-  if (!Number.isInteger(steps) || steps < 1) {{
-    throw new Error(`Invalid reviewInterval steps: ${{match[1]}}`);
-  }}
-  let unit = match[2].toLowerCase();
-  if (unit.endsWith("s")) unit = unit.slice(0, -1);
-  const allowed = new Set(["minute", "hour", "day", "week", "month", "year"]);
-  if (!allowed.has(unit)) {{
-    throw new Error(`Invalid reviewInterval unit: ${{match[2]}}`);
-  }}
-  return {{ steps, unit }};
-}};
+// Prepared before any field changes, so a project without an interval fails
+// the call with nothing modified.
+const preparedReviewInterval = has("reviewInterval") ? updatedReviewInterval(project, updates.reviewInterval) : null;
 
 if (has("name")) project.name = updates.name;
 if (has("note")) project.note = updates.note;
@@ -850,9 +829,7 @@ if (has("deferDate")) project.deferDate = parsedDeferDate;
 if (has("flagged")) project.flagged = updates.flagged;
 if (has("sequential")) project.sequential = updates.sequential;
 if (has("completedByChildren")) project.completedByChildren = updates.completedByChildren;
-if (has("reviewInterval")) {{
-  project.reviewInterval = parseReviewInterval(updates.reviewInterval);
-}}
+if (has("reviewInterval")) project.reviewInterval = preparedReviewInterval;
 if (has("tags")) {{
   const existingTags = project.tags.slice();
   existingTags.forEach(tag => {{
@@ -867,7 +844,6 @@ if (has("tags")) {{
 const allProjectTasks = document.flattenedTasks.filter(task => {{
   return task.containingProject && task.containingProject.id.primaryKey === project.id.primaryKey;
 }});
-const reviewIntervalValue = project.reviewInterval;
 return {{
   id: project.id.primaryKey,
   name: project.name,
@@ -882,7 +858,7 @@ return {{
   sequential: project.sequential,
   completedByChildren: project.completedByChildren,
   tags: project.tags.map(tag => tag.name),
-  reviewInterval: reviewIntervalValue === null || reviewIntervalValue === undefined ? null : String(reviewIntervalValue)
+  reviewInterval: formatReviewInterval(project.reviewInterval)
 }};"#
     );
     runner.run_omnijs(&script).await
