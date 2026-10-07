@@ -1,17 +1,15 @@
 # OmniFocus MCP — Rust
 
-Native Rust implementation of the OmniFocus MCP server. Produces a single
-compiled binary (`omnifocus-mcp`) distributable via Homebrew.
+Rust OmniFocus MCP server. Produces a single compiled binary (`omnifocus-mcp`).
 
 ## Features
 
-- 40 tools, 3 resources, 4 prompts — full API parity with Python and TypeScript
+- 48 tools, 3 resources, 4 prompts
 - Advanced read-side filtering and sorting on tasks/projects (date ranges, multi-tag modes, stalled detection)
 - Added/changed task date filtering (`added_*`, `changed_*`) for list/search/count read tools
 - Aggregate count tools (`get_task_counts`, `get_project_counts`) for fast "how many" queries
 - Single binary, zero runtime dependencies
 - ~5 MB release build
-- Homebrew-installable (`brew install omnifocus-mcp`)
 
 Task payloads returned by read tools include:
 - `addedDate` (task creation timestamp, ISO 8601 or `null`)
@@ -21,17 +19,9 @@ Task payloads returned by read tools include:
 
 - macOS (required — uses `osascript` for OmniFocus communication)
 - OmniFocus installed and running
-- Rust toolchain for building from source (not needed for Homebrew install)
+- Rust toolchain for building
 
 ## Quick start
-
-### Homebrew (recommended)
-
-```bash
-brew tap vitalyrodnenko/omnifocus-mcp
-brew install omnifocus-mcp
-omnifocus-mcp --version
-```
 
 ### From source
 
@@ -91,18 +81,7 @@ cargo test --features integration
 
 ## MCP client configuration
 
-```json
-{
-  "mcpServers": {
-    "omnifocus": {
-      "command": "omnifocus-mcp",
-      "args": []
-    }
-  }
-}
-```
-
-When built from source and not on `PATH`, use the full binary path:
+Use the full binary path (or `omnifocus-mcp` if it is on your `PATH`):
 
 ```json
 {
@@ -115,10 +94,9 @@ When built from source and not on `PATH`, use the full binary path:
 }
 ```
 
-## Homebrew distribution
+## Releases
 
-See [`homebrew/omnifocus-mcp.rb`](../homebrew/omnifocus-mcp.rb) for the
-formula template and [`.github/workflows/release-rust.yml`](../.github/workflows/release-rust.yml)
-for the CI release pipeline.
+[`.github/workflows/release-rust.yml`](../.github/workflows/release-rust.yml) builds release
+tarballs for `aarch64-apple-darwin` and `x86_64-apple-darwin` on `rust-v*` tags.
 
 Full installation guide: [`docs/install-rust.md`](../docs/install-rust.md)

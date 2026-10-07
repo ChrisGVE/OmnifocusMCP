@@ -7,111 +7,38 @@
 - terminal/editor has macos automation permission for omnifocus
 - rust toolchain (`rustc`, `cargo`) for source builds
 
-## method 1: homebrew (recommended)
+## build from source
 
 ```bash
-brew tap vitalyrodnenko/omnifocus-mcp
-brew install omnifocus-mcp
-```
-
-verify:
-
-```bash
-omnifocus-mcp --version
-```
-
-## method 2: build from source
-
-```bash
-git clone https://github.com/vitalyrodnenko/OmnifocusMCP.git
+git clone https://github.com/ChrisGVE/OmnifocusMCP.git
 cd OmnifocusMCP/rust
 cargo build --release
-cp target/release/omnifocus-mcp /usr/local/bin/
 ```
+
+the binary is `target/release/omnifocus-mcp`. optionally copy it onto your `PATH`.
 
 verify:
 
 ```bash
-omnifocus-mcp --version
+./target/release/omnifocus-mcp --version
 ```
+
+note: the upstream homebrew tap (`vitalyrodnenko/omnifocus-mcp`) installs the upstream build, not
+this fork.
 
 ## mcp client configuration
 
-use `omnifocus-mcp` when installed via homebrew. use an absolute binary path when running a source-built binary not on `PATH`.
-
-### claude desktop
-
-homebrew:
+use the absolute path to the built binary, or `omnifocus-mcp` if you copied it onto your `PATH`.
+the same block works for claude desktop, cursor, and any other stdio client.
 
 ```json
 {
   "mcpServers": {
-    "omnifocus-rust": {
-      "command": "omnifocus-mcp",
+    "omnifocus": {
+      "command": "/absolute/path/to/OmnifocusMCP/rust/target/release/omnifocus-mcp",
       "args": []
     }
   }
-}
-```
-
-source build:
-
-```json
-{
-  "mcpServers": {
-    "omnifocus-rust": {
-      "command": "/usr/local/bin/omnifocus-mcp",
-      "args": []
-    }
-  }
-}
-```
-
-### cursor
-
-homebrew:
-
-```json
-{
-  "mcpServers": {
-    "omnifocus-rust": {
-      "command": "omnifocus-mcp",
-      "args": []
-    }
-  }
-}
-```
-
-source build:
-
-```json
-{
-  "mcpServers": {
-    "omnifocus-rust": {
-      "command": "/absolute/path/to/omnifocus-mcp",
-      "args": []
-    }
-  }
-}
-```
-
-### generic stdio client
-
-homebrew:
-
-```json
-{
-  "command": "omnifocus-mcp",
-  "args": []
-}
-```
-
-source build:
-
-```json
-{
-  "command": "/absolute/path/to/omnifocus-mcp",
-  "args": []
 }
 ```
 
@@ -133,16 +60,10 @@ update rust:
 rustup update
 ```
 
-### binary architecture mismatch (arm vs intel)
-
-install the matching binary for your machine (`aarch64-apple-darwin` for apple silicon, `x86_64-apple-darwin` for intel) or build locally from source.
-
 ### macos gatekeeper blocked unsigned binary
 
-for binaries downloaded outside homebrew:
+for a binary downloaded from a github release rather than built locally:
 
 ```bash
 xattr -cr /path/to/omnifocus-mcp
 ```
-
-homebrew-installed binaries are not affected.

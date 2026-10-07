@@ -2,6 +2,16 @@
 
 All notable changes to this project are documented in this file.
 
+## [Unreleased]
+
+### Removed
+- Python and TypeScript implementations, the Homebrew formula template, their install guides,
+  CI jobs, and the root `package.json`. This fork is Rust-only.
+
+### Fixed
+- README tool counts: the server registers 48 tools (tasks 22, projects 12, tags 6, folders 6,
+  forecast 1, perspectives 1), not 45.
+
 ## [1.1.9] - 2026-04-05
 
 ### Fixed

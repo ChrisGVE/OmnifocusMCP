@@ -1,1 +1,0 @@
-"""OmniFocus MCP Python implementation."""

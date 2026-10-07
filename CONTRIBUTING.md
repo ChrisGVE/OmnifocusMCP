@@ -4,71 +4,32 @@ Thanks for contributing. Keep changes small, focused, and test-backed.
 
 ## Development setup
 
-Clone once, then set up each implementation independently.
-
 ```bash
-git clone https://github.com/vitalyrodnenko/OmnifocusMCP.git
-cd OmnifocusMCP
-```
-
-Python (`uv`, 3.11+):
-
-```bash
-cd python
-uv sync --extra dev
-```
-
-TypeScript (`npm`, Node.js 20+):
-
-```bash
-cd typescript
-npm install
-```
-
-Rust (`cargo`):
-
-```bash
-cd rust
+git clone https://github.com/ChrisGVE/OmnifocusMCP.git
+cd OmnifocusMCP/rust
 cargo check
 ```
 
-Detailed install guides:
-- `docs/install-python.md`
-- `docs/install-typescript.md`
-- `docs/install-rust.md`
+Detailed install guide: `docs/install-rust.md`
 
 ## Running tests
-
-Python:
-
-```bash
-cd python && ruff check src/ && mypy src/ --strict && pytest tests/ -v
-```
-
-TypeScript:
-
-```bash
-cd typescript && npx tsc --noEmit && npm test
-```
-
-Rust:
 
 ```bash
 cd rust && cargo fmt --check && cargo clippy -- -D warnings && cargo test
 ```
 
-Integration tests require OmniFocus running and macOS Automation permission.
+`cargo test` runs the mocked unit tests and never touches OmniFocus. Integration tests
+(`cargo test --features integration`) and `rust/examples/` act on a live OmniFocus database:
+they need OmniFocus running and macOS Automation permission, and they create and delete real
+items, so run them only against a database you can afford to modify.
 
 ## Key rules
 
-- all 3 implementations must expose identical tool names, input schemas, and response shapes
-- JXA scripts must be character-identical across implementations
-- write the JXA script in Python first, then copy it to TypeScript and Rust
-- all user input must be escaped through the implementation escape helper
-- never use `shell=True` in Python or `exec` in Node for `osascript` calls
+- all user input must be escaped through `escape_for_jxa`
+- every bug fix starts with a failing unit test that reproduces it
 
 ## Pull request guidelines
 
 - one concern per PR, small diff preferred
 - include a short rationale and testing notes
-- lint, typecheck, and tests must pass before review
+- fmt, clippy, and tests must pass before review
