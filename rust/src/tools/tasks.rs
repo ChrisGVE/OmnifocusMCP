@@ -75,6 +75,8 @@ pub async fn get_task_counts_with_added_changed<R: JxaRunner>(
     added_before: Option<&str>,
     changed_after: Option<&str>,
     changed_before: Option<&str>,
+    planned_before: Option<&str>,
+    planned_after: Option<&str>,
     max_estimated_minutes: Option<i32>,
 ) -> Result<TaskCountsResult> {
     if let Some(project_name) = project {
@@ -172,6 +174,12 @@ pub async fn get_task_counts_with_added_changed<R: JxaRunner>(
     let changed_before_filter = changed_before
         .map(escape_for_jxa)
         .unwrap_or_else(|| "null".to_string());
+    let planned_before_filter = planned_before
+        .map(escape_for_jxa)
+        .unwrap_or_else(|| "null".to_string());
+    let planned_after_filter = planned_after
+        .map(escape_for_jxa)
+        .unwrap_or_else(|| "null".to_string());
     let max_estimated_minutes_filter = max_estimated_minutes
         .map(|value| value.to_string())
         .unwrap_or_else(|| "null".to_string());
@@ -194,6 +202,8 @@ const addedAfterRaw = {added_after_filter};
 const addedBeforeRaw = {added_before_filter};
 const changedAfterRaw = {changed_after_filter};
 const changedBeforeRaw = {changed_before_filter};
+const plannedBeforeRaw = {planned_before_filter};
+const plannedAfterRaw = {planned_after_filter};
 const maxEstimatedMinutes = {max_estimated_minutes_filter};
 const now = new Date();
 const soon = new Date(now.getTime() + (7 * 24 * 60 * 60 * 1000));
@@ -207,6 +217,27 @@ const addedAfter = parseOptionalLocalDate(addedAfterRaw, "added_after");
 const addedBefore = parseOptionalLocalDate(addedBeforeRaw, "added_before");
 const changedAfter = parseOptionalLocalDate(changedAfterRaw, "changed_after");
 const changedBefore = parseOptionalLocalDate(changedBeforeRaw, "changed_before");
+const plannedBefore = parseOptionalLocalDate(plannedBeforeRaw, "plannedBefore");
+const plannedAfter = parseOptionalLocalDate(plannedAfterRaw, "plannedAfter");
+const supportsPlannedDate = (() => {{
+  try {{
+    const sampleTask = document.flattenedTasks[0];
+    if (!sampleTask) return true;
+    void sampleTask.plannedDate;
+    return true;
+  }} catch (e) {{
+    return false;
+  }}
+}})();
+const getPlannedDate = (task) => {{
+  if (!supportsPlannedDate) return null;
+  try {{
+    const value = task.plannedDate;
+    return value === undefined ? null : value;
+  }} catch (e) {{
+    return null;
+  }}
+}};
 
 const counts = {{
   total: 0,
@@ -243,6 +274,11 @@ for (const task of document.flattenedTasks) {{
   if (addedAfter !== null && !(task.added !== null && task.added >= addedAfter)) continue;
   if (changedBefore !== null && !(task.modified !== null && task.modified <= changedBefore)) continue;
   if (changedAfter !== null && !(task.modified !== null && task.modified >= changedAfter)) continue;
+  if (supportsPlannedDate) {{
+    const plannedDate = getPlannedDate(task);
+    if (plannedBefore !== null && !(plannedDate !== null && plannedDate < plannedBefore)) continue;
+    if (plannedAfter !== null && !(plannedDate !== null && plannedDate > plannedAfter)) continue;
+  }}
   if (maxEstimatedMinutes !== null && !(task.estimatedMinutes !== null && task.estimatedMinutes <= maxEstimatedMinutes)) continue;
 
   counts.total += 1;
@@ -293,6 +329,8 @@ pub async fn get_task_counts<R: JxaRunner>(
         defer_after,
         completed_before,
         completed_after,
+        None,
+        None,
         None,
         None,
         None,

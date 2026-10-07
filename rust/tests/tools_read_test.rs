@@ -116,6 +116,8 @@ async fn get_task_counts<R: JxaRunner>(
         added_before,
         changed_after,
         changed_before,
+        None,
+        None,
         max_estimated_minutes,
     )
     .await
@@ -1081,7 +1083,7 @@ async fn plan_c_unknown_alias_values_keep_actionable_errors() {
 
     match get_task_counts_with_added_changed(
         &runner, None, None, None, "xor", None, None, None, None, None, None, None, None, None,
-        None, None, None,
+        None, None, None, None, None,
     )
     .await
     {
@@ -2131,6 +2133,8 @@ async fn added_changed_filters_are_included_in_list_search_and_count_scripts() {
         Some("2026-02-28T23:59:59Z"),
         Some("2026-03-01T00:00:00Z"),
         Some("2026-03-31T23:59:59Z"),
+        None,
+        None,
         None,
     )
     .await
@@ -3343,6 +3347,8 @@ async fn get_task_counts_added_changed_filters_are_included_in_script() {
         Some("2026-03-01T00:00:00Z"),
         Some("2026-03-31T23:59:59Z"),
         None,
+        None,
+        None,
     )
     .await
     .expect("counts with added/changed filters should parse");
@@ -3517,6 +3523,8 @@ async fn added_changed_invalid_date_errors_bubble_up_for_all_new_filter_fields()
             } else {
                 None
             },
+            None,
+            None,
             None,
         )
         .await

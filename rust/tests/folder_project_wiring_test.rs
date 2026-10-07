@@ -103,7 +103,7 @@ async fn get_task_counts_script(project: Option<&str>) -> String {
     }));
     get_task_counts_with_added_changed(
         &runner, project, None, None, "any", None, None, None, None, None, None, None, None, None,
-        None, None, None,
+        None, None, None, None, None,
     )
     .await
     .expect("get_task_counts runs");

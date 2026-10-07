@@ -288,7 +288,7 @@ async fn get_task_counts_parses_filter_bounds_as_local() {
         "dueSoon": 0, "flagged": 0, "deferred": 0});
     let runner = CapturingRunner::new(counts);
     get_task_counts_with_added_changed(
-        &runner, None, None, None, "any", None, D, D, D, D, D, D, D, D, D, D, None,
+        &runner, None, None, None, "any", None, D, D, D, D, D, D, D, D, D, D, None, None, None,
     )
     .await
     .expect("get_task_counts");

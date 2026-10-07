@@ -673,6 +673,8 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
             params.added_before.as_deref(),
             params.changed_after.as_deref(),
             params.changed_before.as_deref(),
+            params.planned_before.as_deref(),
+            params.planned_after.as_deref(),
             params.max_estimated_minutes.map(i32::from),
         )
         .await
