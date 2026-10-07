@@ -21,6 +21,7 @@ use crate::{
     error::OmniFocusError,
     flexible_tags::{tags_as_opt_vec, FlexibleTagList},
     jxa::JxaRunner,
+    lenient_scalars::{LenientBool, LenientF64, LenientI32},
     prompts::{daily_review, inbox_processing, project_planning, weekly_review},
     resources::{
         inbox_resource, projects_resource, today_resource, INBOX_RESOURCE_URI,
@@ -53,19 +54,19 @@ use crate::{
 };
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
-struct LimitParams {
-    limit: Option<i32>,
+pub struct LimitParams {
+    limit: Option<LenientI32>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
-struct ListTasksParams {
+pub struct ListTasksParams {
     project: Option<String>,
     tag: Option<String>,
     tags: Option<FlexibleTagList>,
     #[serde(rename = "tagFilterMode", alias = "tag_filter_mode")]
     #[schemars(description = "tag matching mode: any/all. aliases: and/or (case-insensitive).")]
     tag_filter_mode: Option<String>,
-    flagged: Option<bool>,
+    flagged: Option<LenientBool>,
     #[schemars(
         description = "task status filter: available, due_soon, overdue, on_hold, completed, all. aliases: due soon/due-soon, on hold/on-hold."
     )]
@@ -91,24 +92,24 @@ struct ListTasksParams {
     #[serde(rename = "plannedAfter", alias = "planned_after")]
     planned_after: Option<String>,
     #[serde(rename = "maxEstimatedMinutes", alias = "max_estimated_minutes")]
-    max_estimated_minutes: Option<i32>,
+    max_estimated_minutes: Option<LenientI32>,
     #[serde(rename = "sortBy", alias = "sort_by")]
     sort_by: Option<String>,
     #[serde(rename = "sortOrder", alias = "sort_order")]
     #[schemars(description = "sort direction: asc/desc. aliases: ascending/descending.")]
     sort_order: Option<String>,
-    limit: Option<i32>,
+    limit: Option<LenientI32>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
-struct GetTaskCountsParams {
+pub struct GetTaskCountsParams {
     project: Option<String>,
     tag: Option<String>,
     tags: Option<FlexibleTagList>,
     #[serde(rename = "tagFilterMode", alias = "tag_filter_mode")]
     #[schemars(description = "tag matching mode: any/all. aliases: and/or (case-insensitive).")]
     tag_filter_mode: Option<String>,
-    flagged: Option<bool>,
+    flagged: Option<LenientBool>,
     #[serde(rename = "dueBefore", alias = "due_before")]
     due_before: Option<String>,
     #[serde(rename = "dueAfter", alias = "due_after")]
@@ -130,7 +131,7 @@ struct GetTaskCountsParams {
     #[serde(rename = "plannedAfter", alias = "planned_after")]
     planned_after: Option<String>,
     #[serde(rename = "maxEstimatedMinutes", alias = "max_estimated_minutes")]
-    max_estimated_minutes: Option<i32>,
+    max_estimated_minutes: Option<LenientI32>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
@@ -139,25 +140,25 @@ struct TaskIdParams {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
-struct TaskIdLimitParams {
+pub struct TaskIdLimitParams {
     task_id: String,
-    limit: Option<i32>,
+    limit: Option<LenientI32>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
-struct AddNotificationParams {
+pub struct AddNotificationParams {
     task_id: String,
     #[serde(rename = "absoluteDate", alias = "absolute_date")]
     absolute_date: Option<String>,
     #[serde(rename = "relativeOffset", alias = "relative_offset")]
-    relative_offset: Option<f64>,
+    relative_offset: Option<LenientF64>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
-struct DuplicateTaskParams {
+pub struct DuplicateTaskParams {
     task_id: String,
     #[serde(rename = "includeChildren", alias = "include_children")]
-    include_children: Option<bool>,
+    include_children: Option<LenientBool>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
@@ -167,7 +168,7 @@ struct RemoveNotificationParams {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
-struct SearchTasksParams {
+pub struct SearchTasksParams {
     query: String,
     project: Option<String>,
     tag: Option<String>,
@@ -175,7 +176,7 @@ struct SearchTasksParams {
     #[serde(rename = "tagFilterMode", alias = "tag_filter_mode")]
     #[schemars(description = "tag matching mode: any/all. aliases: and/or (case-insensitive).")]
     tag_filter_mode: Option<String>,
-    flagged: Option<bool>,
+    flagged: Option<LenientBool>,
     #[schemars(
         description = "task status filter: available, due_soon, overdue, on_hold, completed, all. aliases: due soon/due-soon, on hold/on-hold."
     )]
@@ -197,7 +198,7 @@ struct SearchTasksParams {
     changed_after: Option<String>,
     changed_before: Option<String>,
     #[serde(rename = "maxEstimatedMinutes", alias = "max_estimated_minutes")]
-    max_estimated_minutes: Option<i32>,
+    max_estimated_minutes: Option<LenientI32>,
     #[serde(rename = "plannedBefore", alias = "planned_before")]
     planned_before: Option<String>,
     #[serde(rename = "plannedAfter", alias = "planned_after")]
@@ -207,7 +208,7 @@ struct SearchTasksParams {
     #[serde(rename = "sortOrder", alias = "sort_order")]
     #[schemars(description = "sort direction: asc/desc. aliases: ascending/descending.")]
     sort_order: Option<String>,
-    limit: Option<i32>,
+    limit: Option<LenientI32>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
@@ -219,14 +220,14 @@ pub struct CreateTaskParams {
     pub due_date: Option<String>,
     #[serde(rename = "deferDate", alias = "defer_date")]
     pub defer_date: Option<String>,
-    pub flagged: Option<bool>,
+    pub flagged: Option<LenientBool>,
     pub tags: Option<FlexibleTagList>,
     #[serde(rename = "estimatedMinutes", alias = "estimated_minutes")]
-    pub estimated_minutes: Option<i32>,
+    pub estimated_minutes: Option<LenientI32>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
-struct CreateSubtaskParams {
+pub struct CreateSubtaskParams {
     name: String,
     parent_task_id: String,
     note: Option<String>,
@@ -234,14 +235,14 @@ struct CreateSubtaskParams {
     due_date: Option<String>,
     #[serde(rename = "deferDate", alias = "defer_date")]
     defer_date: Option<String>,
-    flagged: Option<bool>,
+    flagged: Option<LenientBool>,
     tags: Option<FlexibleTagList>,
     #[serde(rename = "estimatedMinutes", alias = "estimated_minutes")]
-    estimated_minutes: Option<i32>,
+    estimated_minutes: Option<LenientI32>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
-struct CreateTasksBatchParams {
+pub struct CreateTasksBatchParams {
     tasks: Vec<BatchCreateTaskInput>,
 }
 
@@ -254,10 +255,10 @@ pub struct BatchCreateTaskInput {
     pub due_date: Option<String>,
     #[serde(rename = "deferDate", alias = "defer_date")]
     pub defer_date: Option<String>,
-    pub flagged: Option<bool>,
+    pub flagged: Option<LenientBool>,
     pub tags: Option<FlexibleTagList>,
     #[serde(rename = "estimatedMinutes", alias = "estimated_minutes")]
-    pub estimated_minutes: Option<i32>,
+    pub estimated_minutes: Option<LenientI32>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
@@ -269,10 +270,10 @@ pub struct UpdateTaskParams {
     pub due_date: Option<String>,
     #[serde(rename = "deferDate", alias = "defer_date")]
     pub defer_date: Option<String>,
-    pub flagged: Option<bool>,
+    pub flagged: Option<LenientBool>,
     pub tags: Option<FlexibleTagList>,
     #[serde(rename = "estimatedMinutes", alias = "estimated_minutes")]
-    pub estimated_minutes: Option<i32>,
+    pub estimated_minutes: Option<LenientI32>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
@@ -309,7 +310,7 @@ struct SetTaskRepetitionParams {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
-struct ListProjectsParams {
+pub struct ListProjectsParams {
     folder: Option<String>,
     status: Option<String>,
     #[serde(rename = "completedBefore", alias = "completed_before")]
@@ -317,12 +318,12 @@ struct ListProjectsParams {
     #[serde(rename = "completedAfter", alias = "completed_after")]
     completed_after: Option<String>,
     #[serde(rename = "stalledOnly", alias = "stalled_only")]
-    stalled_only: Option<bool>,
+    stalled_only: Option<LenientBool>,
     #[serde(rename = "sortBy", alias = "sort_by")]
     sort_by: Option<String>,
     #[serde(rename = "sortOrder", alias = "sort_order")]
     sort_order: Option<String>,
-    limit: Option<i32>,
+    limit: Option<LenientI32>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
@@ -331,26 +332,26 @@ struct GetProjectCountsParams {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
-struct SearchProjectsParams {
+pub struct SearchProjectsParams {
     query: String,
-    limit: Option<i32>,
+    limit: Option<LenientI32>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
-struct SearchTagsParams {
+pub struct SearchTagsParams {
     query: String,
-    limit: Option<i32>,
+    limit: Option<LenientI32>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
-struct ListTagsParams {
+pub struct ListTagsParams {
     #[serde(rename = "statusFilter", alias = "status_filter")]
     status_filter: Option<String>,
     #[serde(rename = "sortBy", alias = "sort_by")]
     sort_by: Option<String>,
     #[serde(rename = "sortOrder", alias = "sort_order")]
     sort_order: Option<String>,
-    limit: Option<i32>,
+    limit: Option<LenientI32>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
@@ -376,7 +377,7 @@ struct SetProjectStatusParams {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
-struct CreateProjectParams {
+pub struct CreateProjectParams {
     name: String,
     folder: Option<String>,
     note: Option<String>,
@@ -384,11 +385,11 @@ struct CreateProjectParams {
     due_date: Option<String>,
     #[serde(rename = "deferDate", alias = "defer_date")]
     defer_date: Option<String>,
-    sequential: Option<bool>,
+    sequential: Option<LenientBool>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
-struct UpdateProjectParams {
+pub struct UpdateProjectParams {
     project_id_or_name: String,
     name: Option<String>,
     note: Option<String>,
@@ -396,11 +397,11 @@ struct UpdateProjectParams {
     due_date: Option<String>,
     #[serde(rename = "deferDate", alias = "defer_date")]
     defer_date: Option<String>,
-    flagged: Option<bool>,
+    flagged: Option<LenientBool>,
     tags: Option<FlexibleTagList>,
-    sequential: Option<bool>,
+    sequential: Option<LenientBool>,
     #[serde(rename = "completedByChildren", alias = "completed_by_children")]
-    completed_by_children: Option<bool>,
+    completed_by_children: Option<LenientBool>,
     #[serde(rename = "reviewInterval", alias = "review_interval")]
     review_interval: Option<String>,
 }
@@ -452,7 +453,7 @@ struct DeleteFoldersBatchParams {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
-struct ProjectPlanningPromptParams {
+pub struct ProjectPlanningPromptParams {
     project: String,
 }
 
@@ -499,9 +500,12 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
         &self,
         Parameters(params): Parameters<LimitParams>,
     ) -> std::result::Result<CallToolResult, McpError> {
-        let result = get_inbox(self.runner.as_ref(), params.limit.unwrap_or(100))
-            .await
-            .map_err(to_mcp_error)?;
+        let result = get_inbox(
+            self.runner.as_ref(),
+            params.limit.map(i32::from).unwrap_or(100),
+        )
+        .await
+        .map_err(to_mcp_error)?;
         as_call_tool_result(&result)
     }
 
@@ -542,7 +546,7 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
             tag.as_deref(),
             tags_as_opt_vec(tags),
             tag_filter_mode.as_deref().unwrap_or("any"),
-            flagged,
+            flagged.map(bool::from),
             status.as_deref().unwrap_or("available"),
             due_before.as_deref(),
             due_after.as_deref(),
@@ -556,10 +560,10 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
             changed_before.as_deref(),
             planned_before.as_deref(),
             planned_after.as_deref(),
-            max_estimated_minutes,
+            max_estimated_minutes.map(i32::from),
             sort_by.as_deref(),
             sort_order.as_deref().unwrap_or("asc"),
-            limit.unwrap_or(100),
+            limit.map(i32::from).unwrap_or(100),
         )
         .await
         .map_err(to_mcp_error)?;
@@ -579,7 +583,7 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
             params.tag.as_deref(),
             tags_as_opt_vec(params.tags),
             params.tag_filter_mode.as_deref().unwrap_or("any"),
-            params.flagged,
+            params.flagged.map(bool::from),
             params.due_before.as_deref(),
             params.due_after.as_deref(),
             params.defer_before.as_deref(),
@@ -590,7 +594,7 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
             params.added_before.as_deref(),
             params.changed_after.as_deref(),
             params.changed_before.as_deref(),
-            params.max_estimated_minutes,
+            params.max_estimated_minutes.map(i32::from),
         )
         .await
         .map_err(to_mcp_error)?;
@@ -620,7 +624,7 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
         let result = list_subtasks(
             self.runner.as_ref(),
             &params.task_id,
-            params.limit.unwrap_or(100),
+            params.limit.map(i32::from).unwrap_or(100),
         )
         .await
         .map_err(to_mcp_error)?;
@@ -651,7 +655,7 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
             self.runner.as_ref(),
             &params.task_id,
             params.absolute_date.as_deref(),
-            params.relative_offset,
+            params.relative_offset.map(f64::from),
         )
         .await
         .map_err(to_mcp_error)?;
@@ -668,7 +672,7 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
         let result = duplicate_task(
             self.runner.as_ref(),
             &params.task_id,
-            params.include_children.unwrap_or(true),
+            params.include_children.map(bool::from).unwrap_or(true),
         )
         .await
         .map_err(to_mcp_error)?;
@@ -704,7 +708,7 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
             params.tag.as_deref(),
             tags_as_opt_vec(params.tags),
             params.tag_filter_mode.as_deref().unwrap_or("any"),
-            params.flagged,
+            params.flagged.map(bool::from),
             params.status.as_deref().unwrap_or("available"),
             params.due_before.as_deref(),
             params.due_after.as_deref(),
@@ -718,10 +722,10 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
             params.changed_before.as_deref(),
             params.planned_before.as_deref(),
             params.planned_after.as_deref(),
-            params.max_estimated_minutes,
+            params.max_estimated_minutes.map(i32::from),
             params.sort_by.as_deref(),
             params.sort_order.as_deref().unwrap_or("asc"),
-            params.limit.unwrap_or(100),
+            params.limit.map(i32::from).unwrap_or(100),
         )
         .await
         .map_err(to_mcp_error)?;
@@ -742,9 +746,9 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
             params.note.as_deref(),
             params.due_date.as_deref(),
             params.defer_date.as_deref(),
-            params.flagged,
+            params.flagged.map(bool::from),
             tags_as_opt_vec(params.tags),
-            params.estimated_minutes,
+            params.estimated_minutes.map(i32::from),
         )
         .await
         .map_err(to_mcp_error)?;
@@ -767,9 +771,9 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
                 note: task.note,
                 due_date: task.due_date,
                 defer_date: task.defer_date,
-                flagged: task.flagged,
+                flagged: task.flagged.map(bool::from),
                 tags: tags_as_opt_vec(task.tags),
-                estimated_minutes: task.estimated_minutes,
+                estimated_minutes: task.estimated_minutes.map(i32::from),
             })
             .collect();
         let result = create_tasks_batch(self.runner.as_ref(), tasks)
@@ -792,9 +796,9 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
             params.note.as_deref(),
             params.due_date.as_deref(),
             params.defer_date.as_deref(),
-            params.flagged,
+            params.flagged.map(bool::from),
             tags_as_opt_vec(params.tags),
-            params.estimated_minutes,
+            params.estimated_minutes.map(i32::from),
         )
         .await
         .map_err(to_mcp_error)?;
@@ -859,9 +863,9 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
             params.note.as_deref(),
             params.due_date.as_deref(),
             params.defer_date.as_deref(),
-            params.flagged,
+            params.flagged.map(bool::from),
             tags_as_opt_vec(params.tags),
-            params.estimated_minutes,
+            params.estimated_minutes.map(i32::from),
         )
         .await
         .map_err(to_mcp_error)?;
@@ -961,10 +965,10 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
             params.status.as_deref().unwrap_or("active"),
             params.completed_before.as_deref(),
             params.completed_after.as_deref(),
-            params.stalled_only.unwrap_or(false),
+            params.stalled_only.map(bool::from).unwrap_or(false),
             params.sort_by.as_deref(),
             params.sort_order.as_deref().unwrap_or("asc"),
-            params.limit.unwrap_or(100),
+            params.limit.map(i32::from).unwrap_or(100),
         )
         .await
         .map_err(to_mcp_error)?;
@@ -994,7 +998,7 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
         let result = search_projects(
             self.runner.as_ref(),
             &params.query,
-            params.limit.unwrap_or(100),
+            params.limit.map(i32::from).unwrap_or(100),
         )
         .await
         .map_err(to_mcp_error)?;
@@ -1028,7 +1032,7 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
             params.note.as_deref(),
             params.due_date.as_deref(),
             params.defer_date.as_deref(),
-            params.sequential,
+            params.sequential.map(bool::from),
         )
         .await
         .map_err(to_mcp_error)?;
@@ -1118,10 +1122,10 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
             params.note.as_deref(),
             params.due_date.as_deref(),
             params.defer_date.as_deref(),
-            params.flagged,
+            params.flagged.map(bool::from),
             tags_as_opt_vec(params.tags),
-            params.sequential,
-            params.completed_by_children,
+            params.sequential.map(bool::from),
+            params.completed_by_children.map(bool::from),
             params.review_interval.as_deref(),
         )
         .await
@@ -1156,7 +1160,7 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
         let result = search_tags(
             self.runner.as_ref(),
             &params.query,
-            params.limit.unwrap_or(100),
+            params.limit.map(i32::from).unwrap_or(100),
         )
         .await
         .map_err(to_mcp_error)?;
@@ -1175,7 +1179,7 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
             params.status_filter.as_deref().unwrap_or("all"),
             params.sort_by.as_deref(),
             params.sort_order.as_deref().unwrap_or("asc"),
-            params.limit.unwrap_or(100),
+            params.limit.map(i32::from).unwrap_or(100),
         )
         .await
         .map_err(to_mcp_error)?;
@@ -1244,9 +1248,12 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
         &self,
         Parameters(params): Parameters<LimitParams>,
     ) -> std::result::Result<CallToolResult, McpError> {
-        let result = list_folders(self.runner.as_ref(), params.limit.unwrap_or(100))
-            .await
-            .map_err(to_mcp_error)?;
+        let result = list_folders(
+            self.runner.as_ref(),
+            params.limit.map(i32::from).unwrap_or(100),
+        )
+        .await
+        .map_err(to_mcp_error)?;
         as_call_tool_result(&result)
     }
 
@@ -1325,9 +1332,12 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
         &self,
         Parameters(params): Parameters<LimitParams>,
     ) -> std::result::Result<CallToolResult, McpError> {
-        let result = get_forecast(self.runner.as_ref(), params.limit.unwrap_or(100))
-            .await
-            .map_err(to_mcp_error)?;
+        let result = get_forecast(
+            self.runner.as_ref(),
+            params.limit.map(i32::from).unwrap_or(100),
+        )
+        .await
+        .map_err(to_mcp_error)?;
         as_call_tool_result(&result)
     }
 
@@ -1338,9 +1348,12 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
         &self,
         Parameters(params): Parameters<LimitParams>,
     ) -> std::result::Result<CallToolResult, McpError> {
-        let result = list_perspectives(self.runner.as_ref(), params.limit.unwrap_or(100))
-            .await
-            .map_err(to_mcp_error)?;
+        let result = list_perspectives(
+            self.runner.as_ref(),
+            params.limit.map(i32::from).unwrap_or(100),
+        )
+        .await
+        .map_err(to_mcp_error)?;
         as_call_tool_result(&result)
     }
 }
