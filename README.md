@@ -68,7 +68,7 @@ Full lifecycle management for OmniFocus tasks:
 
 | Filter | Description |
 | --- | --- |
-| `project` | Scope to a single project by name |
+| `project` | Scope to a single project, by id or exact name (unknown project → error) |
 | `tag` / `tags` | Filter by one tag or multiple tags |
 | `tagFilterMode` | `"any"` (default) or `"all"` for multi-tag filtering |
 | `flagged` | Flagged tasks only |
@@ -94,8 +94,9 @@ All list/search tools support `sortBy` and `sortOrder`:
 
 - **CRUD** — create, get, update, delete projects
 - **Lifecycle** — complete, uncomplete, set status (active/on-hold/dropped)
-- **Organization** — move between folders, search by name
-- **Filtering** — by folder, status, completion date range, stalled-only flag
+- **Organization** — move between folders (folder by id or exact name), search by name
+- **Filtering** — by folder (id or exact name), status, completion date range, stalled-only flag
+- **Review interval** — set with `update_project` as `"N unit"` (`days`, `weeks`, `months`, `years`), reported back the same way
 - **Sorting** — by name, due date, or other fields
 - **Aggregate counts** — project counts by status, optionally scoped to a folder
 

@@ -20,6 +20,12 @@ All notable changes to this project are documented in this file.
   midnight. Date-times with `Z` or an offset are unchanged.
 - Invalid dates (e.g. `2026-02-30`) now fail with an error naming the field, before anything is
   created or changed. Previously some write paths silently stored an Invalid Date.
+- `folder` and `project` parameters (create/move/list/count tools, task filters and writes)
+  accept an id or an exact name. A value that matches nothing is an error (`Folder not found: …`,
+  `Project not found: …`) instead of an empty result or a silent top-level placement. Filters
+  compare by id, so same-named projects are told apart. (upstream #11)
+- Project status unknown to the server is reported as `"unknown"` rather than defaulting to
+  `"active"`.
 - CI runs `cargo clippy --all-targets`, so test code is linted too.
 
 ### Fixed
@@ -28,6 +34,17 @@ All notable changes to this project are documented in this file.
   for integers. The advertised schema is unchanged. (upstream #8, #11)
 - Bare dates were parsed as UTC midnight, deferring tasks hours late (or to the wrong day) outside
   UTC. (upstream #13)
+- Completed projects were reported, filtered and counted as `active`: OmniFocus's
+  `Project.Status.Done` was not recognised. Also fixed in `get_folder`'s project list.
+  (upstream #10; diagnosis from upstream PR #14 by @luebbers)
+- `update_project` could never set `reviewInterval` (it assigned a plain object, and singularised
+  the unit). The interval is now validated before anything changes and applied to the project's
+  own `Project.ReviewInterval`. Read tools report it as `"2 weeks"` instead of
+  `"[object Project.ReviewInterval]"`. (upstream #12)
+- Project folder was read from an undocumented `project.folder` property, so `folderName`, the
+  folder filters and `list_folders`' `projectCount` came back empty; now `parentFolder`.
+  `move_project` reports the folder the project actually ended up in, not the requested one.
+  `create_tasks_batch` resolves every destination before creating any task. (upstream #11)
 - README tool counts: the server registers 48 tools (tasks 22, projects 12, tags 6, folders 6,
   forecast 1, perspectives 1), not 45.
 
