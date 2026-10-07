@@ -20,26 +20,32 @@ fork keeps only Rust and fixes the bugs reported upstream. The upstream Homebrew
 
 ## Quick Start
 
-Build from source (Rust toolchain via [`rustup`](https://rustup.rs)):
+Install the prebuilt binary (macOS, Apple silicon or Intel) from the `ChrisGVE/tap` Homebrew tap:
 
 ```bash
-git clone https://github.com/ChrisGVE/OmnifocusMCP.git
-cd OmnifocusMCP/rust
-cargo build --release
+brew install ChrisGVE/tap/omnifocus-mcp
 ```
 
-Then add the binary to your MCP client config (Claude Desktop, Cursor, etc.):
+Then add it to your MCP client. Claude Code:
+
+```bash
+claude mcp add --scope user omnifocus -- omnifocus-mcp
+```
+
+Other stdio clients (Claude Desktop, Cursor, etc.):
 
 ```json
 {
   "mcpServers": {
     "omnifocus": {
-      "command": "/absolute/path/to/OmnifocusMCP/rust/target/release/omnifocus-mcp",
+      "command": "omnifocus-mcp",
       "args": []
     }
   }
 }
 ```
+
+To build from source instead, see [`docs/install-rust.md`](docs/install-rust.md).
 
 The AI assistant now has full OmniFocus access.
 
@@ -159,8 +165,8 @@ The server runs JXA (JavaScript for Automation) scripts through macOS `osascript
 
 ## MCP Client Config
 
-Every stdio MCP client uses the same shape; point `command` at the built binary (or just
-`omnifocus-mcp` if you copied it onto your `PATH`). Full guide: [`docs/install-rust.md`](docs/install-rust.md).
+Every stdio MCP client uses the same shape; point `command` at `omnifocus-mcp` (installed by
+Homebrew onto your `PATH`) or at a binary you built. Full guide: [`docs/install-rust.md`](docs/install-rust.md).
 
 > Keep only one OmniFocus MCP server enabled at a time to avoid duplicate tool surfaces.
 
@@ -170,7 +176,7 @@ Every stdio MCP client uses the same shape; point `command` at the built binary 
 - OmniFocus installed and running
 - Automation permission granted to the terminal/editor (System Settings → Privacy & Security → Automation)
 
-- Rust toolchain via [`rustup`](https://rustup.rs) to build
+- Rust toolchain via [`rustup`](https://rustup.rs), only to build from source
 
 ## Contributing
 

@@ -5,7 +5,22 @@
 - macos with omnifocus installed
 - omnifocus running when tools are used
 - terminal/editor has macos automation permission for omnifocus
-- rust toolchain (`rustc`, `cargo`) for source builds
+- rust toolchain (`rustc`, `cargo`) for source builds only
+
+## install with homebrew
+
+prebuilt binaries for apple silicon and intel are published with each `rust-v*` release:
+
+```bash
+brew install ChrisGVE/tap/omnifocus-mcp
+omnifocus-mcp --version
+```
+
+the binary lands on your `PATH` as `omnifocus-mcp`. register it with claude code:
+
+```bash
+claude mcp add --scope user omnifocus -- omnifocus-mcp
+```
 
 ## build from source
 
