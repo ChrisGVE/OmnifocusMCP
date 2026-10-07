@@ -121,6 +121,67 @@ pub const JS_PROJECT_STATUS: &str = r#"function normalizeProjectStatus(project) 
 }
 "#;
 
+/// Task availability: which tasks are still to do, and which can be done now.
+///
+/// `task.completed` alone is not enough. OmniFocus documents that a task "may
+/// be effectively considered completed if a containing task is marked
+/// completed", and that `Project.status` "does not reflect the status of
+/// individual tasks" — a task in a dropped project keeps its own state. So
+/// these read every documented signal, from the task outwards:
+///
+/// - `isTaskRemaining(task)`: still to do. False when the task is completed
+///   or dropped, through its own state (`completed`, `taskStatus` `Completed`
+///   or `Dropped`) or a container's (`effectiveCompletionDate`,
+///   `effectiveDropDate`), or when its project is done or dropped. A task in
+///   an on-hold project, or a blocked one, is still remaining.
+/// - `isTaskAvailable(task, now)`: can be worked on at `now`. A remaining
+///   task whose `taskStatus` is `Available`, `Next`, `DueSoon` or `Overdue`
+///   (never `Blocked`), in an active project or in none, not deferred past
+///   `now` (`effectiveDeferDate`), and with no on-hold tag.
+///
+/// The documentation does not say which status OmniFocus reports for a task
+/// that is both blocked and due, so the blocking causes it lists and that can
+/// be read directly — a future defer date, an on-hold tag, the project's
+/// status — are checked here too. A preceding task in a sequential project,
+/// the remaining cause, can only be seen through `Blocked`.
+///
+/// A property an older OmniFocus lacks reads as `undefined` and counts as
+/// unset. A project or task status this code does not recognise leaves the
+/// task remaining but not available.
+///
+/// Requires `normalizeProjectStatus` (`JS_PROJECT_STATUS`) to be prepended
+/// too. Internal helpers are prefixed `ofTaskStatus`.
+pub const JS_TASK_STATUS: &str = r#"function ofTaskStatusIsSet(value) {
+  return value !== null && value !== undefined;
+}
+function ofTaskStatusIsActionable(status) {
+  return status === Task.Status.Available
+    || status === Task.Status.Next
+    || status === Task.Status.DueSoon
+    || status === Task.Status.Overdue;
+}
+function isTaskRemaining(task) {
+  if (task.completed) return false;
+  const status = task.taskStatus;
+  if (status === Task.Status.Completed || status === Task.Status.Dropped) return false;
+  if (ofTaskStatusIsSet(task.effectiveCompletionDate)) return false;
+  if (ofTaskStatusIsSet(task.effectiveDropDate)) return false;
+  const project = task.containingProject;
+  if (!project) return true;
+  const projectStatus = normalizeProjectStatus(project);
+  return projectStatus !== "completed" && projectStatus !== "dropped";
+}
+function isTaskAvailable(task, now) {
+  if (!isTaskRemaining(task)) return false;
+  if (!ofTaskStatusIsActionable(task.taskStatus)) return false;
+  const project = task.containingProject;
+  if (project && normalizeProjectStatus(project) !== "active") return false;
+  const deferDate = task.effectiveDeferDate;
+  if (ofTaskStatusIsSet(deferDate) && deferDate > now) return false;
+  return !task.tags.some(tag => tag.status === Tag.Status.OnHold);
+}
+"#;
+
 /// Project review interval helpers (upstream #12).
 ///
 /// `project.reviewInterval` is a `Project.ReviewInterval` *value object*:
