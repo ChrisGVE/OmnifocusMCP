@@ -589,7 +589,7 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
     }
 
     #[tool(
-        description = "list tasks with optional project/tag filters, status, date ranges, and sorting. canonical status values are available, due_soon, overdue, on_hold, completed, and all. added_* and changed_* filters must be ISO 8601 date strings; changed maps to task.modified. accepted aliases (case-insensitive): sortOrder ascending/descending, status due soon or due-soon and on hold or on-hold, and tagFilterMode and/or. sortBy accepts dueDate, deferDate, name, completionDate, estimatedMinutes, project, flagged, addedDate, changedDate, plannedDate, and aliases added/modified/planned. returns task summaries."
+        description = "list tasks with optional project/tag filters, status, date ranges, and sorting. canonical status values are available, due_soon, overdue, on_hold, completed, and all. date filters take YYYY-MM-DD (local midnight) or an ISO 8601 date-time; changed maps to task.modified. accepted aliases (case-insensitive): sortOrder ascending/descending, status due soon or due-soon and on hold or on-hold, and tagFilterMode and/or. sortBy accepts dueDate, deferDate, name, completionDate, estimatedMinutes, project, flagged, addedDate, changedDate, plannedDate, and aliases added/modified/planned. returns task summaries."
     )]
     async fn list_tasks(
         &self,
@@ -650,7 +650,7 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
     }
 
     #[tool(
-        description = "get aggregate task counts for any filter combination without listing individual tasks. added_* and changed_* filters must be ISO 8601 date strings; changed means the task's last modified timestamp. tagFilterMode accepts canonical any/all and aliases and/or (case-insensitive). much faster than list_tasks for answering 'how many' questions."
+        description = "get aggregate task counts for any filter combination without listing individual tasks. date filters take YYYY-MM-DD (local midnight) or an ISO 8601 date-time; changed means the task's last modified timestamp. tagFilterMode accepts canonical any/all and aliases and/or (case-insensitive). much faster than list_tasks for answering 'how many' questions."
     )]
     async fn get_task_counts(
         &self,
@@ -726,7 +726,7 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
     }
 
     #[tool(
-        description = "add one notification to a task by id. provide exactly one of absoluteDate or relativeOffset. relativeOffset requires a task with an effective due date. returns created notification summary."
+        description = "add one notification to a task by id. provide exactly one of absoluteDate or relativeOffset. absoluteDate takes YYYY-MM-DD (local midnight) or an ISO 8601 date-time. relativeOffset requires a task with an effective due date. returns created notification summary."
     )]
     async fn add_notification(
         &self,
@@ -776,7 +776,7 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
     }
 
     #[tool(
-        description = "search tasks by case-insensitive name/note text with optional filters and sorting. canonical status values are available, due_soon, overdue, on_hold, completed, and all. added_* and changed_* filters must be ISO 8601 date strings; changed maps to task.modified. accepted aliases (case-insensitive): sortOrder ascending/descending, status due soon or due-soon and on hold or on-hold, and tagFilterMode and/or. sortBy accepts dueDate, deferDate, name, completionDate, estimatedMinutes, project, flagged, addedDate, changedDate, plannedDate, and aliases added/modified/planned. returns task summaries."
+        description = "search tasks by case-insensitive name/note text with optional filters and sorting. canonical status values are available, due_soon, overdue, on_hold, completed, and all. date filters take YYYY-MM-DD (local midnight) or an ISO 8601 date-time; changed maps to task.modified. accepted aliases (case-insensitive): sortOrder ascending/descending, status due soon or due-soon and on hold or on-hold, and tagFilterMode and/or. sortBy accepts dueDate, deferDate, name, completionDate, estimatedMinutes, project, flagged, addedDate, changedDate, plannedDate, and aliases added/modified/planned. returns task summaries."
     )]
     async fn search_tasks(
         &self,
@@ -814,7 +814,7 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
     }
 
     #[tool(
-        description = "create one task in inbox or a named project. accepts name plus optional note, dates, flagged, tags, and estimated minutes. returns created task id/name."
+        description = "create one task in inbox or a project (id or exact name). accepts name plus optional note, dates, flagged, tags, and estimated minutes. dates take YYYY-MM-DD or an ISO 8601 date-time; a bare date gets your omnifocus default time for that field. returns created task id/name."
     )]
     async fn create_task(
         &self,
@@ -864,7 +864,7 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
     }
 
     #[tool(
-        description = "create a subtask under an existing parent task id. supports optional note, dates, flagged, tags, and estimatedMinutes; returns child and parent references."
+        description = "create a subtask under an existing parent task id. supports optional note, dates, flagged, tags, and estimatedMinutes. dates take YYYY-MM-DD or an ISO 8601 date-time; a bare date gets your omnifocus default time for that field. returns child and parent references."
     )]
     async fn create_subtask(
         &self,
@@ -931,7 +931,7 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
     }
 
     #[tool(
-        description = "update an existing task by id, modifying only provided fields. supports name, note, due/defer dates, flagged, tags replacement, and estimatedMinutes."
+        description = "update an existing task by id, modifying only provided fields. supports name, note, due/defer dates, flagged, tags replacement, and estimatedMinutes. dates take YYYY-MM-DD or an ISO 8601 date-time; a bare date gets your omnifocus default time for that field."
     )]
     async fn update_task(
         &self,
@@ -1034,7 +1034,7 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
     }
 
     #[tool(
-        description = "list projects with status and folder filters. status semantics: completed means finished work (done), dropped means intentionally abandoned/not-doing, on_hold means paused, active means current."
+        description = "list projects with status and folder filters. status semantics: completed means finished work (done), dropped means intentionally abandoned/not-doing, on_hold means paused, active means current. completedBefore/completedAfter take YYYY-MM-DD (local midnight) or an ISO 8601 date-time."
     )]
     async fn list_projects(
         &self,
@@ -1100,7 +1100,7 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
     }
 
     #[tool(
-        description = "create a project with optional folder, note, due/defer dates, and sequential mode. returns created project id/name."
+        description = "create a project with optional folder (id or exact name), note, due/defer dates, and sequential mode. dates take YYYY-MM-DD or an ISO 8601 date-time; a bare date gets your omnifocus default time for that field. returns created project id/name."
     )]
     async fn create_project(
         &self,
@@ -1190,7 +1190,7 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
     }
 
     #[tool(
-        description = "update a project by id or name, modifying only provided fields. supports name, note, dates, flagged, tags replacement, sequential, completedByChildren, and reviewInterval."
+        description = "update a project by id or name, modifying only provided fields. supports name, note, dates, flagged, tags replacement, sequential, completedByChildren, and reviewInterval. dates take YYYY-MM-DD or an ISO 8601 date-time; a bare date gets your omnifocus default time for that field."
     )]
     async fn update_project(
         &self,
@@ -1339,7 +1339,7 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
     }
 
     #[tool(
-        description = "create a folder with optional parent folder name and return created id/name/parent."
+        description = "create a folder with optional parent folder (id or exact name) and return created id/name/parent."
     )]
     async fn create_folder(
         &self,
