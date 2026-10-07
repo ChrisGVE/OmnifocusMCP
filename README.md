@@ -2,186 +2,242 @@
 
 [![Platform: macOS](https://img.shields.io/badge/platform-macOS-black)](https://www.omnigroup.com/omnifocus)
 [![Protocol: MCP](https://img.shields.io/badge/protocol-MCP-6f42c1)](https://modelcontextprotocol.io)
-[![Language: Rust](https://img.shields.io/badge/impl-rust-0ea5e9)](rust/)
+[![Language: Rust](https://img.shields.io/badge/language-Rust-0ea5e9)](rust/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-MCP server that gives AI assistants full control over [OmniFocus](https://www.omnigroup.com/omnifocus) on macOS.
+An [MCP](https://modelcontextprotocol.io) server that lets an AI assistant read and change the
+tasks, projects, tags and folders in [OmniFocus](https://www.omnigroup.com/omnifocus) on macOS. It
+is a single binary, `omnifocus-mcp`, that speaks MCP over stdio and exposes 48 tools, 3 resources
+and 4 prompts.
 
-48 tools, 3 resources, and 4 prompts covering tasks, projects, tags, folders, perspectives, forecast, notifications, and review workflows — all through the [Model Context Protocol](https://modelcontextprotocol.io).
-
-This project is not affiliated with, endorsed by, or associated with The Omni Group or OmniFocus. OmniFocus is a trademark of The Omni Group. This is an independent, non-commercial open-source project.
+This project is not affiliated with, endorsed by, or associated with The Omni Group or OmniFocus.
+OmniFocus is a trademark of The Omni Group. This is an independent, non-commercial open-source
+project.
 
 ## About this fork
 
-This is a maintained fork of [vitalyrodnenko/OmnifocusMCP](https://github.com/vitalyrodnenko/OmnifocusMCP),
-reduced to the Rust server. Upstream shipped the same server in Python, TypeScript and Rust; this
-fork keeps only Rust and fixes the bugs reported upstream. The upstream Homebrew tap
-(`vitalyrodnenko/omnifocus-mcp`) installs the upstream build, not this one.
+This is a maintained fork of
+[vitalyrodnenko/OmnifocusMCP](https://github.com/vitalyrodnenko/OmnifocusMCP). Upstream shipped
+the same server in Python, TypeScript and Rust; this fork keeps only the Rust server and fixes
+bugs reported upstream. Version 2.0.0 is the fork's first release. If you run the upstream
+server today, read [Upgrading from upstream](#upgrading-from-upstream) before installing.
 
-## Quick Start
+## Contents
 
-Install the prebuilt binary (macOS, Apple silicon or Intel) from the `ChrisGVE/tap` Homebrew tap:
+- [Requirements](#requirements)
+- [Install](#install)
+- [Configure your MCP client](#configure-your-mcp-client)
+- [Upgrading from upstream](#upgrading-from-upstream)
+- [What it can do](#what-it-can-do)
+- [Parameters and dates](#parameters-and-dates)
+- [Deletes and confirmation](#deletes-and-confirmation)
+- [Known limitations](#known-limitations)
+- [How it works](#how-it-works)
+- [Contributing](#contributing)
+
+Full tool reference: [`docs/tools.md`](docs/tools.md). Installation details and troubleshooting:
+[`docs/install-rust.md`](docs/install-rust.md).
+
+## Requirements
+
+- macOS. OmniFocus is a macOS app and the server drives it through `osascript`.
+- OmniFocus installed and running whenever a tool is called. Tested with OmniFocus 4.9.2 Pro.
+- macOS Automation permission for the app that starts the server (your terminal for Claude Code,
+  or Claude Desktop, Cursor, and so on) to control OmniFocus. macOS asks on the first tool call;
+  you can change it later in System Settings > Privacy & Security > Automation.
+- A Rust toolchain only if you build from source.
+
+## Install
+
+Install the prebuilt binary (Apple silicon or Intel) from the `ChrisGVE/tap` Homebrew tap:
 
 ```bash
 brew install ChrisGVE/tap/omnifocus-mcp
+omnifocus-mcp --version
 ```
 
-Then add it to your MCP client. Claude Code:
+The second command prints `omnifocus-mcp 2.0.0`. To install from a release tarball or build from
+source, see [`docs/install-rust.md`](docs/install-rust.md).
+
+## Configure your MCP client
+
+Claude Code, which inherits your shell's `PATH`:
 
 ```bash
 claude mcp add --scope user omnifocus -- omnifocus-mcp
 ```
 
-Other stdio clients (Claude Desktop, Cursor, etc.):
+Claude Desktop, Cursor and other stdio clients take a JSON entry. Apps opened from the Dock or
+Finder do not see your shell's `PATH`, so give the absolute path. Print it with
+`echo "$(brew --prefix)/bin/omnifocus-mcp"`; it is usually `/opt/homebrew/bin/omnifocus-mcp` on
+Apple silicon and `/usr/local/bin/omnifocus-mcp` on Intel.
 
 ```json
 {
   "mcpServers": {
     "omnifocus": {
-      "command": "omnifocus-mcp",
+      "command": "/opt/homebrew/bin/omnifocus-mcp",
       "args": []
     }
   }
 }
 ```
 
-To build from source instead, see [`docs/install-rust.md`](docs/install-rust.md).
+Enable only one OmniFocus MCP server in a client. This server and the upstream one offer the same
+tool names, so with both enabled the assistant could call either.
 
-The AI assistant now has full OmniFocus access.
+## Upgrading from upstream
 
-## What It Can Do
+The upstream Homebrew formula has the same name and installs a binary with the same name,
+`omnifocus-mcp`. Remove it first, so that the binary on your `PATH` is this one:
 
-### Tasks (22 tools)
+```bash
+brew uninstall vitalyrodnenko/omnifocus-mcp/omnifocus-mcp
+brew untap vitalyrodnenko/omnifocus-mcp
+brew install ChrisGVE/tap/omnifocus-mcp
+```
 
-Full lifecycle management for OmniFocus tasks:
+If your client started the upstream Python or TypeScript server, replace that entry's `command`
+and `args` with the binary as shown above.
 
-- **CRUD** — create, get, update, delete individual tasks
-- **Batch operations** — create, move, or delete multiple tasks in a single call
-- **Subtasks** — create and list subtasks under any parent task
-- **Completion** — mark complete, mark incomplete (supports repeating tasks)
-- **Search** — full-text search across task names and notes with all filters applied
-- **Move and reparent** — relocate tasks between projects, reparent tasks under other tasks, or move subtasks back to inbox/project without delete/recreate
-- **Duplicate** — clone a task with all properties and optional subtasks
-- **Notifications** — list, add, and remove notifications (absolute date or relative offset)
-- **Repetition** — set or clear repetition rules with schedule type (regularly/after completion)
-- **Notes** — append text to task notes without overwriting
-- **Safety model** — destructive delete confirmations stay separate from non-destructive move/update workflows
-- **Aggregate counts** — fast "how many" queries without listing individual tasks
+A client entry that already runs `omnifocus-mcp` needs no change. Calls made with the wrong
+parameter names, which upstream ignored, now fail with an error; the breaking changes are listed
+at the top of the [2.0.0 changelog entry](CHANGELOG.md#200---2026-10-07).
 
-#### Advanced Filtering
+## What it can do
 
-`list_tasks` and `search_tasks` support powerful filter combinations:
+Each tool is described, with every parameter, in [`docs/tools.md`](docs/tools.md).
 
-| Filter | Description |
+| Area | Tools |
 | --- | --- |
-| `project` | Scope to a single project, by id or exact name (unknown project → error) |
-| `tag` / `tags` | Filter by one tag or multiple tags |
-| `tagFilterMode` | `"any"` (default) or `"all"` for multi-tag filtering |
-| `flagged` | Flagged tasks only |
-| `status` | `"available"`, `"remaining"`, `"completed"`, `"dropped"`, `"all"` |
-| `dueBefore` / `dueAfter` | Due date range (ISO 8601) |
-| `deferBefore` / `deferAfter` | Defer date range (ISO 8601) |
-| `completedBefore` / `completedAfter` | Completion date range (ISO 8601) |
-| `addedBefore` / `addedAfter` | Creation date range (ISO 8601) |
-| `changedBefore` / `changedAfter` | Last-modified date range (ISO 8601, maps to OmniFocus `modified`) |
-| `plannedBefore` / `plannedAfter` | Planned date range (ISO 8601) |
-| `maxEstimatedMinutes` | Tasks with estimated duration up to N minutes |
+| Tasks: read (6) | `get_inbox`, `list_tasks`, `search_tasks`, `get_task`, `list_subtasks`, `get_task_counts` |
+| Tasks: create and edit (6) | `create_task`, `create_tasks_batch`, `create_subtask`, `update_task`, `duplicate_task`, `append_to_note` (tasks and projects) |
+| Tasks: complete (2) | `complete_task`, `uncomplete_task` |
+| Tasks: move (2) | `move_task`, `move_tasks_batch` |
+| Tasks: repetition and notifications (4) | `set_task_repetition`, `list_notifications`, `add_notification`, `remove_notification` |
+| Tasks: delete (2) | `delete_task`, `delete_tasks_batch` |
+| Projects: read (4) | `list_projects`, `search_projects`, `get_project`, `get_project_counts` |
+| Projects: create and edit (3) | `create_project`, `update_project`, `move_project` |
+| Projects: status (3) | `complete_project`, `uncomplete_project`, `set_project_status` |
+| Projects: delete (2) | `delete_project`, `delete_projects_batch` |
+| Tags (6) | `list_tags`, `search_tags`, `create_tag`, `update_tag`, `delete_tag`, `delete_tags_batch` |
+| Folders (6) | `list_folders`, `get_folder`, `create_folder`, `update_folder`, `delete_folder`, `delete_folders_batch` |
+| Forecast (1) | `get_forecast`: overdue, due today, flagged, deferred, due within 7 days |
+| Perspectives (1) | `list_perspectives`: names and ids only |
 
-#### Sorting
+That is 22 task tools, 12 project tools, 6 tag tools, 6 folder tools and one each for the forecast
+and perspectives.
 
-All list/search tools support `sortBy` and `sortOrder`:
+`list_tasks`, `search_tasks` and `get_task_counts` filter by project, tags (any or all), flagged
+state, and date ranges on due, defer, completion, planned, creation and last-modified dates.
+`list_tasks` and `search_tasks` also filter by status (`available`, `due_soon`, `overdue`,
+`on_hold`, `completed`, `all`; default `available`) and sort. `get_task_counts` returns counts
+instead of tasks, so the client receives a few numbers rather than a task list.
 
-- Sort by: `name`, `dueDate`, `deferDate`, `completionDate`, `estimatedMinutes`, `project`, `flagged`, `addedDate`, `changedDate`, `plannedDate`
-- Aliases: `added` -> `addedDate`, `modified` -> `changedDate`, `planned` -> `plannedDate`
-- Sort order: `asc` (default) or `desc`
-- Task payloads include `addedDate` and `changedDate` (ISO 8601 or `null`)
+Project status has three tools, which mean different things:
 
-### Projects (12 tools)
+| Status | Meaning | Set with |
+| --- | --- | --- |
+| `completed` | The work is finished. | `complete_project` (`uncomplete_project` reopens it) |
+| `dropped` | The project was abandoned, not finished. | `set_project_status` |
+| `on_hold` | Paused. | `set_project_status` |
+| `active` | Current. | `set_project_status` |
 
-- **CRUD** — create, get, update, delete projects
-- **Lifecycle** — complete, uncomplete, set status (active/on-hold/dropped)
-- **Organization** — move between folders (folder by id or exact name), search by name
-- **Filtering** — by folder (id or exact name), status, completion date range, stalled-only flag
-- **Review interval** — set with `update_project` as `"N unit"` (`days`, `weeks`, `months`, `years`), reported back the same way
-- **Sorting** — by name, due date, or other fields
-- **Aggregate counts** — project counts by status, optionally scoped to a folder
+Resources and prompts:
 
-#### Project Lifecycle Semantics
+| Kind | Identifier | Content |
+| --- | --- | --- |
+| Resource | `omnifocus://inbox` | Inbox tasks (up to 100) |
+| Resource | `omnifocus://today` | The `get_forecast` sections (up to 100 tasks each) |
+| Resource | `omnifocus://projects` | Active projects with task counts (up to 100) |
+| Prompt | `daily_review` | Due-soon, overdue and flagged tasks, for a daily plan |
+| Prompt | `weekly_review` | Active projects and available tasks, for a weekly review |
+| Prompt | `inbox_processing` | Inbox tasks, to clarify one by one |
+| Prompt | `project_planning` | One project and its tasks; takes a required `project` argument (id or exact name) |
 
-- Use `complete_project` when work is finished/closed (done/completed).
-- Use `set_project_status` for organizational state only:
-  - `active` = current
-  - `on_hold` = paused (UI wording is often "on hold"/"on-hold")
-  - `dropped` = intentionally abandoned/cancelled, not completed
-- Use `uncomplete_project` to reopen a completed project back to active.
-- In user-facing summaries, present business meaning first (project name,
-  folder, and status transition), and include opaque IDs only as secondary
-  references.
+## Parameters and dates
 
-### Tags (6 tools)
+Parameter names follow two conventions, and an unknown key is an error rather than being ignored:
 
-- **CRUD** — create, update (name and status), delete
-- **List** — with status filter (active/on-hold/dropped/all), sorting, and limits
-- **Search** — fuzzy name matching
+- Identifiers are snake_case only: `task_id`, `parent_task_id`, `project_id_or_name`, and so on.
+  So are four task filters: `added_before`, `added_after`, `changed_before`, `changed_after`.
+- Every other multi-word key is camelCase and also accepts the snake_case spelling: `dueDate` or
+  `due_date`, `sortBy` or `sort_by`.
+- A key the tool does not declare, such as `taskId`, fails the call with an `invalid_params` error.
 
-### Folders (6 tools)
+Numbers and booleans may be sent as strings (`"30"`, `"true"`), and `tags` may be a JSON array
+or a string holding one.
 
-- **CRUD** — create, get (with child projects and subfolders), update, delete
-- **Hierarchy** — create nested folders with parent parameter
-- **List** — all folders with limits
+A bare date such as `2026-10-10` means that day in your local time zone:
 
-### Forecast (1 tool)
+- Written to a due date, it gets the default due time set in OmniFocus (17:00 out of the box).
+- Written to a defer date, it gets the default start time set in OmniFocus (00:00 out of the box).
+- In a filter such as `dueBefore`, it means local midnight at the start of that day.
 
-- Structured view with sections: overdue, due today, flagged, deferred, and due this week
+A date-time with `Z` or an offset (`2026-10-10T09:30:00+02:00`) is used as given. An invalid date
+such as `2026-02-30` fails the call before anything changes.
 
-### Perspectives (1 tool)
+A `project` or `folder` value may be an id or an exact name; a value that matches nothing is an
+error (`Project not found: <value>`).
 
-- List all available OmniFocus perspectives
+The exact rules, and every tool's parameters, are in [`docs/tools.md`](docs/tools.md#conventions).
 
-### Resources (3)
+## Deletes and confirmation
 
-Live snapshots available to MCP clients:
+The delete tools (`delete_task`, `delete_tasks_batch`, `delete_project`, `delete_projects_batch`,
+`delete_tag`, `delete_tags_batch`, `delete_folder`, `delete_folders_batch`) act as soon as they
+are called. Deleting a project deletes its tasks.
 
-| Resource | Description |
-| --- | --- |
-| Inbox | Current inbox tasks |
-| Today | Today's forecast (overdue + due today + flagged) |
-| Active Projects | All active projects with task counts |
+The server does not ask for confirmation itself. Each delete tool's description tells the model to
+show you what will be deleted and wait for your approval, but whether the model does so is up to
+the model and the client. If you want a guarantee, keep your client's per-tool approval enabled for
+these tools. In Claude Code they are named `mcp__omnifocus__delete_task` and so on.
 
-### Prompts (4)
+At startup the server also sends MCP `instructions`, which clients that support them pass to the
+model. They ask the model to base answers on OmniFocus data, show names before raw ids, use
+`complete_project` for finished work and `dropped` or `on_hold` only for abandoned or paused
+projects, edit or move objects instead of deleting and recreating them, confirm before any
+destructive call, and report the ids of objects it changed.
 
-Ready-to-use review workflows:
+## Known limitations
 
-| Prompt | Description |
-| --- | --- |
-| Daily Review | Due-soon, overdue, and flagged tasks for daily planning |
-| Weekly Review | Active projects and next-action coverage analysis |
-| Inbox Processing | One-by-one inbox clarification decisions |
-| Project Planning | Guided planning for a specific project |
+- **Task status filters ignore dropped tasks and project status.** `available`, `overdue` and
+  `due_soon` (in `list_tasks` and `search_tasks`), the counts of `get_task_counts`, `get_forecast`,
+  and the review prompts check only whether the task itself is marked completed. They therefore
+  include dropped tasks, and tasks in a completed or dropped project unless the task itself is
+  marked completed. Each returned task carries OmniFocus's own `taskStatus`, which does report
+  `dropped`.
+- **`available` means two things.** In `list_tasks` and `search_tasks` it is every task not
+  completed, deferred ones included. In `get_task_counts` it excludes tasks deferred to the future.
+- **Duplicate names resolve to the first match.** A name shared by several projects, folders or
+  tags selects the first one OmniFocus lists. Use the id to pick a specific one.
+- **Tags are matched by name.** On `create_task`, `update_task` and `update_project`, a tag name
+  that matches no existing tag is skipped without an error; tags are not created implicitly.
+- **Dates cannot be cleared.** `update_task` and `update_project` treat `null` like an omitted
+  field.
+- **Review intervals can only be changed, not added.** `update_project` sets `reviewInterval` only
+  on a project that already has one.
+- **Each call has a 30-second limit**, and calls run one at a time. A very large `list_tasks` with
+  `status: "all"` may hit the limit.
+- **Resources are capped** at 100 items (100 per section for `omnifocus://today`).
+- **Planned-date filters are ignored** on an OmniFocus version without planned dates.
+- **Not covered:** attachments, marking a project as reviewed, dropping a single task, and reading
+  the contents of a perspective.
 
-## How It Works
+## How it works
 
-The server runs JXA (JavaScript for Automation) scripts through macOS `osascript`. Each script uses the OmniFocus `evaluateJavascript` bridge to execute Omni Automation JavaScript inside OmniFocus itself, where full APIs like `flattenedTasks`, `Task.Status`, and `new Task()` are available. Data is serialized as JSON and returned through the MCP protocol.
-
-## MCP Client Config
-
-Every stdio MCP client uses the same shape; point `command` at `omnifocus-mcp` (installed by
-Homebrew onto your `PATH`) or at a binary you built. Full guide: [`docs/install-rust.md`](docs/install-rust.md).
-
-> Keep only one OmniFocus MCP server enabled at a time to avoid duplicate tool surfaces.
-
-## Prerequisites
-
-- macOS (required — OmniFocus is macOS-only)
-- OmniFocus installed and running
-- Automation permission granted to the terminal/editor (System Settings → Privacy & Security → Automation)
-
-- Rust toolchain via [`rustup`](https://rustup.rs), only to build from source
+Each tool call runs `osascript -l JavaScript` with a short JXA (JavaScript for Automation) script.
+That script hands a second script to OmniFocus's `evaluateJavascript`, which runs it inside
+OmniFocus in Omni Automation, OmniFocus's built-in JavaScript API (also called OmniJS, the name the
+tool descriptions use). The two steps are needed because objects such as `flattenedTasks` and
+`Task.Status` exist only in Omni Automation. The script returns JSON, which the server passes back
+to the client.
 
 ## Contributing
 
-Contributions are welcome through focused pull requests with clear scope and passing checks. See [`CONTRIBUTING.md`](CONTRIBUTING.md) for setup and validation steps.
+Pull requests are welcome. [`CONTRIBUTING.md`](CONTRIBUTING.md) covers the build, the checks a pull
+request must pass, and how to run the tests that act on a live OmniFocus database.
 
 ## License
 
-MIT. See [`LICENSE`](LICENSE) for details.
+MIT. See [`LICENSE`](LICENSE).

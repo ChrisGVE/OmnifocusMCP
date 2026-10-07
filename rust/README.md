@@ -1,102 +1,91 @@
-# OmniFocus MCP — Rust
+# rust/
 
-Rust OmniFocus MCP server. Produces a single compiled binary (`omnifocus-mcp`).
+Source of the `omnifocus-mcp` binary, the Rust MCP server for OmniFocus. This page is for
+contributors. To install and use the server, start from the [README](../README.md); every tool is
+described in the [tool reference](../docs/tools.md).
 
-## Features
-
-- 48 tools, 3 resources, 4 prompts
-- Advanced read-side filtering and sorting on tasks/projects (date ranges, multi-tag modes, stalled detection)
-- Added/changed task date filtering (`added_*`, `changed_*`) for list/search/count read tools
-- Aggregate count tools (`get_task_counts`, `get_project_counts`) for fast "how many" queries
-- Single binary, zero runtime dependencies
-- ~5 MB release build
-
-Task payloads returned by read tools include:
-- `addedDate` (task creation timestamp, ISO 8601 or `null`)
-- `changedDate` (task last-modified timestamp, ISO 8601 or `null`; maps to OmniFocus `modified`)
-
-## Prerequisites
-
-- macOS (required — uses `osascript` for OmniFocus communication)
-- OmniFocus installed and running
-- Rust toolchain for building
-
-## Quick start
-
-### From source
+## Build and test
 
 ```bash
-cd rust
 cargo build --release
 ./target/release/omnifocus-mcp --version
+
+cargo fmt --check
+cargo clippy --all-targets -- -D warnings
+cargo test
 ```
 
-## Project structure
+`cargo test` needs macOS but never contacts OmniFocus. The integration tests and
+`examples/smoke_test.rs` **create and delete real items in your OmniFocus database** and run only
+when environment variables enable them; without them they report success without testing
+anything. See
+[Tests against a live OmniFocus database](../CONTRIBUTING.md#tests-against-a-live-omnifocus-database).
+
+## How a call flows
+
+`main.rs` serves `server.rs` over stdio. Each tool handler in `server.rs` deserializes its
+parameter struct and calls a function in `src/tools/`. That function validates the input in Rust,
+builds an Omni Automation script (prepending shared snippets from `js_helpers.rs`), and runs it
+through `jxa.rs`, which wraps it in a JXA script for `osascript` and turns the JSON reply or error
+into a result.
+
+## Layout
 
 ```
 rust/
   Cargo.toml
   src/
-    main.rs              — entry point, clap --version, stdio transport
-    lib.rs               — module re-exports
-    server.rs            — MCP ServerHandler, tool/resource/prompt registration
-    jxa.rs               — osascript subprocess, JxaRunner trait, escape_for_jxa
-    error.rs             — OmniFocusError enum
-    types.rs             — TaskResult, ProjectResult, TagResult, etc.
+    main.rs             # entry point: --version/--help, stdio transport
+    lib.rs              # declares the modules below
+    server.rs           # parameter structs, tool/prompt/resource registration, MCP instructions
+    jxa.rs              # osascript runner (30 s timeout, one call at a time), escape_for_jxa,
+                        #   error messages
+    error.rs            # OmniFocusError
+    types.rs            # result structs (task summaries, counts)
+    js_helpers.rs       # shared Omni Automation snippets: dates, project status, review
+                        #   intervals, folder/project resolution
+    lenient_scalars.rs  # integer/number/boolean parameters that also accept strings
+    flexible_tags.rs    # `tags` as an array or a JSON-array string
+    review_interval.rs  # parses "N unit" review intervals
+    resources.rs        # omnifocus://inbox, omnifocus://today, omnifocus://projects
+    prompts.rs          # daily_review, weekly_review, inbox_processing, project_planning
     tools/
-      mod.rs             — re-exports
-      tasks.rs           — task CRUD, batch ops, subtasks, repetition, and note append
-      projects.rs        — project CRUD, status, move, and search
-      tags.rs            — tag CRUD and search
-      folders_clean.rs   — folder CRUD
-      forecast.rs        — get_forecast
-      perspectives.rs    — list_perspectives
-    resources.rs         — omnifocus://inbox, today, projects
-    prompts.rs           — daily_review, weekly_review, inbox_processing, project_planning
-  tests/
-    jxa_test.rs          — escaping, error display, envelope unwrapping
-    tools_read_test.rs   — mocked read tool tests
-    tools_write_test.rs  — mocked write tool tests
-    resources_test.rs    — resource content tests
-    prompts_test.rs      — prompt rendering tests
-    integration_test.rs  — real OmniFocus tests (feature-gated)
+      mod.rs            # declares the tool modules; folders_clean.rs is the module `folders`
+      tasks.rs          # task tools
+      utility.rs        # uncomplete_task and append_to_note as registered by the server
+                        #   (tasks.rs holds identical copies, used by examples/smoke_test.rs)
+      projects.rs       # project tools
+      tags.rs           # tag tools
+      folders_clean.rs  # folder tools
+      forecast.rs       # get_forecast
+      perspectives.rs   # list_perspectives
+  tests/                # none contacts OmniFocus except where marked LIVE
+    common/mod.rs                      # runs snippets in the macOS `jsc` shell
+    jxa_test.rs                        # escaping, error messages, reply unwrapping
+    params_test.rs                     # wire contract: unknown keys, string-encoded scalars
+    lenient_scalars_test.rs            # lenient scalar types
+    date_parsing_test.rs               # every date goes through the shared date helpers
+    js_date_helpers_test.rs            # date helper behaviour in JavaScriptCore
+    folder_project_resolution_test.rs  # id-or-name resolution in JavaScriptCore
+    folder_project_schema_test.rs      # advertised folder/project parameter schemas
+    folder_project_wiring_test.rs      # which tools use the resolvers
+    project_status_test.rs             # project status naming
+    review_interval_test.rs            # review interval parsing and assignment
+    tools_read_test.rs                 # read tools against a mocked runner
+    tools_write_test.rs                # write tools against a mocked runner
+    resources_test.rs                  # resource contents
+    prompts_test.rs                    # prompt rendering
+    integration_test.rs                # LIVE database; needs --features integration and
+                                       #   OMNIFOCUS_INTEGRATION=1
   examples/
-    probe.rs             — minimal JXA bridge connectivity check
-    smoke_test.rs        — full tool validation against real OmniFocus
-```
-
-## Testing
-
-```bash
-# mocked unit tests (no OmniFocus needed)
-cargo test
-
-# lint and format checks
-cargo clippy --all-targets -- -D warnings
-cargo fmt --check
-
-# integration tests (requires running OmniFocus)
-cargo test --features integration
-```
-
-## MCP client configuration
-
-Use the full binary path (or `omnifocus-mcp` if it is on your `PATH`):
-
-```json
-{
-  "mcpServers": {
-    "omnifocus": {
-      "command": "/absolute/path/to/rust/target/release/omnifocus-mcp",
-      "args": []
-    }
-  }
-}
+    probe.rs            # LIVE, read-only: prints the number of tasks
+    smoke_test.rs       # LIVE: creates and deletes real items; needs OMNIFOCUS_INTEGRATION=1
+                        #   and OMNIFOCUS_SMOKE=1
 ```
 
 ## Releases
 
-[`.github/workflows/release-rust.yml`](../.github/workflows/release-rust.yml) builds release
-tarballs for `aarch64-apple-darwin` and `x86_64-apple-darwin` on `rust-v*` tags.
-
-Full installation guide: [`docs/install-rust.md`](../docs/install-rust.md)
+[`.github/workflows/release-rust.yml`](../.github/workflows/release-rust.yml) runs on tags named
+`rust-v<version>`. It checks that the tag matches the version in `Cargo.toml`, builds
+`aarch64-apple-darwin` and `x86_64-apple-darwin` binaries, and publishes them as
+`omnifocus-mcp-<version>-<target>.tar.gz` with a `.sha256` file on a GitHub release.

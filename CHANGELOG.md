@@ -1,52 +1,85 @@
 # Changelog
 
-All notable changes to this project are documented in this file.
+All notable changes to this project are documented in this file. The format follows
+[Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow
+[Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+Version 2.0.0 is the first release of this fork. The entries for 1.1.9 and earlier are the history
+of the upstream project, [vitalyrodnenko/OmnifocusMCP](https://github.com/vitalyrodnenko/OmnifocusMCP);
+issue numbers in them, and every "upstream #N" below, refer to that project's tracker.
 
 ## [Unreleased]
 
 ## [2.0.0] - 2026-10-07
 
+This is a major release because existing calls can now fail or behave differently. Those changes
+are marked **Breaking**. Upgrade steps:
+[Upgrade from the upstream server](docs/install-rust.md#upgrade-from-the-upstream-server).
+
 ### Removed
-- Python and TypeScript implementations, the Homebrew formula template, their install guides,
-  CI jobs, and the root `package.json`. This fork is Rust-only.
+- **Breaking:** the Python and TypeScript implementations, their install guides and CI jobs, the
+  root `package.json`, and the Homebrew formula template. Only the Rust server (`omnifocus-mcp`)
+  ships. Its Homebrew formula is in the `ChrisGVE/tap` tap:
+  `brew install ChrisGVE/tap/omnifocus-mcp`.
+
+### Added
+- `folder` and `project` parameters accept an id as well as an exact name: on `list_projects`,
+  `get_project_counts`, `create_project`, `move_project`, `create_folder` (`parent`), `list_tasks`,
+  `search_tasks`, `get_task_counts`, `create_task`, `create_tasks_batch`, `move_task` and
+  `move_tasks_batch`. Filters then compare by id, so two projects with the same name are told
+  apart. ([upstream #11](https://github.com/vitalyrodnenko/OmnifocusMCP/issues/11))
+- A reference of every tool and parameter: [`docs/tools.md`](docs/tools.md).
 
 ### Changed
-- Tool parameters now reject unknown keys instead of silently ignoring them. A client that sends
-  a misspelled or undeclared key (e.g. `folderId` where the tool declares `folder`) gets an
-  `invalid_params` error rather than a success that ignored its argument. Every tool schema now
-  advertises `additionalProperties: false`.
-- A bare `YYYY-MM-DD` date is read as a local calendar day. On writes (`dueDate`, `deferDate` of
-  tasks and projects) it is set at your OmniFocus default time for that field (Settings
-  `DefaultDueTime` / `DefaultStartTime`, factory 17:00 / 00:00), as the OmniFocus UI does. In
-  filters (`dueBefore`, `completedAfter`, …) and `add_notification`'s `absoluteDate` it is local
-  midnight. Date-times with `Z` or an offset are unchanged.
-- Invalid dates (e.g. `2026-02-30`) now fail with an error naming the field, before anything is
-  created or changed. Previously some write paths silently stored an Invalid Date.
-- `folder` and `project` parameters (create/move/list/count tools, task filters and writes)
-  accept an id or an exact name. A value that matches nothing is an error (`Folder not found: …`,
-  `Project not found: …`) instead of an empty result or a silent top-level placement. Filters
-  compare by id, so same-named projects are told apart. (upstream #11)
-- Project status unknown to the server is reported as `"unknown"` rather than defaulting to
-  `"active"`.
-- CI runs `cargo clippy --all-targets`, so test code is linted too.
+- **Breaking:** tool and prompt parameters reject unknown keys instead of ignoring them. A call
+  with a misspelled or undeclared key (for example `folderId` where the tool declares `folder`)
+  fails with an `invalid_params` error instead of succeeding without its argument. Every tool
+  schema now advertises `additionalProperties: false`.
+- **Breaking:** a bare `YYYY-MM-DD` date is read as a day in your local time zone, not as UTC
+  midnight. Written to `dueDate` or `deferDate` (tasks and projects), it gets the default due or
+  start time set in OmniFocus (17:00 and 00:00 if the setting cannot be read), as the OmniFocus
+  app does. In filters (`dueBefore`, `completedAfter`, ...) and in `add_notification`'s
+  `absoluteDate` it is local midnight. Date-times with `Z` or an offset are unchanged.
+- **Breaking:** an invalid date (for example `2026-02-30`) fails with an error naming the field,
+  before anything is created or changed. Some write paths used to store an invalid date silently.
+- **Breaking:** a `folder` or `project` value (including `create_folder`'s `parent`) that matches
+  nothing fails with `Folder not found: <value>` or `Project not found: <value>`, instead of
+  returning an empty result or placing the new object at the top level.
+  ([upstream #11](https://github.com/vitalyrodnenko/OmnifocusMCP/issues/11))
+- **Breaking:** a project status the server does not recognise is reported as `"unknown"` instead
+  of `"active"`.
+- The `project_planning` prompt lists only the tasks of the project it resolved, by id. A project
+  that does not exist still produces a prompt, with status `not_found` and no tasks.
 
 ### Fixed
 - Integer, number and boolean parameters accept their string encoding (`"30"`, `"true"`), as sent
   by MCP clients that serialize every argument as a string. Integral floats (`30.0`) are accepted
-  for integers. The advertised schema is unchanged. (upstream #8, #11)
-- Bare dates were parsed as UTC midnight, deferring tasks hours late (or to the wrong day) outside
-  UTC. (upstream #13)
-- Completed projects were reported, filtered and counted as `active`: OmniFocus's
+  for integers. The advertised schema is unchanged.
+  ([upstream #8](https://github.com/vitalyrodnenko/OmnifocusMCP/issues/8),
+  [#11](https://github.com/vitalyrodnenko/OmnifocusMCP/issues/11))
+- Bare dates were parsed as UTC midnight, so outside UTC tasks were deferred hours late or to the
+  wrong day. ([upstream #13](https://github.com/vitalyrodnenko/OmnifocusMCP/issues/13))
+- Completed projects were reported, filtered and counted as `active`, because OmniFocus's
   `Project.Status.Done` was not recognised. Also fixed in `get_folder`'s project list.
-  (upstream #10; diagnosis from upstream PR #14 by @luebbers)
-- `update_project` could never set `reviewInterval` (it assigned a plain object, and singularised
-  the unit). The interval is now validated before anything changes and applied to the project's
-  own `Project.ReviewInterval`. Read tools report it as `"2 weeks"` instead of
-  `"[object Project.ReviewInterval]"`. (upstream #12)
-- Project folder was read from an undocumented `project.folder` property, so `folderName`, the
-  folder filters and `list_folders`' `projectCount` came back empty; now `parentFolder`.
-  `move_project` reports the folder the project actually ended up in, not the requested one.
-  `create_tasks_batch` resolves every destination before creating any task. (upstream #11)
+  ([upstream #10](https://github.com/vitalyrodnenko/OmnifocusMCP/issues/10); diagnosis from
+  [upstream PR #14](https://github.com/vitalyrodnenko/OmnifocusMCP/pull/14) by @luebbers)
+- `update_project` could never set `reviewInterval`: it assigned a plain object and singularised
+  the unit. It now accepts `"N unit"` (unit `day`, `week`, `month` or `year`, singular or plural),
+  validates it before anything changes, and fails if the project has no review interval to change.
+  Read tools report the interval as `"2 weeks"` or `"1 week"` instead of
+  `"[object Project.ReviewInterval]"`.
+  ([upstream #12](https://github.com/vitalyrodnenko/OmnifocusMCP/issues/12))
+- A project's folder was read from `project.folder`, which OmniFocus does not provide, so
+  `folderName`, the folder filters of `list_projects` and `get_project_counts`, and the
+  `projectCount` of `list_folders` came back empty. They now read `parentFolder`.
+  ([upstream #11](https://github.com/vitalyrodnenko/OmnifocusMCP/issues/11))
+- `move_project` reports the folder the project ended up in, not the one requested.
+- `create_tasks_batch` resolves every destination project and parses every date before creating
+  any task, so one bad entry no longer leaves part of the batch created.
+- `get_task_counts` accepted `plannedBefore` and `plannedAfter` but ignored them; it now applies
+  them.
+- The server identifies itself to MCP clients as `omnifocus-mcp` with its version, instead of the
+  name and version of the MCP library it is built on (`rmcp 0.17.0`).
 - README tool counts: the server registers 48 tools (tasks 22, projects 12, tags 6, folders 6,
   forecast 1, perspectives 1), not 45.
 
@@ -105,3 +138,12 @@ All notable changes to this project are documented in this file.
   - `delete_projects_batch`
   - `delete_tags_batch`
   - `delete_folders_batch`
+
+[Unreleased]: https://github.com/ChrisGVE/OmnifocusMCP/compare/rust-v2.0.0...HEAD
+[2.0.0]: https://github.com/ChrisGVE/OmnifocusMCP/compare/rust-v1.1.9...rust-v2.0.0
+[1.1.9]: https://github.com/vitalyrodnenko/OmnifocusMCP/compare/rust-v1.1.8...rust-v1.1.9
+[1.1.8]: https://github.com/vitalyrodnenko/OmnifocusMCP/compare/rust-v1.1.7...rust-v1.1.8
+[1.1.7]: https://github.com/vitalyrodnenko/OmnifocusMCP/compare/rust-v1.1.6...rust-v1.1.7
+[1.1.6]: https://github.com/vitalyrodnenko/OmnifocusMCP/compare/rust-v1.1.5...rust-v1.1.6
+[1.1.5]: https://github.com/vitalyrodnenko/OmnifocusMCP/compare/rust-v1.1.4...rust-v1.1.5
+[1.1.4]: https://github.com/vitalyrodnenko/OmnifocusMCP/compare/rust-v1.1.3...rust-v1.1.4
