@@ -2,7 +2,7 @@ use serde_json::Value;
 
 use crate::{
     error::{OmniFocusError, Result},
-    js_helpers::{JS_DATE_HELPERS, JS_PROJECT_STATUS, JS_REVIEW_INTERVAL},
+    js_helpers::{JS_DATE_HELPERS, JS_PROJECT_STATUS, JS_RESOLVERS, JS_REVIEW_INTERVAL},
     jxa::{escape_for_jxa, JxaRunner},
     review_interval::parse_review_interval,
     types::ProjectCountsResult,
@@ -87,7 +87,9 @@ pub async fn list_projects<R: JxaRunner>(
         r#"{JS_DATE_HELPERS}
 {JS_PROJECT_STATUS}
 {JS_REVIEW_INTERVAL}
+{JS_RESOLVERS}
 const folderFilter = {folder_filter};
+const filterFolder = folderFilter === null ? null : resolveFolder(folderFilter);
 const statusFilter = {status_filter};
 const completedBeforeRaw = {completed_before_filter};
 const completedAfterRaw = {completed_after_filter};
@@ -115,9 +117,9 @@ const projects = document.flattenedProjects
     const isStalled = normalizeProjectStatus(project) === "active"
       && project.flattenedTasks.some(t => !t.completed)
       && nextTask === null;
-    if (folderFilter !== null) {{
-      const folderName = project.folder ? project.folder.name : null;
-      if (folderName !== folderFilter) return false;
+    if (filterFolder !== null) {{
+      const parent = project.parentFolder;
+      if (!parent || parent.id.primaryKey !== filterFolder.id.primaryKey) return false;
     }}
     if (normalizeProjectStatus(project) !== statusFilter) return false;
     if (completedBefore !== null && !(project.completionDate !== null && project.completionDate < completedBefore)) return false;
@@ -137,7 +139,7 @@ const mappedProjects = projects.map(project => {{
     id: projectId,
     name: project.name,
     status: normalizeProjectStatus(project),
-    folderName: project.folder ? project.folder.name : null,
+    folderName: project.parentFolder ? project.parentFolder.name : null,
     taskCount: counts.taskCount,
     remainingTaskCount: counts.remainingTaskCount,
     deferDate: project.deferDate ? project.deferDate.toISOString() : null,
@@ -217,7 +219,7 @@ return projectsMatching(queryValue)
       id: project.id.primaryKey,
       name: project.name,
       status: normalizeProjectStatus(project),
-      folderName: project.folder ? project.folder.name : null
+      folderName: project.parentFolder ? project.parentFolder.name : null
     }};
   }});"#
     );
@@ -242,7 +244,9 @@ pub async fn get_project_counts<R: JxaRunner>(
         .unwrap_or_else(|| "null".to_string());
     let script = format!(
         r#"{JS_PROJECT_STATUS}
+{JS_RESOLVERS}
 const folderFilter = {folder_filter};
+const filterFolder = folderFilter === null ? null : resolveFolder(folderFilter);
 
 const counts = {{
   total: 0,
@@ -254,9 +258,9 @@ const counts = {{
 }};
 
 document.flattenedProjects.forEach(project => {{
-  if (folderFilter !== null) {{
-    const folderName = project.folder ? project.folder.name : null;
-    if (folderName !== folderFilter) return;
+  if (filterFolder !== null) {{
+    const parent = project.parentFolder;
+    if (!parent || parent.id.primaryKey !== filterFolder.id.primaryKey) return;
   }}
 
   const status = normalizeProjectStatus(project);
@@ -324,7 +328,7 @@ return {{
   id: project.id.primaryKey,
   name: project.name,
   status: normalizeProjectStatus(project),
-  folderName: project.folder ? project.folder.name : null,
+  folderName: project.parentFolder ? project.parentFolder.name : null,
   taskCount: allProjectTasks.length,
   remainingTaskCount: allProjectTasks.filter(task => !task.completed).length,
   completedTaskCount: allProjectTasks.filter(task => task.completed).length,
@@ -393,6 +397,7 @@ pub async fn create_project<R: JxaRunner>(
 
     let script = format!(
         r#"{JS_DATE_HELPERS}
+{JS_RESOLVERS}
 const projectName = {project_name};
 const folderName = {folder_name};
 const noteValue = {note_value};
@@ -404,10 +409,7 @@ const parsedDeferDate = deferDateValue === null ? null : parseWriteDate(deferDat
 
 const project = (() => {{
   if (folderName === null) return new Project(projectName);
-  const targetFolder = document.flattenedFolders.byName(folderName);
-  if (!targetFolder) {{
-    throw new Error(`Folder not found: ${{folderName}}`);
-  }}
+  const targetFolder = resolveFolder(folderName);
   return new Project(projectName, targetFolder.ending);
 }})();
 
@@ -647,7 +649,8 @@ pub async fn move_project<R: JxaRunner>(
         .map(|value| escape_for_jxa(value.trim()))
         .unwrap_or_else(|| "null".to_string());
     let script = format!(
-        r#"const projectFilter = {project_filter};
+        r#"{JS_RESOLVERS}
+const projectFilter = {project_filter};
 const folderName = {folder_name};
 const project = document.flattenedProjects.find(item => {{
   return item.id.primaryKey === projectFilter || item.name === projectFilter;
@@ -658,19 +661,17 @@ if (!project) {{
 
 const destination = (() => {{
   if (folderName === null) return library.ending;
-  const targetFolder = document.flattenedFolders.byName(folderName);
-  if (!targetFolder) {{
-    throw new Error(`Folder not found: ${{folderName}}`);
-  }}
+  const targetFolder = resolveFolder(folderName);
   return targetFolder.ending;
 }})();
 
 moveSections([project], destination);
 
+// Report where the project is now, not what was asked for.
 return {{
   id: project.id.primaryKey,
   name: project.name,
-  folderName: folderName
+  folderName: project.parentFolder ? project.parentFolder.name : null
 }};"#
     );
 
@@ -848,7 +849,7 @@ return {{
   id: project.id.primaryKey,
   name: project.name,
   status: normalizeProjectStatus(project),
-  folderName: project.folder ? project.folder.name : null,
+  folderName: project.parentFolder ? project.parentFolder.name : null,
   taskCount: allProjectTasks.length,
   remainingTaskCount: allProjectTasks.filter(task => !task.completed).length,
   deferDate: project.deferDate ? project.deferDate.toISOString() : null,

@@ -2,7 +2,7 @@ use serde_json::Value;
 
 use crate::{
     error::{OmniFocusError, Result},
-    js_helpers::JS_PROJECT_STATUS,
+    js_helpers::{JS_PROJECT_STATUS, JS_RESOLVERS},
     jxa::{escape_for_jxa, JxaRunner},
 };
 
@@ -16,7 +16,7 @@ pub async fn list_folders<R: JxaRunner>(runner: &R, limit: i32) -> Result<Value>
     let script = format!(
         r#"const folderProjectCounts = new Map();
 document.flattenedProjects.forEach(project => {{
-  const folder = project.folder;
+  const folder = project.parentFolder;
   if (!folder) return;
   const folderId = folder.id.primaryKey;
   const current = folderProjectCounts.get(folderId) || 0;
@@ -59,15 +59,13 @@ pub async fn create_folder<R: JxaRunner>(
         .map(|value| escape_for_jxa(value.trim()))
         .unwrap_or_else(|| "null".to_string());
     let script = format!(
-        r#"const folderName = {folder_name};
+        r#"{JS_RESOLVERS}
+const folderName = {folder_name};
 const parentName = {parent_name};
 
 const folder = (() => {{
   if (parentName === null) return new Folder(folderName);
-  const parentFolder = document.flattenedFolders.byName(parentName);
-  if (!parentFolder) {{
-    throw new Error(`Folder not found: ${{parentName}}`);
-  }}
+  const parentFolder = resolveFolder(parentName);
   return new Folder(folderName, parentFolder.ending);
 }})();
 

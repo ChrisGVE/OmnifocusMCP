@@ -62,6 +62,9 @@ pub struct LimitParams {
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct ListTasksParams {
+    #[schemars(
+        description = "Project id or exact name. Only tasks in this project are included; an unknown project is an error."
+    )]
     project: Option<String>,
     tag: Option<String>,
     tags: Option<FlexibleTagList>,
@@ -106,6 +109,9 @@ pub struct ListTasksParams {
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct GetTaskCountsParams {
+    #[schemars(
+        description = "Project id or exact name. Only tasks in this project are included; an unknown project is an error."
+    )]
     project: Option<String>,
     tag: Option<String>,
     tags: Option<FlexibleTagList>,
@@ -179,6 +185,9 @@ struct RemoveNotificationParams {
 #[serde(deny_unknown_fields)]
 pub struct SearchTasksParams {
     query: String,
+    #[schemars(
+        description = "Project id or exact name. Only tasks in this project are included; an unknown project is an error."
+    )]
     project: Option<String>,
     tag: Option<String>,
     tags: Option<FlexibleTagList>,
@@ -224,6 +233,9 @@ pub struct SearchTasksParams {
 #[serde(deny_unknown_fields)]
 pub struct CreateTaskParams {
     pub name: String,
+    #[schemars(
+        description = "Project id or exact name to create the task in; omit for the inbox. An unknown project is an error."
+    )]
     pub project: Option<String>,
     pub note: Option<String>,
     #[serde(rename = "dueDate", alias = "due_date")]
@@ -262,6 +274,9 @@ pub struct CreateTasksBatchParams {
 #[serde(deny_unknown_fields)]
 pub struct BatchCreateTaskInput {
     pub name: String,
+    #[schemars(
+        description = "Project id or exact name to create the task in; omit for the inbox. An unknown project is an error."
+    )]
     pub project: Option<String>,
     pub note: Option<String>,
     #[serde(rename = "dueDate", alias = "due_date")]
@@ -294,6 +309,9 @@ pub struct UpdateTaskParams {
 #[serde(deny_unknown_fields)]
 struct MoveTaskParams {
     task_id: String,
+    #[schemars(
+        description = "Project id or exact name to move into. An unknown project is an error."
+    )]
     project: Option<String>,
     parent_task_id: Option<String>,
 }
@@ -302,6 +320,9 @@ struct MoveTaskParams {
 #[serde(deny_unknown_fields)]
 struct MoveTasksBatchParams {
     task_ids: Vec<String>,
+    #[schemars(
+        description = "Project id or exact name to move into. An unknown project is an error."
+    )]
     project: Option<String>,
     parent_task_id: Option<String>,
 }
@@ -331,6 +352,9 @@ struct SetTaskRepetitionParams {
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct ListProjectsParams {
+    #[schemars(
+        description = "Folder id or exact name. Only projects directly in this folder are included; an unknown folder is an error."
+    )]
     folder: Option<String>,
     status: Option<String>,
     #[serde(rename = "completedBefore", alias = "completed_before")]
@@ -349,6 +373,9 @@ pub struct ListProjectsParams {
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 struct GetProjectCountsParams {
+    #[schemars(
+        description = "Folder id or exact name. Only projects directly in this folder are included; an unknown folder is an error."
+    )]
     folder: Option<String>,
 }
 
@@ -394,6 +421,9 @@ struct DeleteProjectsBatchParams {
 #[serde(deny_unknown_fields)]
 struct MoveProjectParams {
     project_id_or_name: String,
+    #[schemars(
+        description = "Folder id or exact name to move into; omit to move to the top level. An unknown folder is an error."
+    )]
     folder: Option<String>,
 }
 
@@ -408,6 +438,9 @@ struct SetProjectStatusParams {
 #[serde(deny_unknown_fields)]
 pub struct CreateProjectParams {
     name: String,
+    #[schemars(
+        description = "Folder id or exact name to create the project in; omit for the top level. An unknown folder is an error."
+    )]
     folder: Option<String>,
     note: Option<String>,
     #[serde(rename = "dueDate", alias = "due_date")]
@@ -450,6 +483,9 @@ struct CreateTagParams {
 #[serde(deny_unknown_fields)]
 struct CreateFolderParams {
     name: String,
+    #[schemars(
+        description = "Folder id or exact name of the parent folder; omit for the top level. An unknown folder is an error."
+    )]
     parent: Option<String>,
 }
 
@@ -496,6 +532,7 @@ struct DeleteFoldersBatchParams {
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct ProjectPlanningPromptParams {
+    #[schemars(description = "Project id or exact name.")]
     project: String,
 }
 

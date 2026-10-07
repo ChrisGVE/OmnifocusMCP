@@ -1,3 +1,5 @@
+use serde_json::Value;
+
 use crate::{
     error::{OmniFocusError, Result},
     jxa::JxaRunner,
@@ -5,6 +7,7 @@ use crate::{
         projects::{get_project, list_projects},
         tasks::{get_inbox, list_tasks},
     },
+    types::TaskResult,
 };
 
 pub async fn daily_review<R: JxaRunner>(runner: &R) -> Result<String> {
@@ -131,9 +134,15 @@ pub async fn project_planning<R: JxaRunner>(runner: &R, project: &str) -> Result
         }
         Err(error) => return Err(error),
     };
+    // A missing project has no tasks to list, and the task filter now refuses
+    // a project it cannot find. A found project is filtered by its id, so a
+    // second project with the same name cannot contribute tasks.
+    let Some(project_id) = project_details.get("id").and_then(Value::as_str) else {
+        return render_project_planning(project_name, &project_details, &[]);
+    };
     let available_tasks = list_tasks(
         runner,
-        Some(project_name),
+        Some(project_id),
         None,
         None,
         "any",
@@ -154,8 +163,16 @@ pub async fn project_planning<R: JxaRunner>(runner: &R, project: &str) -> Result
     )
     .await?;
 
-    let project_details_json = serde_json::to_string(&project_details)?;
-    let available_tasks_json = serde_json::to_string(&available_tasks)?;
+    render_project_planning(project_name, &project_details, &available_tasks)
+}
+
+fn render_project_planning(
+    project_name: &str,
+    project_details: &Value,
+    available_tasks: &[TaskResult],
+) -> Result<String> {
+    let project_details_json = serde_json::to_string(project_details)?;
+    let available_tasks_json = serde_json::to_string(available_tasks)?;
 
     Ok(format!(
         "plan this project into clear executable work.\n\nproject name:\n{project_name}\n\nplanning goals:\n1) summarize the project outcome in one concise sentence.\n2) evaluate current task coverage and identify missing steps.\n3) convert vague items into concrete next actions (verb-first, observable).\n4) sequence work logically (dependencies first, then parallelizable actions).\n5) estimate effort (minutes/hours) for each next action and flag high-risk items.\n6) recommend what to do now, next, later, and what to defer/drop.\n\noutput format:\n- project summary\n- work breakdown with columns:\n  action, estimate, priority, dependency, suggested tags, due/defer recommendation, rationale\n- first 3 actions to execute immediately\n- risk/blocker list with mitigation ideas\n\nengagement protocol:\n- treat this as omnifocus execution planning, not just writing a detached document.\n- if the project is not found, keep planning from user intent and then ask whether to create it in omnifocus.\n- fallback marker for missing projects: 'status': 'not_found'\n- after presenting the plan, ask for confirmation to apply it in omnifocus (create project, create tasks, set metadata).\n- once approved, execute tool calls and return the created/updated ids.\n\nproject_details_json:\n{project_details_json}\n\nproject_available_tasks_json:\n{available_tasks_json}\n"

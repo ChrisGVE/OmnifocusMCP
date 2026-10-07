@@ -4,7 +4,7 @@ use std::collections::HashSet;
 
 use crate::{
     error::{OmniFocusError, Result},
-    js_helpers::{JS_DATE_HELPERS, JS_PROJECT_STATUS},
+    js_helpers::{JS_DATE_HELPERS, JS_PROJECT_STATUS, JS_RESOLVERS},
     jxa::{escape_for_jxa, JxaRunner},
     types::{TaskCountsResult, TaskResult},
 };
@@ -178,7 +178,9 @@ pub async fn get_task_counts_with_added_changed<R: JxaRunner>(
 
     let script = format!(
         r#"{JS_DATE_HELPERS}
+{JS_RESOLVERS}
 const projectFilter = {project_filter};
+const filterProject = projectFilter === null ? null : resolveProject(projectFilter);
 const tagNames = {tag_names_filter};
 const tagFilterMode = {tag_filter_mode_filter};
 const flaggedFilter = {flagged_filter};
@@ -217,9 +219,9 @@ const counts = {{
 }};
 
 for (const task of document.flattenedTasks) {{
-  if (projectFilter !== null) {{
-    const projectName = task.containingProject ? task.containingProject.name : null;
-    if (projectName !== projectFilter) continue;
+  if (filterProject !== null) {{
+    const containing = task.containingProject;
+    if (!containing || containing.id.primaryKey !== filterProject.id.primaryKey) continue;
   }}
   if (tagNames !== null && tagNames.length > 0) {{
     let tagMatches = false;
@@ -527,7 +529,9 @@ pub async fn list_tasks_with_added_changed<R: JxaRunner>(
     let script = format!(
         r#"{JS_DATE_HELPERS}
 {JS_PROJECT_STATUS}
+{JS_RESOLVERS}
 const projectFilter = {project_filter};
+const filterProject = projectFilter === null ? null : resolveProject(projectFilter);
 const tagNames = {tag_names_filter};
 const tagFilterMode = {tag_filter_mode_filter};
 const flaggedFilter = {flagged_filter};
@@ -584,9 +588,9 @@ const getPlannedDate = (task) => {{
 
 const filteredTasks = document.flattenedTasks
   .filter(task => {{
-    if (projectFilter !== null) {{
-      const projectName = task.containingProject ? task.containingProject.name : null;
-      if (projectName !== projectFilter) return false;
+    if (filterProject !== null) {{
+      const containing = task.containingProject;
+      if (!containing || containing.id.primaryKey !== filterProject.id.primaryKey) return false;
     }}
 
     if (tagNames !== null && tagNames.length > 0) {{
@@ -1298,8 +1302,10 @@ pub async fn search_tasks_with_added_changed<R: JxaRunner>(
     let script = format!(
         r#"{JS_DATE_HELPERS}
 {JS_PROJECT_STATUS}
+{JS_RESOLVERS}
 const queryFilter = {query_filter}.toLowerCase();
 const projectFilter = {project_filter};
+const filterProject = projectFilter === null ? null : resolveProject(projectFilter);
 const tagNames = {tag_names_filter};
 const tagFilterMode = {tag_filter_mode_filter};
 const flaggedFilter = {flagged_filter};
@@ -1360,9 +1366,9 @@ const filteredTasks = document.flattenedTasks
     const note = (task.note || "").toLowerCase();
     if (!(name.includes(queryFilter) || note.includes(queryFilter))) return false;
 
-    if (projectFilter !== null) {{
-      const projectName = task.containingProject ? task.containingProject.name : null;
-      if (projectName !== projectFilter) return false;
+    if (filterProject !== null) {{
+      const containing = task.containingProject;
+      if (!containing || containing.id.primaryKey !== filterProject.id.primaryKey) return false;
     }}
 
     if (tagNames !== null && tagNames.length > 0) {{
@@ -1688,6 +1694,7 @@ pub async fn create_task<R: JxaRunner>(
 
     let script = format!(
         r#"{JS_DATE_HELPERS}
+{JS_RESOLVERS}
 const taskName = {task_name};
 const projectName = {project_name};
 const noteValue = {note_value};
@@ -1701,10 +1708,7 @@ const parsedDeferDate = deferDateValue === null ? null : parseWriteDate(deferDat
 
 const parent = (() => {{
   if (projectName === null || projectName === "") return inbox.ending;
-  const targetProject = document.flattenedProjects.byName(projectName);
-  if (!targetProject) {{
-    throw new Error(`Project not found: ${{projectName}}`);
-  }}
+  const targetProject = resolveProject(projectName);
   return targetProject.ending;
 }})();
 
@@ -1956,16 +1960,18 @@ pub async fn create_tasks_batch<R: JxaRunner>(
     let tasks_value = serde_json::to_string(&normalized)?;
     let script = format!(
         r#"{JS_DATE_HELPERS}
+{JS_RESOLVERS}
 const taskInputs = {tasks_value};
 
 const resolveParent = (projectName) => {{
   if (projectName === null || projectName === "") return inbox.ending;
-  const targetProject = document.flattenedProjects.byName(projectName);
-  if (!targetProject) {{
-    throw new Error(`Project not found: ${{projectName}}`);
-  }}
+  const targetProject = resolveProject(projectName);
   return targetProject.ending;
 }};
+
+// Resolve every destination before creating any task, so one unknown project
+// cannot leave part of the batch created.
+const parents = taskInputs.map(input => resolveParent(input.project));
 
 const isPresent = (value) => value !== null && value !== undefined;
 
@@ -1981,8 +1987,7 @@ const parsedDates = taskInputs.map((input, index) => ({{
 }}));
 
 const created = taskInputs.map((input, index) => {{
-  const parent = resolveParent(input.project);
-  const task = new Task(input.name, parent);
+  const task = new Task(input.name, parents[index]);
   const dates = parsedDates[index];
 
   if (input.note !== null && input.note !== undefined) task.note = input.note;
@@ -2339,7 +2344,8 @@ pub async fn move_task<R: JxaRunner>(
         .map(|value| escape_for_jxa(value.trim()))
         .unwrap_or_else(|| "null".to_string());
     let script = format!(
-        r#"const taskId = {task_id_value};
+        r#"{JS_RESOLVERS}
+const taskId = {task_id_value};
 const projectName = {project_value};
 const parentTaskId = {parent_task_id_value};
 const task = document.flattenedTasks.find(item => item.id.primaryKey === taskId);
@@ -2368,10 +2374,7 @@ const destinationInfo = (() => {{
   if (projectName === null || projectName === "") {{
     return {{ mode: "inbox", location: inbox.ending }};
   }}
-  const targetProject = document.flattenedProjects.byName(projectName);
-  if (!targetProject) {{
-    throw new Error(`Project not found: ${{projectName}}`);
-  }}
+  const targetProject = resolveProject(projectName);
   return {{ mode: "project", location: targetProject.ending }};
 }})();
 
@@ -2461,7 +2464,8 @@ pub async fn move_tasks_batch<R: JxaRunner>(
         .map(escape_for_jxa)
         .unwrap_or_else(|| "null".to_string());
     let script = format!(
-        r#"const taskIds = {task_ids_value};
+        r#"{JS_RESOLVERS}
+const taskIds = {task_ids_value};
 const projectName = {project_value};
 const parentTaskId = {parent_task_id_value};
 const taskById = new Map();
@@ -2498,10 +2502,7 @@ const destinationInfo = (() => {{
   if (projectName === null || projectName === "") {{
     return {{ mode: "inbox", location: inbox.ending, summary: {{ mode: "inbox" }} }};
   }}
-  const targetProject = document.flattenedProjects.byName(projectName);
-  if (!targetProject) {{
-    throw new Error(`Project not found: ${{projectName}}`);
-  }}
+  const targetProject = resolveProject(projectName);
   return {{
     mode: "project",
     location: targetProject.ending,

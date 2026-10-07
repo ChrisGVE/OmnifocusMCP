@@ -150,3 +150,26 @@ function updatedReviewInterval(project, requested) {
   return interval;
 }
 "#;
+
+/// Folder and project resolution for tool parameters (upstream #11).
+///
+/// A `folder` or `project` parameter may be an id or an exact name. The id
+/// is tried first, through the documented `Folder.byIdentifier` /
+/// `Project.byIdentifier`, then the first exact name match. When neither
+/// matches, the call fails with `"Folder not found: <value>"` or
+/// `"Project not found: <value>"` — a filter given a value that matches
+/// nothing must say so, not quietly return an empty result.
+///
+/// Defined functions: `resolveFolder(value)`, `resolveProject(value)`. Each
+/// expects a non-null value; callers handle an absent parameter themselves.
+pub const JS_RESOLVERS: &str = r#"function resolveFolder(value) {
+  const folder = Folder.byIdentifier(value) || document.flattenedFolders.byName(value);
+  if (!folder) throw new Error("Folder not found: " + value);
+  return folder;
+}
+function resolveProject(value) {
+  const project = Project.byIdentifier(value) || document.flattenedProjects.byName(value);
+  if (!project) throw new Error("Project not found: " + value);
+  return project;
+}
+"#;
