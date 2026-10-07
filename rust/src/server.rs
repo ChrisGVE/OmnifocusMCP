@@ -54,11 +54,13 @@ use crate::{
 };
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
 pub struct LimitParams {
     limit: Option<LenientI32>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
 pub struct ListTasksParams {
     project: Option<String>,
     tag: Option<String>,
@@ -102,6 +104,7 @@ pub struct ListTasksParams {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
 pub struct GetTaskCountsParams {
     project: Option<String>,
     tag: Option<String>,
@@ -135,17 +138,20 @@ pub struct GetTaskCountsParams {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
 struct TaskIdParams {
     task_id: String,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
 pub struct TaskIdLimitParams {
     task_id: String,
     limit: Option<LenientI32>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
 pub struct AddNotificationParams {
     task_id: String,
     #[serde(rename = "absoluteDate", alias = "absolute_date")]
@@ -155,6 +161,7 @@ pub struct AddNotificationParams {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
 pub struct DuplicateTaskParams {
     task_id: String,
     #[serde(rename = "includeChildren", alias = "include_children")]
@@ -162,12 +169,14 @@ pub struct DuplicateTaskParams {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
 struct RemoveNotificationParams {
     task_id: String,
     notification_id: String,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
 pub struct SearchTasksParams {
     query: String,
     project: Option<String>,
@@ -212,6 +221,7 @@ pub struct SearchTasksParams {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
 pub struct CreateTaskParams {
     pub name: String,
     pub project: Option<String>,
@@ -227,6 +237,7 @@ pub struct CreateTaskParams {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
 pub struct CreateSubtaskParams {
     name: String,
     parent_task_id: String,
@@ -242,11 +253,13 @@ pub struct CreateSubtaskParams {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
 pub struct CreateTasksBatchParams {
     tasks: Vec<BatchCreateTaskInput>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
 pub struct BatchCreateTaskInput {
     pub name: String,
     pub project: Option<String>,
@@ -262,6 +275,7 @@ pub struct BatchCreateTaskInput {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
 pub struct UpdateTaskParams {
     pub task_id: String,
     pub name: Option<String>,
@@ -277,6 +291,7 @@ pub struct UpdateTaskParams {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
 struct MoveTaskParams {
     task_id: String,
     project: Option<String>,
@@ -284,6 +299,7 @@ struct MoveTaskParams {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
 struct MoveTasksBatchParams {
     task_ids: Vec<String>,
     project: Option<String>,
@@ -291,6 +307,7 @@ struct MoveTasksBatchParams {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
 struct AppendToNoteParams {
     object_type: String,
     object_id: String,
@@ -298,11 +315,13 @@ struct AppendToNoteParams {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
 struct DeleteTasksBatchParams {
     task_ids: Vec<String>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
 struct SetTaskRepetitionParams {
     task_id: String,
     rule_string: Option<String>,
@@ -310,6 +329,7 @@ struct SetTaskRepetitionParams {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
 pub struct ListProjectsParams {
     folder: Option<String>,
     status: Option<String>,
@@ -327,23 +347,27 @@ pub struct ListProjectsParams {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
 struct GetProjectCountsParams {
     folder: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
 pub struct SearchProjectsParams {
     query: String,
     limit: Option<LenientI32>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
 pub struct SearchTagsParams {
     query: String,
     limit: Option<LenientI32>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
 pub struct ListTagsParams {
     #[serde(rename = "statusFilter", alias = "status_filter")]
     status_filter: Option<String>,
@@ -355,28 +379,33 @@ pub struct ListTagsParams {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
 struct ProjectIdOrNameParams {
     project_id_or_name: String,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
 struct DeleteProjectsBatchParams {
     project_ids_or_names: Vec<String>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
 struct MoveProjectParams {
     project_id_or_name: String,
     folder: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
 struct SetProjectStatusParams {
     project_id_or_name: String,
     status: String,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
 pub struct CreateProjectParams {
     name: String,
     folder: Option<String>,
@@ -389,6 +418,7 @@ pub struct CreateProjectParams {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
 pub struct UpdateProjectParams {
     project_id_or_name: String,
     name: Option<String>,
@@ -407,23 +437,27 @@ pub struct UpdateProjectParams {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
 struct CreateTagParams {
     name: String,
     parent: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
 struct CreateFolderParams {
     name: String,
     parent: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
 struct FolderNameOrIdParams {
     folder_name_or_id: String,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
 struct UpdateFolderParams {
     folder_name_or_id: String,
     name: Option<String>,
@@ -431,6 +465,7 @@ struct UpdateFolderParams {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
 struct UpdateTagParams {
     tag_name_or_id: String,
     name: Option<String>,
@@ -438,21 +473,25 @@ struct UpdateTagParams {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
 struct TagNameOrIdParams {
     tag_name_or_id: String,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
 struct DeleteTagsBatchParams {
     tag_ids_or_names: Vec<String>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
 struct DeleteFoldersBatchParams {
     folder_ids_or_names: Vec<String>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
 pub struct ProjectPlanningPromptParams {
     project: String,
 }

@@ -19,8 +19,8 @@ use omnifocus_mcp::{
         AddNotificationParams, BatchCreateTaskInput, CreateProjectParams, CreateSubtaskParams,
         CreateTaskParams, CreateTasksBatchParams, DuplicateTaskParams, GetTaskCountsParams,
         LimitParams, ListProjectsParams, ListTagsParams, ListTasksParams, OmniFocusServer,
-        SearchProjectsParams, SearchTagsParams, SearchTasksParams, TaskIdLimitParams,
-        UpdateProjectParams, UpdateTaskParams,
+        ProjectPlanningPromptParams, SearchProjectsParams, SearchTagsParams, SearchTasksParams,
+        TaskIdLimitParams, UpdateProjectParams, UpdateTaskParams,
     },
 };
 use rmcp::ServerHandler;
@@ -336,5 +336,135 @@ fn every_lenient_field_advertises_its_native_type() {
     assert_eq!(
         item["estimatedMinutes"], integer,
         "BatchCreateTaskInput.estimatedMinutes"
+    );
+}
+
+// ---- Unknown keys -------------------------------------------------------------
+
+fn assert_unknown_field_rejected<T: DeserializeOwned>(input: Value, field: &str) {
+    match parse::<T>(input.clone()) {
+        Ok(_) => panic!("{input} should be rejected for unknown field `{field}`"),
+        Err(error) => assert!(
+            error
+                .to_string()
+                .contains(&format!("unknown field `{field}`")),
+            "unexpected error for {input}: {error}"
+        ),
+    }
+}
+
+#[test]
+fn create_project_rejects_folder_id() {
+    assert_unknown_field_rejected::<CreateProjectParams>(
+        json!({"name": "n", "folderId": "f1"}),
+        "folderId",
+    );
+}
+
+#[test]
+fn update_task_rejects_misspelled_key() {
+    assert_unknown_field_rejected::<UpdateTaskParams>(
+        json!({"task_id": "t", "estimatedMinute": 30}),
+        "estimatedMinute",
+    );
+}
+
+#[test]
+fn batch_create_task_input_rejects_unknown_key() {
+    assert_unknown_field_rejected::<BatchCreateTaskInput>(
+        json!({"name": "n", "priority": "high"}),
+        "priority",
+    );
+}
+
+#[test]
+fn create_tasks_batch_rejects_unknown_key_in_nested_task() {
+    assert_unknown_field_rejected::<CreateTasksBatchParams>(
+        json!({"tasks": [{"name": "n", "priority": "high"}]}),
+        "priority",
+    );
+}
+
+#[test]
+fn project_planning_prompt_rejects_unknown_key() {
+    assert_unknown_field_rejected::<ProjectPlanningPromptParams>(
+        json!({"project": "p", "folder": "f"}),
+        "folder",
+    );
+}
+
+/// Every tool registered on the server; keep in step with `server.rs`.
+const ALL_TOOLS: &[&str] = &[
+    "get_inbox",
+    "list_tasks",
+    "get_task_counts",
+    "get_task",
+    "list_subtasks",
+    "list_notifications",
+    "add_notification",
+    "duplicate_task",
+    "remove_notification",
+    "search_tasks",
+    "create_task",
+    "create_tasks_batch",
+    "create_subtask",
+    "complete_task",
+    "uncomplete_task",
+    "set_task_repetition",
+    "update_task",
+    "delete_task",
+    "delete_tasks_batch",
+    "move_task",
+    "move_tasks_batch",
+    "append_to_note",
+    "list_projects",
+    "get_project_counts",
+    "search_projects",
+    "get_project",
+    "create_project",
+    "complete_project",
+    "uncomplete_project",
+    "delete_project",
+    "delete_projects_batch",
+    "move_project",
+    "update_project",
+    "set_project_status",
+    "search_tags",
+    "list_tags",
+    "create_tag",
+    "update_tag",
+    "delete_tag",
+    "delete_tags_batch",
+    "list_folders",
+    "create_folder",
+    "get_folder",
+    "update_folder",
+    "delete_folder",
+    "delete_folders_batch",
+    "get_forecast",
+    "list_perspectives",
+];
+
+#[test]
+fn create_task_schema_forbids_additional_properties() {
+    let schema = serde_json::to_value(schemars::schema_for!(CreateTaskParams)).unwrap();
+    assert_eq!(schema["additionalProperties"], json!(false));
+}
+
+#[test]
+fn every_tool_schema_forbids_additional_properties() {
+    for tool in ALL_TOOLS {
+        let schema = advertised_schema(tool);
+        assert_eq!(
+            schema["additionalProperties"],
+            json!(false),
+            "tool `{tool}`"
+        );
+    }
+    let batch = advertised_schema("create_tasks_batch");
+    assert_eq!(
+        batch["$defs"]["BatchCreateTaskInput"]["additionalProperties"],
+        json!(false),
+        "nested BatchCreateTaskInput"
     );
 }
