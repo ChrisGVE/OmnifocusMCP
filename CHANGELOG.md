@@ -26,8 +26,10 @@ are marked **Breaking**. Upgrade steps:
 - `folder` and `project` parameters accept an id as well as an exact name: on `list_projects`,
   `get_project_counts`, `create_project`, `move_project`, `create_folder` (`parent`), `list_tasks`,
   `search_tasks`, `get_task_counts`, `create_task`, `create_tasks_batch`, `move_task` and
-  `move_tasks_batch`. Filters then compare by id, so two projects with the same name are told
-  apart. ([upstream #11](https://github.com/vitalyrodnenko/OmnifocusMCP/issues/11))
+  `move_tasks_batch`. Once a value is resolved to one project or folder, filters compare by its id,
+  so the contents of another project or folder with the same name are no longer mixed in. A name
+  shared by several projects or folders still selects the first; pass the id to choose.
+  ([upstream #11](https://github.com/vitalyrodnenko/OmnifocusMCP/issues/11))
 - A reference of every tool and parameter: [`docs/tools.md`](docs/tools.md).
 
 ### Changed
@@ -36,10 +38,12 @@ are marked **Breaking**. Upgrade steps:
   fails with an `invalid_params` error instead of succeeding without its argument. Every tool
   schema now advertises `additionalProperties: false`.
 - **Breaking:** a bare `YYYY-MM-DD` date is read as a day in your local time zone, not as UTC
-  midnight. Written to `dueDate` or `deferDate` (tasks and projects), it gets the default due or
-  start time set in OmniFocus (17:00 and 00:00 if the setting cannot be read), as the OmniFocus
-  app does. In filters (`dueBefore`, `completedAfter`, ...) and in `add_notification`'s
-  `absoluteDate` it is local midnight. Date-times with `Z` or an offset are unchanged.
+  midnight, so outside UTC tasks are no longer deferred hours late or to the wrong day. Written to
+  `dueDate` or `deferDate` (tasks and projects), it gets the default due or start time set in
+  OmniFocus, as the OmniFocus app does (17:00 and 00:00 out of the box; the server also uses these
+  if it cannot read the setting). In filters (`dueBefore`, `completedAfter`, ...) and in
+  `add_notification`'s `absoluteDate` it is local midnight. Date-times with `Z` or an offset are
+  unchanged. ([upstream #13](https://github.com/vitalyrodnenko/OmnifocusMCP/issues/13))
 - **Breaking:** an invalid date (for example `2026-02-30`) fails with an error naming the field,
   before anything is created or changed. Some write paths used to store an invalid date silently.
 - **Breaking:** a `folder` or `project` value (including `create_folder`'s `parent`) that matches
@@ -50,6 +54,11 @@ are marked **Breaking**. Upgrade steps:
   of `"active"`.
 - The `project_planning` prompt lists only the tasks of the project it resolved, by id. A project
   that does not exist still produces a prompt, with status `not_found` and no tasks.
+- Tool descriptions, which the assistant reads to fill in parameters, state the 2.0.0 date rule:
+  in `list_tasks`, `search_tasks`, `get_task_counts`, `list_projects` and `add_notification` a
+  bare date is local midnight; in `create_task`, `create_subtask`, `update_task`, `create_project`
+  and `update_project` it gets the OmniFocus default time. The `create_task` and `create_folder`
+  descriptions say that `project` and `parent` take an id or an exact name.
 
 ### Fixed
 - Integer, number and boolean parameters accept their string encoding (`"30"`, `"true"`), as sent
@@ -57,8 +66,6 @@ are marked **Breaking**. Upgrade steps:
   for integers. The advertised schema is unchanged.
   ([upstream #8](https://github.com/vitalyrodnenko/OmnifocusMCP/issues/8),
   [#11](https://github.com/vitalyrodnenko/OmnifocusMCP/issues/11))
-- Bare dates were parsed as UTC midnight, so outside UTC tasks were deferred hours late or to the
-  wrong day. ([upstream #13](https://github.com/vitalyrodnenko/OmnifocusMCP/issues/13))
 - Completed projects were reported, filtered and counted as `active`, because OmniFocus's
   `Project.Status.Done` was not recognised. Also fixed in `get_folder`'s project list.
   ([upstream #10](https://github.com/vitalyrodnenko/OmnifocusMCP/issues/10); diagnosis from

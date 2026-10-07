@@ -23,11 +23,11 @@ anything. See
 
 ## How a call flows
 
-`main.rs` serves `server.rs` over stdio. Each tool handler in `server.rs` deserializes its
-parameter struct and calls a function in `src/tools/`. That function validates the input in Rust,
-builds an Omni Automation script (prepending shared snippets from `js_helpers.rs`), and runs it
-through `jxa.rs`, which wraps it in a JXA script for `osascript` and turns the JSON reply or error
-into a result.
+`main.rs` runs the MCP server defined in `server.rs` on stdio. Each tool handler in `server.rs`
+deserializes its parameter struct and calls a function in `src/tools/`. That function validates the
+input in Rust, builds an Omni Automation script (prepending shared snippets from `js_helpers.rs`),
+and runs it through `jxa.rs`, which wraps it in a JXA script for `osascript` and turns the JSON
+reply or error into a result.
 
 ## Layout
 
@@ -40,7 +40,8 @@ rust/
     server.rs           # parameter structs, tool/prompt/resource registration, MCP instructions
     jxa.rs              # osascript runner (30 s timeout, one call at a time), escape_for_jxa,
                         #   error messages
-    error.rs            # OmniFocusError
+    error.rs            # OmniFocusError, the error type of every tool; server.rs reports
+                        #   Validation as invalid_params and every other kind as internal_error
     types.rs            # result structs (task summaries, counts)
     js_helpers.rs       # shared Omni Automation snippets: dates, project status, review
                         #   intervals, folder/project resolution
@@ -75,6 +76,9 @@ rust/
     tools_write_test.rs                # write tools against a mocked runner
     resources_test.rs                  # resource contents
     prompts_test.rs                    # prompt rendering
+    server_info_test.rs                # server name and version sent in `initialize`
+    task_counts_planned_test.rs        # planned-date filters of get_task_counts
+    tool_descriptions_test.rs          # tool descriptions state the date and id-or-name rules
     integration_test.rs                # LIVE database; needs --features integration and
                                        #   OMNIFOCUS_INTEGRATION=1
   examples/

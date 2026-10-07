@@ -91,7 +91,7 @@ See the breaking changes in the [changelog](../CHANGELOG.md#200---2026-10-07).
 claude mcp add --scope user omnifocus -- omnifocus-mcp
 ```
 
-For a source build, give the absolute path instead of `omnifocus-mcp`:
+For a release tarball or a source build, give the absolute path instead of `omnifocus-mcp`:
 
 ```bash
 claude mcp add --scope user omnifocus -- /absolute/path/to/OmnifocusMCP/rust/target/release/omnifocus-mcp
@@ -104,6 +104,7 @@ These clients take a JSON entry. An app opened from the Dock or Finder does not 
 
 - Homebrew: the output of `echo "$(brew --prefix)/bin/omnifocus-mcp"`, usually
   `/opt/homebrew/bin/omnifocus-mcp` on Apple silicon and `/usr/local/bin/omnifocus-mcp` on Intel.
+- Release tarball: the directory you moved the binary to, followed by `/omnifocus-mcp`.
 - Source build: `/absolute/path/to/OmnifocusMCP/rust/target/release/omnifocus-mcp`.
 
 ```json
@@ -124,10 +125,22 @@ tool names, so with both enabled the assistant could call either.
 
 ### "OmniFocus is not running"
 
-The full message is `OmniFocus is not running. Please open OmniFocus and try again.` Open
-OmniFocus and repeat the request. The server does not start OmniFocus.
+The full message is:
+
+```text
+JXA execution failed: OmniFocus is not running. Please open OmniFocus and try again.
+```
+
+Open OmniFocus and repeat the request. The server sends each call to OmniFocus without first
+checking whether it is running.
 
 ### "macOS blocked Automation access to OmniFocus"
+
+The full message is:
+
+```text
+JXA execution failed: macOS blocked Automation access to OmniFocus. Grant permission in System Settings > Privacy & Security > Automation.
+```
 
 The app that started the server is not allowed to control OmniFocus. Open System Settings >
 Privacy & Security > Automation, find that app (your terminal, Claude Desktop, Cursor, ...) and
@@ -162,10 +175,10 @@ Since 2.0.0 a `project` or `folder` value that matches nothing is an error inste
 result. The value must be an id or the exact name. Use `search_projects` or `list_folders` to find
 it.
 
-### "JXA command timed out after 30s."
+### "JXA command timed out after 30s"
 
-One call took longer than 30 seconds, the fixed limit. Narrow the query: filter by project, tag or
-date range, or lower `limit`.
+The full message is `JXA command timed out after 30s.` One call took longer than 30 seconds, the
+fixed limit. Narrow the query: filter by project, tag or date range, or lower `limit`.
 
 ### macOS refuses to run a downloaded binary
 
