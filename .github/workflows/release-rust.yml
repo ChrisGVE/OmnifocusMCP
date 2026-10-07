@@ -77,15 +77,34 @@ jobs:
     runs-on: ubuntu-latest
     needs: build
     steps:
+      - name: checkout
+        uses: actions/checkout@v4
+
       - name: download artifacts
         uses: actions/download-artifact@v4
         with:
           path: release
           merge-multiple: true
 
-      - name: build release notes with shas
+      - name: build release notes from changelog and shas
         run: |
+          VERSION="${GITHUB_REF_NAME#rust-v}"
+          # The version's CHANGELOG section, up to the next version heading or the link references.
+          awk -v v="${VERSION}" '
+            index($0, "## [" v "]") == 1 { found = 1; next }
+            found && /^## \[/ { exit }
+            found && /^\[[^]]+\]: / { exit }
+            found
+          ' CHANGELOG.md > changelog-section.md
+          if ! grep -q '[^[:space:]]' changelog-section.md; then
+            echo "CHANGELOG.md has no section for ${VERSION}"
+            exit 1
+          fi
+          # Relative links resolve against the release page, not the repo; point them at the tag.
+          sed -i -E "s#\]\((docs/|CHANGELOG\.md|README\.md)#](https://github.com/${GITHUB_REPOSITORY}/blob/${GITHUB_REF_NAME}/\1#g" changelog-section.md
           {
+            cat changelog-section.md
+            echo
             echo "## Rust binaries"
             echo
             echo "SHA256 checksums:"
