@@ -2046,9 +2046,9 @@ async fn update_project_script_applies_partial_fields_and_tag_replacement() {
         .expect("one script should be captured");
     assert!(captured.contains("const projectFilter = \"p3\";"));
     assert!(captured.contains("\"completedByChildren\":true"));
-    assert!(
-        captured.contains("project.reviewInterval = parseReviewInterval(updates.reviewInterval);")
-    );
+    assert!(captured.contains(r#""reviewInterval":{"steps":2,"unit":"weeks"}"#));
+    assert!(captured.contains("project.reviewInterval = preparedReviewInterval;"));
+    assert!(!captured.contains("parseReviewInterval"));
     assert!(captured.contains("existingTags.forEach"));
     assert!(captured.contains("project.addTag(tag);"));
 }
