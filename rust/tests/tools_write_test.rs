@@ -1750,12 +1750,12 @@ async fn move_task_script_contains_destination_modes_and_parent_guards() {
 
     let parent_result = move_task(&runner, "task-1", None, Some("parent-1")).await;
     assert!(parent_result.is_ok());
-    let mut captured_scripts = scripts.lock().expect("scripts lock should succeed");
-    let parent_script = captured_scripts
+    let parent_script = scripts
+        .lock()
+        .expect("scripts lock should succeed")
         .last()
         .cloned()
         .expect("one script should be captured");
-    drop(captured_scripts);
 
     assert!(parent_script.contains(r#"const taskId = "task-1";"#));
     assert!(parent_script.contains("const projectName = null;"));
@@ -1772,8 +1772,9 @@ async fn move_task_script_contains_destination_modes_and_parent_guards() {
 
     let inbox_result = move_task(&runner, "task-1", None, None).await;
     assert!(inbox_result.is_ok());
-    captured_scripts = scripts.lock().expect("scripts lock should succeed");
-    let inbox_script = captured_scripts
+    let inbox_script = scripts
+        .lock()
+        .expect("scripts lock should succeed")
         .last()
         .cloned()
         .expect("inbox script should be captured");
