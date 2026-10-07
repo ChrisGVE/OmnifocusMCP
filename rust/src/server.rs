@@ -4,10 +4,10 @@ use rmcp::{
         wrapper::Parameters,
     },
     model::{
-        CallToolResult, Content, GetPromptRequestParams, GetPromptResult, ListPromptsResult,
-        ListResourcesResult, PaginatedRequestParams, PromptMessage, PromptMessageRole, RawResource,
-        ReadResourceRequestParams, ReadResourceResult, ResourceContents, ServerCapabilities,
-        ServerInfo,
+        CallToolResult, Content, GetPromptRequestParams, GetPromptResult, Implementation,
+        ListPromptsResult, ListResourcesResult, PaginatedRequestParams, PromptMessage,
+        PromptMessageRole, RawResource, ReadResourceRequestParams, ReadResourceResult,
+        ResourceContents, ServerCapabilities, ServerInfo,
     },
     prompt, prompt_handler, prompt_router, tool, tool_handler, tool_router, ErrorData as McpError,
     ServerHandler,
@@ -1496,6 +1496,13 @@ impl<R: JxaRunner + Send + Sync + 'static> ServerHandler for OmniFocusServer<R> 
                 .enable_resources()
                 .enable_prompts()
                 .build(),
+            // rmcp's default identity comes from rmcp's own build
+            // environment ("rmcp" and rmcp's version), so name this crate.
+            server_info: Implementation {
+                name: env!("CARGO_PKG_NAME").to_string(),
+                version: env!("CARGO_PKG_VERSION").to_string(),
+                ..Implementation::default()
+            },
             ..Default::default()
         }
     }
