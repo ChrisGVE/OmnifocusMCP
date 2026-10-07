@@ -2,6 +2,7 @@ use serde_json::Value;
 
 use crate::{
     error::{OmniFocusError, Result},
+    js_helpers::JS_DATE_HELPERS,
     jxa::{escape_for_jxa, JxaRunner},
     types::ProjectCountsResult,
 };
@@ -82,7 +83,8 @@ pub async fn list_projects<R: JxaRunner>(
         .unwrap_or_else(|| "null".to_string());
     let sort_order_filter = escape_for_jxa(effective_sort_order);
     let script = format!(
-        r#"const folderFilter = {folder_filter};
+        r#"{JS_DATE_HELPERS}
+const folderFilter = {folder_filter};
 const statusFilter = {status_filter};
 const completedBeforeRaw = {completed_before_filter};
 const completedAfterRaw = {completed_after_filter};
@@ -90,17 +92,8 @@ const stalledOnly = {stalled_only_filter};
 const sortBy = {sort_by_filter};
 const sortOrder = {sort_order_filter};
 
-const parseOptionalDate = (rawValue, fieldName) => {{
-  if (rawValue === null) return null;
-  const parsed = new Date(rawValue);
-  if (Number.isNaN(parsed.getTime())) {{
-    throw new Error(`${{fieldName}} must be a valid ISO 8601 date string.`);
-  }}
-  return parsed;
-}};
-
-const completedBefore = parseOptionalDate(completedBeforeRaw, "completedBefore");
-const completedAfter = parseOptionalDate(completedAfterRaw, "completedAfter");
+const completedBefore = parseOptionalLocalDate(completedBeforeRaw, "completedBefore");
+const completedAfter = parseOptionalLocalDate(completedAfterRaw, "completedAfter");
 
 const projectCounts = new Map();
 document.flattenedTasks.forEach(task => {{
@@ -469,12 +462,15 @@ pub async fn create_project<R: JxaRunner>(
         .unwrap_or_else(|| "null".to_string());
 
     let script = format!(
-        r#"const projectName = {project_name};
+        r#"{JS_DATE_HELPERS}
+const projectName = {project_name};
 const folderName = {folder_name};
 const noteValue = {note_value};
 const dueDateValue = {due_date_value};
 const deferDateValue = {defer_date_value};
 const sequentialValue = {sequential_value};
+const parsedDueDate = dueDateValue === null ? null : parseWriteDate(dueDateValue, "dueDate", "DefaultDueTime", "17:00");
+const parsedDeferDate = deferDateValue === null ? null : parseWriteDate(deferDateValue, "deferDate", "DefaultStartTime", "00:00");
 
 const project = (() => {{
   if (folderName === null) return new Project(projectName);
@@ -486,8 +482,8 @@ const project = (() => {{
 }})();
 
 if (noteValue !== null) project.note = noteValue;
-if (dueDateValue !== null) project.dueDate = new Date(dueDateValue);
-if (deferDateValue !== null) project.deferDate = new Date(deferDateValue);
+if (parsedDueDate !== null) project.dueDate = parsedDueDate;
+if (parsedDeferDate !== null) project.deferDate = parsedDeferDate;
 if (sequentialValue !== null) project.sequential = sequentialValue;
 
 return {{
@@ -886,7 +882,8 @@ pub async fn update_project<R: JxaRunner>(
     let project_filter = escape_for_jxa(project_id_or_name.trim());
     let updates_value = serde_json::to_string(&updates)?;
     let script = format!(
-        r#"const projectFilter = {project_filter};
+        r#"{JS_DATE_HELPERS}
+const projectFilter = {project_filter};
 const updates = {updates_value};
 const project = document.flattenedProjects.find(item => {{
   return item.id.primaryKey === projectFilter || item.name === projectFilter;
@@ -896,6 +893,8 @@ if (!project) {{
 }}
 
 const has = (key) => Object.prototype.hasOwnProperty.call(updates, key);
+const parsedDueDate = has("dueDate") ? parseWriteDate(updates.dueDate, "dueDate", "DefaultDueTime", "17:00") : null;
+const parsedDeferDate = has("deferDate") ? parseWriteDate(updates.deferDate, "deferDate", "DefaultStartTime", "00:00") : null;
 const normalizeProjectStatus = (item) => {{
   const rawStatus = String(item.status || "").toLowerCase();
   const flattened = rawStatus
@@ -934,8 +933,8 @@ const parseReviewInterval = (value) => {{
 
 if (has("name")) project.name = updates.name;
 if (has("note")) project.note = updates.note;
-if (has("dueDate")) project.dueDate = new Date(updates.dueDate);
-if (has("deferDate")) project.deferDate = new Date(updates.deferDate);
+if (has("dueDate")) project.dueDate = parsedDueDate;
+if (has("deferDate")) project.deferDate = parsedDeferDate;
 if (has("flagged")) project.flagged = updates.flagged;
 if (has("sequential")) project.sequential = updates.sequential;
 if (has("completedByChildren")) project.completedByChildren = updates.completedByChildren;

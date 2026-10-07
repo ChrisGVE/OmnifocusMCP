@@ -4,6 +4,7 @@ use std::collections::HashSet;
 
 use crate::{
     error::{OmniFocusError, Result},
+    js_helpers::JS_DATE_HELPERS,
     jxa::{escape_for_jxa, JxaRunner},
     types::{TaskCountsResult, TaskResult},
 };
@@ -176,7 +177,8 @@ pub async fn get_task_counts_with_added_changed<R: JxaRunner>(
         .unwrap_or_else(|| "null".to_string());
 
     let script = format!(
-        r#"const projectFilter = {project_filter};
+        r#"{JS_DATE_HELPERS}
+const projectFilter = {project_filter};
 const tagNames = {tag_names_filter};
 const tagFilterMode = {tag_filter_mode_filter};
 const flaggedFilter = {flagged_filter};
@@ -193,24 +195,16 @@ const changedBeforeRaw = {changed_before_filter};
 const maxEstimatedMinutes = {max_estimated_minutes_filter};
 const now = new Date();
 const soon = new Date(now.getTime() + (7 * 24 * 60 * 60 * 1000));
-const parseOptionalDate = (value, fieldName) => {{
-  if (value === null) return null;
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) {{
-    throw new Error(`${{fieldName}} must be a valid ISO 8601 date string.`);
-  }}
-  return parsed;
-}};
-const dueBefore = parseOptionalDate(dueBeforeRaw, "dueBefore");
-const dueAfter = parseOptionalDate(dueAfterRaw, "dueAfter");
-const deferBefore = parseOptionalDate(deferBeforeRaw, "deferBefore");
-const deferAfter = parseOptionalDate(deferAfterRaw, "deferAfter");
-const completedBefore = parseOptionalDate(completedBeforeRaw, "completedBefore");
-const completedAfter = parseOptionalDate(completedAfterRaw, "completedAfter");
-const addedAfter = parseOptionalDate(addedAfterRaw, "added_after");
-const addedBefore = parseOptionalDate(addedBeforeRaw, "added_before");
-const changedAfter = parseOptionalDate(changedAfterRaw, "changed_after");
-const changedBefore = parseOptionalDate(changedBeforeRaw, "changed_before");
+const dueBefore = parseOptionalLocalDate(dueBeforeRaw, "dueBefore");
+const dueAfter = parseOptionalLocalDate(dueAfterRaw, "dueAfter");
+const deferBefore = parseOptionalLocalDate(deferBeforeRaw, "deferBefore");
+const deferAfter = parseOptionalLocalDate(deferAfterRaw, "deferAfter");
+const completedBefore = parseOptionalLocalDate(completedBeforeRaw, "completedBefore");
+const completedAfter = parseOptionalLocalDate(completedAfterRaw, "completedAfter");
+const addedAfter = parseOptionalLocalDate(addedAfterRaw, "added_after");
+const addedBefore = parseOptionalLocalDate(addedBeforeRaw, "added_before");
+const changedAfter = parseOptionalLocalDate(changedAfterRaw, "changed_after");
+const changedBefore = parseOptionalLocalDate(changedBeforeRaw, "changed_before");
 
 const counts = {{
   total: 0,
@@ -531,7 +525,8 @@ pub async fn list_tasks_with_added_changed<R: JxaRunner>(
         .unwrap_or_else(|| "null".to_string());
 
     let script = format!(
-        r#"const projectFilter = {project_filter};
+        r#"{JS_DATE_HELPERS}
+const projectFilter = {project_filter};
 const tagNames = {tag_names_filter};
 const tagFilterMode = {tag_filter_mode_filter};
 const flaggedFilter = {flagged_filter};
@@ -553,26 +548,18 @@ const sortBy = {sort_by_filter};
 const sortOrder = {sort_order_filter};
 const now = new Date();
 const soon = new Date(now.getTime() + (7 * 24 * 60 * 60 * 1000));
-const parseOptionalDate = (value, fieldName) => {{
-  if (value === null) return null;
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) {{
-    throw new Error(`${{fieldName}} must be a valid ISO 8601 date string.`);
-  }}
-  return parsed;
-}};
-const dueBefore = parseOptionalDate(dueBeforeRaw, "dueBefore");
-const dueAfter = parseOptionalDate(dueAfterRaw, "dueAfter");
-const deferBefore = parseOptionalDate(deferBeforeRaw, "deferBefore");
-const deferAfter = parseOptionalDate(deferAfterRaw, "deferAfter");
-const completedBefore = parseOptionalDate(completedBeforeRaw, "completedBefore");
-const completedAfter = parseOptionalDate(completedAfterRaw, "completedAfter");
-const addedAfter = parseOptionalDate(addedAfterRaw, "added_after");
-const addedBefore = parseOptionalDate(addedBeforeRaw, "added_before");
-const changedAfter = parseOptionalDate(changedAfterRaw, "changed_after");
-const changedBefore = parseOptionalDate(changedBeforeRaw, "changed_before");
-const plannedBefore = parseOptionalDate(plannedBeforeRaw, "plannedBefore");
-const plannedAfter = parseOptionalDate(plannedAfterRaw, "plannedAfter");
+const dueBefore = parseOptionalLocalDate(dueBeforeRaw, "dueBefore");
+const dueAfter = parseOptionalLocalDate(dueAfterRaw, "dueAfter");
+const deferBefore = parseOptionalLocalDate(deferBeforeRaw, "deferBefore");
+const deferAfter = parseOptionalLocalDate(deferAfterRaw, "deferAfter");
+const completedBefore = parseOptionalLocalDate(completedBeforeRaw, "completedBefore");
+const completedAfter = parseOptionalLocalDate(completedAfterRaw, "completedAfter");
+const addedAfter = parseOptionalLocalDate(addedAfterRaw, "added_after");
+const addedBefore = parseOptionalLocalDate(addedBeforeRaw, "added_before");
+const changedAfter = parseOptionalLocalDate(changedAfterRaw, "changed_after");
+const changedBefore = parseOptionalLocalDate(changedBeforeRaw, "changed_before");
+const plannedBefore = parseOptionalLocalDate(plannedBeforeRaw, "plannedBefore");
+const plannedAfter = parseOptionalLocalDate(plannedAfterRaw, "plannedAfter");
 const includeCompletedForDateFilter = completedBefore !== null || completedAfter !== null;
 const supportsPlannedDate = (() => {{
   try {{
@@ -1049,7 +1036,8 @@ pub async fn add_notification<R: JxaRunner>(
         .map(|value| value.to_string())
         .unwrap_or_else(|| "null".to_string());
     let script = format!(
-        r#"const taskId = {task_id_filter};
+        r#"{JS_DATE_HELPERS}
+const taskId = {task_id_filter};
 const absoluteDate = {absolute_date_value};
 const relativeOffset = {relative_offset_value};
 const task = document.flattenedTasks.find(item => item.id.primaryKey === taskId);
@@ -1058,10 +1046,7 @@ if (!task) {{
 }}
 let notification = null;
 if (absoluteDate !== null) {{
-  const parsedAbsoluteDate = new Date(absoluteDate);
-  if (Number.isNaN(parsedAbsoluteDate.getTime())) {{
-    throw new Error("absoluteDate must be a valid ISO 8601 date string.");
-  }}
+  const parsedAbsoluteDate = parseLocalDate(absoluteDate, "absoluteDate");
   notification = task.addNotification(parsedAbsoluteDate);
 }} else {{
   if (task.effectiveDueDate === null) {{
@@ -1311,7 +1296,8 @@ pub async fn search_tasks_with_added_changed<R: JxaRunner>(
     let sort_order_filter = escape_for_jxa(effective_sort_order);
     let query_filter = escape_for_jxa(query.trim());
     let script = format!(
-        r#"const queryFilter = {query_filter}.toLowerCase();
+        r#"{JS_DATE_HELPERS}
+const queryFilter = {query_filter}.toLowerCase();
 const projectFilter = {project_filter};
 const tagNames = {tag_names_filter};
 const tagFilterMode = {tag_filter_mode_filter};
@@ -1334,26 +1320,18 @@ const sortBy = {sort_by_filter};
 const sortOrder = {sort_order_filter};
 const now = new Date();
 const soon = new Date(now.getTime() + (7 * 24 * 60 * 60 * 1000));
-const parseOptionalDate = (value, fieldName) => {{
-  if (value === null) return null;
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) {{
-    throw new Error(`${{fieldName}} must be a valid ISO 8601 date string.`);
-  }}
-  return parsed;
-}};
-const dueBefore = parseOptionalDate(dueBeforeRaw, "dueBefore");
-const dueAfter = parseOptionalDate(dueAfterRaw, "dueAfter");
-const deferBefore = parseOptionalDate(deferBeforeRaw, "deferBefore");
-const deferAfter = parseOptionalDate(deferAfterRaw, "deferAfter");
-const completedBefore = parseOptionalDate(completedBeforeRaw, "completedBefore");
-const completedAfter = parseOptionalDate(completedAfterRaw, "completedAfter");
-const addedAfter = parseOptionalDate(addedAfterRaw, "added_after");
-const addedBefore = parseOptionalDate(addedBeforeRaw, "added_before");
-const changedAfter = parseOptionalDate(changedAfterRaw, "changed_after");
-const changedBefore = parseOptionalDate(changedBeforeRaw, "changed_before");
-const plannedBefore = parseOptionalDate(plannedBeforeRaw, "plannedBefore");
-const plannedAfter = parseOptionalDate(plannedAfterRaw, "plannedAfter");
+const dueBefore = parseOptionalLocalDate(dueBeforeRaw, "dueBefore");
+const dueAfter = parseOptionalLocalDate(dueAfterRaw, "dueAfter");
+const deferBefore = parseOptionalLocalDate(deferBeforeRaw, "deferBefore");
+const deferAfter = parseOptionalLocalDate(deferAfterRaw, "deferAfter");
+const completedBefore = parseOptionalLocalDate(completedBeforeRaw, "completedBefore");
+const completedAfter = parseOptionalLocalDate(completedAfterRaw, "completedAfter");
+const addedAfter = parseOptionalLocalDate(addedAfterRaw, "added_after");
+const addedBefore = parseOptionalLocalDate(addedBeforeRaw, "added_before");
+const changedAfter = parseOptionalLocalDate(changedAfterRaw, "changed_after");
+const changedBefore = parseOptionalLocalDate(changedBeforeRaw, "changed_before");
+const plannedBefore = parseOptionalLocalDate(plannedBeforeRaw, "plannedBefore");
+const plannedAfter = parseOptionalLocalDate(plannedAfterRaw, "plannedAfter");
 const includeCompletedForDateFilter = completedBefore !== null || completedAfter !== null;
 const supportsPlannedDate = (() => {{
   try {{
@@ -1709,7 +1687,8 @@ pub async fn create_task<R: JxaRunner>(
         .unwrap_or_else(|| "null".to_string());
 
     let script = format!(
-        r#"const taskName = {task_name};
+        r#"{JS_DATE_HELPERS}
+const taskName = {task_name};
 const projectName = {project_name};
 const noteValue = {note_value};
 const dueDateValue = {due_date_value};
@@ -1717,6 +1696,8 @@ const deferDateValue = {defer_date_value};
 const flaggedValue = {flagged_value};
 const tagNames = {tags_value};
 const estimatedMinutesValue = {estimated_minutes_value};
+const parsedDueDate = dueDateValue === null ? null : parseWriteDate(dueDateValue, "dueDate", "DefaultDueTime", "17:00");
+const parsedDeferDate = deferDateValue === null ? null : parseWriteDate(deferDateValue, "deferDate", "DefaultStartTime", "00:00");
 
 const parent = (() => {{
   if (projectName === null || projectName === "") return inbox.ending;
@@ -1730,8 +1711,8 @@ const parent = (() => {{
 const task = new Task(taskName, parent);
 
 if (noteValue !== null) task.note = noteValue;
-if (dueDateValue !== null) task.dueDate = new Date(dueDateValue);
-if (deferDateValue !== null) task.deferDate = new Date(deferDateValue);
+if (parsedDueDate !== null) task.dueDate = parsedDueDate;
+if (parsedDeferDate !== null) task.deferDate = parsedDeferDate;
 if (flaggedValue !== null) task.flagged = flaggedValue;
 if (estimatedMinutesValue !== null) task.estimatedMinutes = estimatedMinutesValue;
 
@@ -1804,7 +1785,8 @@ pub async fn create_subtask<R: JxaRunner>(
         .unwrap_or_else(|| "null".to_string());
 
     let script = format!(
-        r#"const taskName = {task_name};
+        r#"{JS_DATE_HELPERS}
+const taskName = {task_name};
 const parentTaskId = {parent_task_id_value};
 const noteValue = {note_value};
 const dueDateValue = {due_date_value};
@@ -1812,6 +1794,8 @@ const deferDateValue = {defer_date_value};
 const flaggedValue = {flagged_value};
 const tagNames = {tags_value};
 const estimatedMinutesValue = {estimated_minutes_value};
+const parsedDueDate = dueDateValue === null ? null : parseWriteDate(dueDateValue, "dueDate", "DefaultDueTime", "17:00");
+const parsedDeferDate = deferDateValue === null ? null : parseWriteDate(deferDateValue, "deferDate", "DefaultStartTime", "00:00");
 
 const parentTask = document.flattenedTasks.find(item => item.id.primaryKey === parentTaskId);
 if (!parentTask) {{
@@ -1821,8 +1805,8 @@ if (!parentTask) {{
 const task = new Task(taskName, parentTask.ending);
 
 if (noteValue !== null) task.note = noteValue;
-if (dueDateValue !== null) task.dueDate = new Date(dueDateValue);
-if (deferDateValue !== null) task.deferDate = new Date(deferDateValue);
+if (parsedDueDate !== null) task.dueDate = parsedDueDate;
+if (parsedDeferDate !== null) task.deferDate = parsedDeferDate;
 if (flaggedValue !== null) task.flagged = flaggedValue;
 if (estimatedMinutesValue !== null) task.estimatedMinutes = estimatedMinutesValue;
 
@@ -1971,7 +1955,8 @@ pub async fn create_tasks_batch<R: JxaRunner>(
 
     let tasks_value = serde_json::to_string(&normalized)?;
     let script = format!(
-        r#"const taskInputs = {tasks_value};
+        r#"{JS_DATE_HELPERS}
+const taskInputs = {tasks_value};
 
 const resolveParent = (projectName) => {{
   if (projectName === null || projectName === "") return inbox.ending;
@@ -1982,13 +1967,27 @@ const resolveParent = (projectName) => {{
   return targetProject.ending;
 }};
 
-const created = taskInputs.map(input => {{
+const isPresent = (value) => value !== null && value !== undefined;
+
+// Parse every date before creating any task, so one bad date cannot leave
+// part of the batch created.
+const parsedDates = taskInputs.map((input, index) => ({{
+  dueDate: isPresent(input.dueDate)
+    ? parseWriteDate(input.dueDate, "tasks[" + index + "].dueDate", "DefaultDueTime", "17:00")
+    : null,
+  deferDate: isPresent(input.deferDate)
+    ? parseWriteDate(input.deferDate, "tasks[" + index + "].deferDate", "DefaultStartTime", "00:00")
+    : null
+}}));
+
+const created = taskInputs.map((input, index) => {{
   const parent = resolveParent(input.project);
   const task = new Task(input.name, parent);
+  const dates = parsedDates[index];
 
   if (input.note !== null && input.note !== undefined) task.note = input.note;
-  if (input.dueDate !== null && input.dueDate !== undefined) task.dueDate = new Date(input.dueDate);
-  if (input.deferDate !== null && input.deferDate !== undefined) task.deferDate = new Date(input.deferDate);
+  if (dates.dueDate !== null) task.dueDate = dates.dueDate;
+  if (dates.deferDate !== null) task.deferDate = dates.deferDate;
   if (input.flagged !== null && input.flagged !== undefined) task.flagged = input.flagged;
   if (input.estimatedMinutes !== null && input.estimatedMinutes !== undefined) {{
     task.estimatedMinutes = input.estimatedMinutes;
@@ -2152,7 +2151,8 @@ pub async fn update_task<R: JxaRunner>(
     let updates_value = serde_json::to_string(&updates)?;
 
     let script = format!(
-        r#"const taskId = {task_id_value};
+        r#"{JS_DATE_HELPERS}
+const taskId = {task_id_value};
 const updates = {updates_value};
 const task = document.flattenedTasks.find(item => item.id.primaryKey === taskId);
 if (!task) {{
@@ -2160,11 +2160,13 @@ if (!task) {{
 }}
 
 const has = (key) => Object.prototype.hasOwnProperty.call(updates, key);
+const parsedDueDate = has("dueDate") ? parseWriteDate(updates.dueDate, "dueDate", "DefaultDueTime", "17:00") : null;
+const parsedDeferDate = has("deferDate") ? parseWriteDate(updates.deferDate, "deferDate", "DefaultStartTime", "00:00") : null;
 
 if (has("name")) task.name = updates.name;
 if (has("note")) task.note = updates.note;
-if (has("dueDate")) task.dueDate = new Date(updates.dueDate);
-if (has("deferDate")) task.deferDate = new Date(updates.deferDate);
+if (has("dueDate")) task.dueDate = parsedDueDate;
+if (has("deferDate")) task.deferDate = parsedDeferDate;
 if (has("flagged")) task.flagged = updates.flagged;
 if (has("estimatedMinutes")) task.estimatedMinutes = updates.estimatedMinutes;
 
