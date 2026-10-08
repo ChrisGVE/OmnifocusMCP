@@ -4,7 +4,9 @@ use std::collections::HashSet;
 
 use crate::{
     error::{OmniFocusError, Result},
-    js_helpers::{JS_DATE_HELPERS, JS_PROJECT_STATUS, JS_RESOLVERS, JS_TASK_STATUS},
+    js_helpers::{
+        JS_DATE_HELPERS, JS_PLANNED_DATE, JS_PROJECT_STATUS, JS_RESOLVERS, JS_TASK_STATUS,
+    },
     jxa::{escape_for_jxa, JxaRunner},
     types::{TaskCountsResult, TaskResult},
 };
@@ -186,6 +188,7 @@ pub async fn get_task_counts_with_added_changed<R: JxaRunner>(
 
     let script = format!(
         r#"{JS_DATE_HELPERS}
+{JS_PLANNED_DATE}
 {JS_PROJECT_STATUS}
 {JS_TASK_STATUS}
 {JS_RESOLVERS}
@@ -221,25 +224,9 @@ const changedAfter = parseOptionalLocalDate(changedAfterRaw, "changed_after");
 const changedBefore = parseOptionalLocalDate(changedBeforeRaw, "changed_before");
 const plannedBefore = parseOptionalLocalDate(plannedBeforeRaw, "plannedBefore");
 const plannedAfter = parseOptionalLocalDate(plannedAfterRaw, "plannedAfter");
-const supportsPlannedDate = (() => {{
-  try {{
-    const sampleTask = document.flattenedTasks[0];
-    if (!sampleTask) return true;
-    void sampleTask.plannedDate;
-    return true;
-  }} catch (e) {{
-    return false;
-  }}
-}})();
-const getPlannedDate = (task) => {{
-  if (!supportsPlannedDate) return null;
-  try {{
-    const value = task.plannedDate;
-    return value === undefined ? null : value;
-  }} catch (e) {{
-    return null;
-  }}
-}};
+const supportsPlannedDate = detectPlannedDateSupport(document.flattenedTasks);
+requirePlannedDateSupport(supportsPlannedDate, plannedBeforeRaw, plannedAfterRaw, null);
+const getPlannedDate = (task) => readPlannedDate(task, supportsPlannedDate);
 
 const counts = {{
   total: 0,
@@ -571,6 +558,7 @@ pub async fn list_tasks_with_added_changed<R: JxaRunner>(
 
     let script = format!(
         r#"{JS_DATE_HELPERS}
+{JS_PLANNED_DATE}
 {JS_PROJECT_STATUS}
 {JS_TASK_STATUS}
 {JS_RESOLVERS}
@@ -610,25 +598,9 @@ const changedBefore = parseOptionalLocalDate(changedBeforeRaw, "changed_before")
 const plannedBefore = parseOptionalLocalDate(plannedBeforeRaw, "plannedBefore");
 const plannedAfter = parseOptionalLocalDate(plannedAfterRaw, "plannedAfter");
 const includeCompletedForDateFilter = completedBefore !== null || completedAfter !== null;
-const supportsPlannedDate = (() => {{
-  try {{
-    const sampleTask = document.flattenedTasks[0];
-    if (!sampleTask) return true;
-    void sampleTask.plannedDate;
-    return true;
-  }} catch (e) {{
-    return false;
-  }}
-}})();
-const getPlannedDate = (task) => {{
-  if (!supportsPlannedDate) return null;
-  try {{
-    const value = task.plannedDate;
-    return value === undefined ? null : value;
-  }} catch (e) {{
-    return null;
-  }}
-}};
+const supportsPlannedDate = detectPlannedDateSupport(document.flattenedTasks);
+requirePlannedDateSupport(supportsPlannedDate, plannedBeforeRaw, plannedAfterRaw, sortBy);
+const getPlannedDate = (task) => readPlannedDate(task, supportsPlannedDate);
 
 const filteredTasks = document.flattenedTasks
   .filter(task => {{
@@ -1361,6 +1333,7 @@ pub async fn search_tasks_with_added_changed<R: JxaRunner>(
     let query_filter = escape_for_jxa(query.trim());
     let script = format!(
         r#"{JS_DATE_HELPERS}
+{JS_PLANNED_DATE}
 {JS_PROJECT_STATUS}
 {JS_TASK_STATUS}
 {JS_RESOLVERS}
@@ -1401,25 +1374,9 @@ const changedBefore = parseOptionalLocalDate(changedBeforeRaw, "changed_before")
 const plannedBefore = parseOptionalLocalDate(plannedBeforeRaw, "plannedBefore");
 const plannedAfter = parseOptionalLocalDate(plannedAfterRaw, "plannedAfter");
 const includeCompletedForDateFilter = completedBefore !== null || completedAfter !== null;
-const supportsPlannedDate = (() => {{
-  try {{
-    const sampleTask = document.flattenedTasks[0];
-    if (!sampleTask) return true;
-    void sampleTask.plannedDate;
-    return true;
-  }} catch (e) {{
-    return false;
-  }}
-}})();
-const getPlannedDate = (task) => {{
-  if (!supportsPlannedDate) return null;
-  try {{
-    const value = task.plannedDate;
-    return value === undefined ? null : value;
-  }} catch (e) {{
-    return null;
-  }}
-}};
+const supportsPlannedDate = detectPlannedDateSupport(document.flattenedTasks);
+requirePlannedDateSupport(supportsPlannedDate, plannedBeforeRaw, plannedAfterRaw, sortBy);
+const getPlannedDate = (task) => readPlannedDate(task, supportsPlannedDate);
 
 const filteredTasks = document.flattenedTasks
   .filter(task => {{
@@ -1769,6 +1726,7 @@ const tagNames = {tags_value};
 const estimatedMinutesValue = {estimated_minutes_value};
 const parsedDueDate = dueDateValue === null ? null : parseWriteDate(dueDateValue, "dueDate", "DefaultDueTime", "17:00");
 const parsedDeferDate = deferDateValue === null ? null : parseWriteDate(deferDateValue, "deferDate", "DefaultStartTime", "00:00");
+const resolvedTags = tagNames === null ? [] : tagNames.map(tagName => resolveTag(tagName));
 
 const parent = (() => {{
   if (projectName === null || projectName === "") return inbox.ending;
@@ -1784,12 +1742,7 @@ if (parsedDeferDate !== null) task.deferDate = parsedDeferDate;
 if (flaggedValue !== null) task.flagged = flaggedValue;
 if (estimatedMinutesValue !== null) task.estimatedMinutes = estimatedMinutesValue;
 
-if (tagNames !== null) {{
-  tagNames.forEach(tagName => {{
-    const tag = document.flattenedTags.byName(tagName);
-    if (tag) task.addTag(tag);
-  }});
-}}
+resolvedTags.forEach(tag => task.addTag(tag));
 
 return {{
   id: task.id.primaryKey,
@@ -1856,6 +1809,7 @@ pub async fn create_subtask<R: JxaRunner>(
         r#"{JS_DATE_HELPERS}
 {JS_PROJECT_STATUS}
 {JS_TASK_STATUS}
+{JS_RESOLVERS}
 const taskName = {task_name};
 const parentTaskId = {parent_task_id_value};
 const noteValue = {note_value};
@@ -1871,6 +1825,7 @@ const parentTask = document.flattenedTasks.find(item => item.id.primaryKey === p
 if (!parentTask) {{
   throw new Error(`Parent task not found: ${{parentTaskId}}`);
 }}
+const resolvedTags = tagNames === null ? [] : tagNames.map(tagName => resolveTag(tagName));
 
 const task = new Task(taskName, parentTask.ending);
 
@@ -1880,12 +1835,7 @@ if (parsedDeferDate !== null) task.deferDate = parsedDeferDate;
 if (flaggedValue !== null) task.flagged = flaggedValue;
 if (estimatedMinutesValue !== null) task.estimatedMinutes = estimatedMinutesValue;
 
-if (tagNames !== null) {{
-  tagNames.forEach(tagName => {{
-    const tag = document.flattenedTags.byName(tagName);
-    if (tag) task.addTag(tag);
-  }});
-}}
+resolvedTags.forEach(tag => task.addTag(tag));
 
 return {{
   id: task.id.primaryKey,
@@ -2032,15 +1982,32 @@ pub async fn create_tasks_batch<R: JxaRunner>(
 {JS_RESOLVERS}
 const taskInputs = {tasks_value};
 
-const resolveParent = (projectName) => {{
+const resolveParent = (projectName, index) => {{
   if (projectName === null || projectName === "") return inbox.ending;
-  const targetProject = resolveProject(projectName);
-  return targetProject.ending;
+  try {{
+    const targetProject = resolveProject(projectName);
+    return targetProject.ending;
+  }} catch (error) {{
+    throw new Error("tasks[" + index + "].project: " + error.message);
+  }}
 }};
 
 // Resolve every destination before creating any task, so one unknown project
 // cannot leave part of the batch created.
-const parents = taskInputs.map(input => resolveParent(input.project));
+const parents = taskInputs.map((input, index) => resolveParent(input.project, index));
+
+// Resolve every tag before creating any task. Include both the task and tag
+// positions in an error so callers can identify the bad batch entry.
+const resolvedTags = taskInputs.map((input, index) => {{
+  if (input.tags === null || input.tags === undefined) return [];
+  return input.tags.map((tagName, tagIndex) => {{
+    try {{
+      return resolveTag(tagName);
+    }} catch (error) {{
+      throw new Error("tasks[" + index + "].tags[" + tagIndex + "]: " + error.message);
+    }}
+  }});
+}});
 
 const isPresent = (value) => value !== null && value !== undefined;
 
@@ -2067,12 +2034,7 @@ const created = taskInputs.map((input, index) => {{
     task.estimatedMinutes = input.estimatedMinutes;
   }}
 
-  if (input.tags !== null && input.tags !== undefined) {{
-    input.tags.forEach(tagName => {{
-      const tag = document.flattenedTags.byName(tagName);
-      if (tag) task.addTag(tag);
-    }});
-  }}
+  resolvedTags[index].forEach(tag => task.addTag(tag));
 
   return {{
     id: task.id.primaryKey,
@@ -2232,6 +2194,7 @@ pub async fn update_task<R: JxaRunner>(
         r#"{JS_DATE_HELPERS}
 {JS_PROJECT_STATUS}
 {JS_TASK_STATUS}
+{JS_RESOLVERS}
 const taskId = {task_id_value};
 const updates = {updates_value};
 const task = document.flattenedTasks.find(item => item.id.primaryKey === taskId && !isProjectRootTask(item));
@@ -2242,6 +2205,7 @@ if (!task) {{
 const has = (key) => Object.prototype.hasOwnProperty.call(updates, key);
 const parsedDueDate = has("dueDate") ? parseWriteDate(updates.dueDate, "dueDate", "DefaultDueTime", "17:00") : null;
 const parsedDeferDate = has("deferDate") ? parseWriteDate(updates.deferDate, "deferDate", "DefaultStartTime", "00:00") : null;
+const resolvedTags = has("tags") ? updates.tags.map(tagName => resolveTag(tagName)) : null;
 
 if (has("name")) task.name = updates.name;
 if (has("note")) task.note = updates.note;
@@ -2255,10 +2219,7 @@ if (has("tags")) {{
   existingTags.forEach(tag => {{
     task.removeTag(tag);
   }});
-  updates.tags.forEach(tagName => {{
-    const tag = document.flattenedTags.byName(tagName);
-    if (tag) task.addTag(tag);
-  }});
+  resolvedTags.forEach(tag => task.addTag(tag));
 }}
 
 return {{

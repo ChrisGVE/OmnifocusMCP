@@ -816,6 +816,7 @@ pub async fn update_project<R: JxaRunner>(
 {JS_PROJECT_STATUS}
 {JS_TASK_STATUS}
 {JS_REVIEW_INTERVAL}
+{JS_RESOLVERS}
 const projectFilter = {project_filter};
 const updates = {updates_value};
 const project = document.flattenedProjects.find(item => {{
@@ -828,6 +829,7 @@ if (!project) {{
 const has = (key) => Object.prototype.hasOwnProperty.call(updates, key);
 const parsedDueDate = has("dueDate") ? parseWriteDate(updates.dueDate, "dueDate", "DefaultDueTime", "17:00") : null;
 const parsedDeferDate = has("deferDate") ? parseWriteDate(updates.deferDate, "deferDate", "DefaultStartTime", "00:00") : null;
+const resolvedTags = has("tags") ? updates.tags.map(tagName => resolveTag(tagName)) : null;
 // Prepared before any field changes, so a project without an interval fails
 // the call with nothing modified.
 const preparedReviewInterval = has("reviewInterval") ? updatedReviewInterval(project, updates.reviewInterval) : null;
@@ -845,9 +847,8 @@ if (has("tags")) {{
   existingTags.forEach(tag => {{
     project.removeTag(tag);
   }});
-  updates.tags.forEach(tagName => {{
-    const tag = document.flattenedTags.byName(tagName);
-    if (tag) project.addTag(tag);
+  resolvedTags.forEach(tag => {{
+    project.addTag(tag);
   }});
 }}
 

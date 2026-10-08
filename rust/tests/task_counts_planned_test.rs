@@ -255,16 +255,21 @@ const FAKE_DATABASE_WITHOUT_PLANNED_DATES: &str = r#"function fakeTask(id) {
 }
 var document = { flattenedTasks: [fakeTask("t1"), fakeTask("t2"), fakeTask("t3"), fakeTask("t4")] };"#;
 
-/// Runs a counts script against `database` and returns the `total` it reports.
-fn total_against(database: &str, script: &str) -> Value {
+/// Runs a counts script against `database` and returns its JSON or error text.
+fn run_against(database: &str, script: &str) -> String {
     common::assert_script_compiles("get_task_counts", script);
-    let output = common::run_jsc(
+    common::run_jsc(
         &format!("{FAKE_TASK_STATUS}\n{database}"),
         &format!(
             "try {{ const result = (function () {{\n{script}\n}})(); print(JSON.stringify(result)); }}\n\
              catch (error) {{ print(\"ERROR: \" + error.message); }}"
         ),
-    );
+    )
+}
+
+/// Runs a counts script against `database` and returns the `total` it reports.
+fn total_against(database: &str, script: &str) -> Value {
+    let output = run_against(database, script);
     let counts: Value =
         serde_json::from_str(&output).unwrap_or_else(|_| panic!("expected counts, got {output}"));
     counts["total"].clone()
@@ -322,11 +327,10 @@ async fn invalid_planned_bound_is_reported_by_field_name() {
 }
 
 #[tokio::test]
-async fn planned_bounds_are_ignored_where_planned_dates_are_unsupported() {
-    // Same behaviour as list_tasks and search_tasks on such a version.
+async fn planned_bounds_error_where_planned_dates_are_unsupported() {
     let script = counts_script(Some("2026-05-15"), Some("2026-05-05")).await;
     assert_eq!(
-        total_against(FAKE_DATABASE_WITHOUT_PLANNED_DATES, &script),
-        4
+        run_against(FAKE_DATABASE_WITHOUT_PLANNED_DATES, &script),
+        "ERROR: plannedBefore/plannedAfter require an OmniFocus database migrated to support planned dates"
     );
 }

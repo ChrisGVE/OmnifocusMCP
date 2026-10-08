@@ -219,9 +219,6 @@ assistant. They ask it to:
 
 - **Duplicate names resolve to the first match.** A name shared by several projects, folders or
   tags selects the first one OmniFocus lists. Use the id to pick a specific one.
-- **Unknown tag names are skipped.** `create_task`, `create_subtask`, `create_tasks_batch`,
-  `update_task` and `update_project` match tags by name. A name that matches no existing tag is
-  skipped without an error, and no tag is created.
 - **Dates cannot be cleared.** `update_task` and `update_project` treat `null` like an omitted
   field.
 - **Review intervals can only be changed, not added.** `update_project` sets `reviewInterval` only
@@ -230,8 +227,8 @@ assistant. They ask it to:
   `status: "all"` may hit the limit.
 - **Resources are capped at 100 items.** `omnifocus://today` returns up to 100 per section.
 - **Planned dates need an OmniFocus version that has them.** On an older version,
-  `plannedBefore` and `plannedAfter` are ignored, every `plannedDate` is `null`, and sorting by
-  `plannedDate` leaves the order unchanged.
+  every returned `plannedDate` is `null`. Requests using `plannedBefore`, `plannedAfter`, or a
+  planned-date sort fail explicitly because the database cannot honour them.
 - **The `daily_review` flagged list can be filled by completed tasks.** It takes the first 25
   flagged tasks in OmniFocus order, completed or not, so in a database with many completed flagged
   tasks the current ones can be left out.

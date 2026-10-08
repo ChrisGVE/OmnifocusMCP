@@ -383,7 +383,10 @@ async fn project_destinations_resolve_the_project() {
     }
     // Every parent is resolved before the first task is created.
     let resolved_at = batch
-        .find("const parents = taskInputs.map(input => resolveParent(input.project));")
+        .find(
+            "const parents = taskInputs.map((input, index) => \
+             resolveParent(input.project, index));",
+        )
         .expect("batch resolves all parents up front");
     let created_at = batch.find("new Task(").expect("batch creates tasks");
     assert!(resolved_at < created_at);

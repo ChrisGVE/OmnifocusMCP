@@ -2,7 +2,7 @@ use serde_json::Value;
 
 use crate::{
     error::{OmniFocusError, Result},
-    js_helpers::{JS_PROJECT_STATUS, JS_TASK_STATUS},
+    js_helpers::{JS_PROJECT_STATUS, JS_RESOLVERS, JS_TASK_STATUS},
     jxa::{escape_for_jxa, JxaRunner},
 };
 
@@ -178,14 +178,12 @@ pub async fn create_tag<R: JxaRunner>(
         .map(|value| escape_for_jxa(value.trim()))
         .unwrap_or_else(|| "null".to_string());
     let script = format!(
-        r#"const tagName = {tag_name};
+        r#"{JS_RESOLVERS}
+const tagName = {tag_name};
 const parentName = {parent_name};
 const tag = (() => {{
   if (parentName === null) return new Tag(tagName);
-  const parentTag = document.flattenedTags.byName(parentName);
-  if (!parentTag) {{
-    throw new Error(`Tag not found: ${{parentName}}`);
-  }}
+  const parentTag = resolveTag(parentName);
   return new Tag(tagName, parentTag.ending);
 }})();
 return {{ id: tag.id.primaryKey }};"#
@@ -231,15 +229,11 @@ pub async fn update_tag<R: JxaRunner>(
         .map(escape_for_jxa)
         .unwrap_or_else(|| "null".to_string());
     let script = format!(
-        r#"const tagFilter = {tag_filter};
+        r#"{JS_RESOLVERS}
+const tagFilter = {tag_filter};
 const newName = {new_name};
 const statusValue = {status_value};
-const tag = document.flattenedTags.find(
-  t => t.id.primaryKey === tagFilter || t.name === tagFilter
-);
-if (!tag) {{
-  throw new Error(`Tag not found: ${{tagFilter}}`);
-}}
+const tag = resolveTag(tagFilter);
 if (newName !== null) {{
   tag.name = newName;
 }}
@@ -284,14 +278,10 @@ pub async fn delete_tag<R: JxaRunner>(runner: &R, tag_name_or_id: &str) -> Resul
     }
     let tag_filter = escape_for_jxa(tag_name_or_id.trim());
     let script = format!(
-        r#"const tagFilter = {tag_filter};
+        r#"{JS_RESOLVERS}
+const tagFilter = {tag_filter};
 
-const tag = document.flattenedTags.find(
-  t => t.id.primaryKey === tagFilter || t.name === tagFilter
-);
-if (!tag) {{
-  throw new Error(`Tag not found: ${{tagFilter}}`);
-}}
+const tag = resolveTag(tagFilter);
 
 const tagId = tag.id.primaryKey;
 const tagName = tag.name;

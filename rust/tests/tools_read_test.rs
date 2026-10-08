@@ -1906,7 +1906,7 @@ async fn list_tags_sort_and_status_filter_are_in_script() {
 }
 
 #[tokio::test]
-async fn get_folder_script_normalizes_status_artifacts() {
+async fn get_folder_script_compares_folder_status_enum_members() {
     let fixture_examples = vec![
         "[object_tag.status:_active]",
         "status: active]",
@@ -1969,16 +1969,10 @@ async fn get_folder_script_normalizes_status_artifacts() {
         .lock()
         .expect("script capture lock should succeed")
         .clone();
-    assert!(script.contains("toLowerCase()"));
-    assert!(script.contains(r#".replace(/^\[object_/g, "")"#));
-    assert!(script.contains(r#".replace(/[\[\]{}()]/g, " ")"#));
-    assert!(script.contains(r#".replace(/status/g, " ")"#));
-    assert!(script.contains(r#".replace(/[:.=]/g, " ")"#));
-    assert!(script.contains(r#".replace(/[_-]/g, " ")"#));
-    assert!(script.contains(r#"/(^|\s)on\s*hold(\s|$)/.test(flattened)"#));
-    assert!(script.contains(r#"flattened.includes("onhold")"#));
-    assert!(script.contains(r#"if (flattened.includes("dropped")) return "dropped";"#));
-    assert!(script.contains(r#"if (flattened.includes("active")) return "active";"#));
+    assert!(script.contains(r#"if (status === Folder.Status.Active) return "active";"#));
+    assert!(script.contains(r#"if (status === Folder.Status.Dropped) return "dropped";"#));
+    assert!(script.contains(r#"return "unknown";"#));
+    assert!(!script.contains("toLowerCase()"));
 }
 
 #[tokio::test]

@@ -2,7 +2,7 @@ use serde_json::Value;
 
 use crate::{
     error::{OmniFocusError, Result},
-    js_helpers::{JS_PROJECT_STATUS, JS_RESOLVERS},
+    js_helpers::{JS_FOLDER_STATUS, JS_PROJECT_STATUS, JS_RESOLVERS},
     jxa::{escape_for_jxa, JxaRunner},
 };
 
@@ -87,6 +87,7 @@ pub async fn get_folder<R: JxaRunner>(runner: &R, folder_name_or_id: &str) -> Re
     let folder_filter = escape_for_jxa(folder_name_or_id.trim());
     let script = format!(
         r#"{JS_PROJECT_STATUS}
+{JS_FOLDER_STATUS}
 const folderFilter = {folder_filter};
 
 const folder = document.flattenedFolders.find(item => {{
@@ -96,26 +97,10 @@ if (!folder) {{
   throw new Error(`Folder not found: ${{folderFilter}}`);
 }}
 
-const normalizeStatus = (value) => {{
-  const raw = String(value || "").toLowerCase();
-  const flattened = raw
-    .replace(/^\[object_/g, "")
-    .replace(/[\[\]{{}}()]/g, " ")
-    .replace(/status/g, " ")
-    .replace(/[:.=]/g, " ")
-    .replace(/[_-]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-  if (flattened.includes("onhold") || /(^|\s)on\s*hold(\s|$)/.test(flattened)) return "on_hold";
-  if (flattened.includes("dropped")) return "dropped";
-  if (flattened.includes("active")) return "active";
-  return "active";
-}};
-
 return {{
   id: folder.id.primaryKey,
   name: folder.name,
-  status: normalizeStatus(folder.status),
+  status: normalizeFolderStatus(folder),
   parentName: folder.parent ? folder.parent.name : null,
   projects: folder.projects.map(project => {{
     return {{
@@ -176,7 +161,8 @@ pub async fn update_folder<R: JxaRunner>(
         .map(escape_for_jxa)
         .unwrap_or_else(|| "null".to_string());
     let script = format!(
-        r#"const folderFilter = {escaped_folder_filter};
+        r#"{JS_FOLDER_STATUS}
+const folderFilter = {escaped_folder_filter};
 const newName = {escaped_name};
 const statusValue = {escaped_status};
 
@@ -202,22 +188,6 @@ if (statusValue !== null) {{
   }}
   folder.status = targetStatus;
 }}
-
-const normalizeFolderStatus = (item) => {{
-  const rawStatus = String(item.status || "").toLowerCase();
-  const flattened = rawStatus
-    .replace(/^\[object_/g, "")
-    .replace(/[\[\]{{}}()]/g, " ")
-    .replace(/status/g, " ")
-    .replace(/[:.=]/g, " ")
-    .replace(/[_-]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-  if (flattened.includes("onhold") || /(^|\s)on\s*hold(\s|$)/.test(flattened)) return "on_hold";
-  if (flattened.includes("dropped")) return "dropped";
-  if (flattened.includes("active")) return "active";
-  return "active";
-}};
 
 return {{
   id: folder.id.primaryKey,

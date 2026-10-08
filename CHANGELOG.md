@@ -61,6 +61,16 @@ are marked **Breaking**. Upgrade steps:
   descriptions say that `project` and `parent` take an id or an exact name.
 
 ### Fixed
+- Tag-valued writes now resolve each supplied id or exact name before changing anything and fail
+  with `Tag not found: <value>` instead of silently skipping an unknown tag.
+- Folder status output now compares `Folder.Status` enum members directly and reports an
+  unrecognised value as `unknown` instead of `active`; `get_folder` still normalises its child
+  projects with the separate project-status helper.
+- `list_tasks`, `search_tasks` and `get_task_counts` now reject planned-date filters that an older,
+  unmigrated database cannot honour. Planned-date sorting fails for the same reason instead of
+  silently leaving the order unchanged.
+- `create_tasks_batch` now resolves and validates every entry's project, tags and dates before it
+  creates any task, and validation errors identify the failing entry's index.
 - Task summaries now report each task's real inbox and sequential-action-group state instead of
   silently defaulting both fields to `false`.
 - The `daily_review` prompt now excludes completed and otherwise non-remaining tasks from its

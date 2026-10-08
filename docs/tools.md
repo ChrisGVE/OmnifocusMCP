@@ -67,7 +67,7 @@ Some MCP clients send every argument as a string. The server accepts both forms:
 - `number` parameters accept `-3600` and `"-3600"`.
 - `boolean` parameters accept `true`/`false` and the strings `"true"`/`"false"` (any letter case).
   No other string (`"yes"`, `"1"`) is accepted.
-- `tags` accepts an array of tag names (`["Home", "Quick"]`) or one string holding a JSON array
+- `tags` accepts an array of tag ids or exact names (`["Home", "Quick"]`) or one string holding a JSON array
   (`"[\"Home\",\"Quick\"]"`).
 
 ### Dates
@@ -93,16 +93,17 @@ matches tasks due before local midnight at the start of 10 October. Bounds on `a
 
 ### Id-or-name values
 
-These parameters accept an OmniFocus id or an exact name: `project` and `folder` wherever they
-appear, `create_folder`'s `parent`, and the keys `project_id_or_name`, `project_ids_or_names`,
-`folder_name_or_id`, `folder_ids_or_names`, `tag_name_or_id` and `tag_ids_or_names`. If several
-objects share a name, the first match in OmniFocus order is used; pass the id to choose.
+These parameters accept an OmniFocus id or an exact name: `project`, `folder`, and tag references
+wherever they appear; `create_folder`'s and `create_tag`'s `parent`; and the keys
+`project_id_or_name`, `project_ids_or_names`, `folder_name_or_id`, `folder_ids_or_names`,
+`tag_name_or_id` and `tag_ids_or_names`. If several objects share a name, the first match in
+OmniFocus order is used; pass the id to choose.
 
 A value that matches nothing is an error (`Project not found: <value>`,
 `Folder not found: <value>`, `Tag not found: <value>`), never an empty result. The batch deletes
 are the exception: they report such an entry in their results and go on with the others.
 
-`create_tag`'s `parent` takes a name only, and `append_to_note`'s `object_id` an id only.
+`append_to_note`'s `object_id` takes an id only.
 
 ### Limits
 
@@ -165,7 +166,7 @@ and rich task results from `duplicate_task` and `update_task` also include the l
 | `completedBefore`, `completedAfter` | date | no | - | Completion date range. |
 | `added_before`, `added_after` | date | no | - | Creation date range. snake_case only. |
 | `changed_before`, `changed_after` | date | no | - | Last-modified date range (OmniFocus `modified`). snake_case only. |
-| `plannedBefore`, `plannedAfter` | date | no | - | Planned date range. Ignored on an OmniFocus version without planned dates. |
+| `plannedBefore`, `plannedAfter` | date | no | - | Planned date range. If the database does not support planned dates, a supplied bound fails instead of being ignored. |
 | `maxEstimatedMinutes` | integer | no | - | At least 0. Tasks with an estimate of at most this many minutes. Tasks without an estimate are excluded. |
 
 Tags are matched by name.
@@ -178,6 +179,9 @@ Tags are matched by name.
 | `sortBy` | string | no | - | `name`, `dueDate`, `deferDate`, `completionDate`, `estimatedMinutes`, `project`, `flagged`, `addedDate`, `changedDate`, `plannedDate`, or the aliases `added`, `modified`, `planned`. Case-sensitive. Tasks without a value sort last. Without `sortBy`, tasks keep OmniFocus order. |
 | `sortOrder` | string | no | `asc` | `asc` or `desc`. Aliases `ascending`, `descending`, any letter case. |
 | `limit` | integer | no | 100 | Maximum number of tasks returned. |
+
+On a database without planned-date support, `sortBy: "plannedDate"` and its `planned` alias fail
+instead of silently leaving tasks in OmniFocus order.
 
 `status` values (any letter case; `-` or a space may replace `_`):
 
@@ -279,7 +283,7 @@ Creates one task.
 | `note` | string | no | - | |
 | `dueDate`, `deferDate` | date | no | - | |
 | `flagged` | boolean | no | - | |
-| `tags` | array of strings | no | - | Names of existing tags. A name that matches no tag is skipped without an error. |
+| `tags` | array of strings | no | - | Ids or exact names of existing tags. An unknown value fails before the task is created. |
 | `estimatedMinutes` | integer | no | - | |
 
 Returns `{id, name}`.
@@ -292,8 +296,9 @@ Creates several tasks in one OmniFocus call.
 | --- | --- | --- | --- | --- |
 | `tasks` | array of objects | yes | - | At least one. Each object takes the keys of `create_task`, with `name` required. |
 
-Every project and every date in the batch is checked before the first task is created, so one bad
-entry creates nothing. Returns an array of `{id, name}`.
+Every project, tag and date in the batch is checked before the first task is created, so one bad
+entry creates nothing. The error identifies the entry, for example `tasks[2].project` or
+`tasks[2].tags[0]`. Returns an array of `{id, name}`.
 
 ### `create_subtask`
 
@@ -322,7 +327,7 @@ Changes only the fields you pass.
 | `note` | string | no | - | Replaces the whole note (see `append_to_note`). |
 | `dueDate`, `deferDate` | date | no | - | |
 | `flagged` | boolean | no | - | |
-| `tags` | array of strings | no | - | Replaces all tags. Unknown names are skipped. |
+| `tags` | array of strings | no | - | Replaces all tags. Every id or exact name must resolve before any field changes. |
 | `estimatedMinutes` | integer | no | - | |
 
 Omitting a field and passing `null` both leave it unchanged, so this tool cannot clear a date.
@@ -564,7 +569,7 @@ Changes only the fields you pass.
 | `note` | string | no | - | Replaces the whole note. |
 | `dueDate`, `deferDate` | date | no | - | |
 | `flagged` | boolean | no | - | |
-| `tags` | array of strings | no | - | Replaces all tags. Unknown names are skipped. |
+| `tags` | array of strings | no | - | Replaces all tags. Every id or exact name must resolve before any field changes. |
 | `sequential` | boolean | no | - | |
 | `completedByChildren` | boolean | no | - | |
 | `reviewInterval` | string | no | - | `"N unit"`, N a whole number of at least 1, unit `day(s)`, `week(s)`, `month(s)` or `year(s)` in any letter case, e.g. `"2 weeks"`. |
@@ -676,7 +681,7 @@ Creates one tag.
 | Key | Type | Required | Default | Notes |
 | --- | --- | --- | --- | --- |
 | `name` | string | yes | - | Not empty. |
-| `parent` | string | no | top level | Name of an existing tag; ids are not accepted. |
+| `parent` | string | no | top level | Id or exact name of an existing tag. |
 
 Returns `{id}`.
 
@@ -737,7 +742,8 @@ Reads one folder and its direct contents.
 | `folder_name_or_id` | string | yes | - | |
 
 Returns `{id, name, status, parentName, projects, subfolders}` with the folder's direct projects
-(`id`, `name`, `status`) and direct subfolders (`id`, `name`).
+(`id`, `name`, `status`) and direct subfolders (`id`, `name`). Folder status is `active`, `dropped`
+or `unknown`; an OmniFocus status the server does not recognise is never reported as active.
 
 ### `create_folder`
 

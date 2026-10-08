@@ -121,6 +121,83 @@ pub const JS_PROJECT_STATUS: &str = r#"function normalizeProjectStatus(project) 
 }
 "#;
 
+/// Folder status naming.
+///
+/// `folder.status` is a `Folder.Status` enum value, so its display text is not
+/// a stable API. Compare the value to the documented enum members directly:
+///
+/// | `Folder.Status` | reported as |
+/// | --------------- | ----------- |
+/// | `Active`        | `"active"`  |
+/// | `Dropped`       | `"dropped"` |
+/// | anything else   | `"unknown"` |
+///
+/// The fallback is deliberately `"unknown"`: an unfamiliar status must not
+/// be silently presented as active.
+///
+/// Defined function: `normalizeFolderStatus(folder)`.
+pub const JS_FOLDER_STATUS: &str = r#"function normalizeFolderStatus(folder) {
+  const status = folder.status;
+  if (status === Folder.Status.Active) return "active";
+  if (status === Folder.Status.Dropped) return "dropped";
+  return "unknown";
+}
+"#;
+
+/// Planned-date capability detection and request validation.
+///
+/// Older OmniFocus databases throw when `task.plannedDate` is read. Read tools
+/// may still return `null` planned dates when no planned-date filter or sort
+/// was requested, but a request that depends on the field must fail instead
+/// of silently returning unfiltered or unsorted data.
+///
+/// Defined functions:
+/// - `detectPlannedDateSupport(tasks)`: probes the first task; an empty
+///   database is treated as supported because there is no object to probe.
+/// - `requirePlannedDateSupport(...)`: names every requested planned-date
+///   filter or sort in the error.
+/// - `readPlannedDate(task, supportsPlannedDate)`: safely reads the value or
+///   returns `null` for compatibility when the capability is absent.
+pub const JS_PLANNED_DATE: &str = r#"function detectPlannedDateSupport(tasks) {
+  try {
+    const sampleTask = tasks[0];
+    if (!sampleTask) return true;
+    void sampleTask.plannedDate;
+    return true;
+  } catch (error) {
+    return false;
+  }
+}
+function requirePlannedDateSupport(
+  supportsPlannedDate,
+  plannedBeforeRaw,
+  plannedAfterRaw,
+  sortBy
+) {
+  if (supportsPlannedDate) return;
+  const requestedParameters = [];
+  if (plannedBeforeRaw !== null) requestedParameters.push("plannedBefore");
+  if (plannedAfterRaw !== null) requestedParameters.push("plannedAfter");
+  if (sortBy === "plannedDate" || sortBy === "planned") requestedParameters.push("sortBy");
+  if (requestedParameters.length === 0) return;
+  const verb = requestedParameters.length === 1 ? " requires" : " require";
+  throw new Error(
+    requestedParameters.join("/")
+      + verb
+      + " an OmniFocus database migrated to support planned dates"
+  );
+}
+function readPlannedDate(task, supportsPlannedDate) {
+  if (!supportsPlannedDate) return null;
+  try {
+    const value = task.plannedDate;
+    return value === undefined ? null : value;
+  } catch (error) {
+    return null;
+  }
+}
+"#;
+
 /// Task classification and project availability.
 ///
 /// `task.completed` alone is not enough. OmniFocus documents that a task "may
@@ -247,17 +324,17 @@ function updatedReviewInterval(project, requested) {
 }
 "#;
 
-/// Folder and project resolution for tool parameters (upstream #11).
+/// Folder, project and tag resolution for tool parameters (upstream #11).
 ///
-/// A `folder` or `project` parameter may be an id or an exact name. The id
-/// is tried first, through the documented `Folder.byIdentifier` /
-/// `Project.byIdentifier`, then the first exact name match. When neither
-/// matches, the call fails with `"Folder not found: <value>"` or
-/// `"Project not found: <value>"` — a filter given a value that matches
-/// nothing must say so, not quietly return an empty result.
+/// A `folder`, `project` or tag-valued parameter may be an id or an exact
+/// name. The id is tried first, through the documented `byIdentifier`
+/// function for its kind, then the first exact name match. When neither
+/// matches, the call fails with `"<Kind> not found: <value>"` — a supplied
+/// value that matches nothing must say so, not quietly do nothing.
 ///
-/// Defined functions: `resolveFolder(value)`, `resolveProject(value)`. Each
-/// expects a non-null value; callers handle an absent parameter themselves.
+/// Defined functions: `resolveFolder(value)`, `resolveProject(value)`,
+/// `resolveTag(value)`. Each expects a non-null value; callers handle an
+/// absent parameter themselves.
 pub const JS_RESOLVERS: &str = r#"function resolveFolder(value) {
   const folder = Folder.byIdentifier(value) || document.flattenedFolders.byName(value);
   if (!folder) throw new Error("Folder not found: " + value);
@@ -267,5 +344,10 @@ function resolveProject(value) {
   const project = Project.byIdentifier(value) || document.flattenedProjects.byName(value);
   if (!project) throw new Error("Project not found: " + value);
   return project;
+}
+function resolveTag(value) {
+  const tag = Tag.byIdentifier(value) || document.flattenedTags.byName(value);
+  if (!tag) throw new Error("Tag not found: " + value);
+  return tag;
 }
 "#;
