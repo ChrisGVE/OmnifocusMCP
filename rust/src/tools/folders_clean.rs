@@ -4,6 +4,7 @@ use crate::{
     error::{OmniFocusError, Result},
     js_helpers::{JS_FOLDER_STATUS, JS_PROJECT_STATUS, JS_RESOLVERS},
     jxa::{escape_for_jxa, JxaRunner},
+    tools::batch_delete::{normalize_ids_or_names, BATCH_DELETE_SUMMARY},
 };
 
 pub async fn list_folders<R: JxaRunner>(runner: &R, limit: i32) -> Result<Value> {
@@ -238,178 +239,153 @@ pub async fn delete_folders_batch<R: JxaRunner>(
     runner: &R,
     folder_ids_or_names: Vec<String>,
 ) -> Result<Value> {
-    if folder_ids_or_names.is_empty() {
-        return Err(OmniFocusError::Validation(
-            "folder_ids_or_names must contain at least one folder id or name.".to_string(),
-        ));
-    }
-
-    let mut normalized_folder_ids_or_names: Vec<String> =
-        Vec::with_capacity(folder_ids_or_names.len());
-    let mut seen_folder_ids_or_names: std::collections::HashSet<String> =
-        std::collections::HashSet::new();
-    for folder_id_or_name in folder_ids_or_names {
-        let normalized_folder_id_or_name = folder_id_or_name.trim();
-        if normalized_folder_id_or_name.is_empty() {
-            return Err(OmniFocusError::Validation(
-                "each folder id or name must be a non-empty string.".to_string(),
-            ));
-        }
-        if seen_folder_ids_or_names.contains(normalized_folder_id_or_name) {
-            return Err(OmniFocusError::Validation(format!(
-                "folder_ids_or_names must not contain duplicates: {normalized_folder_id_or_name}"
-            )));
-        }
-        seen_folder_ids_or_names.insert(normalized_folder_id_or_name.to_string());
-        normalized_folder_ids_or_names.push(normalized_folder_id_or_name.to_string());
-    }
+    let normalized_folder_ids_or_names = normalize_ids_or_names("folder", folder_ids_or_names)?;
 
     let folder_ids_or_names_value = serde_json::to_string(&normalized_folder_ids_or_names)?;
     let script = format!(
         r#"const folderIdsOrNames = {folder_ids_or_names_value};
 const requests = folderIdsOrNames.map((idOrName, index) => ({{ idOrName, index }}));
-const folders = document.flattenedFolders
-  .map(item => {{
-    try {{
-      return {{
+{FOLDER_LOOKUP}
+
+{DELETE_FOLDERS_DEEPEST_FIRST}
+
+{BATCH_DELETE_SUMMARY}"#
+    );
+    runner.run_omnijs(&script).await
+}
+
+/// Snapshots every folder's id, name and parent and defines lookups over
+/// it: by id or name, by depth in the folder tree, and back to the live
+/// folder.
+const FOLDER_LOOKUP: &str = r#"const folders = document.flattenedFolders
+  .map(item => {
+    try {
+      return {
         id: item.id.primaryKey,
         name: item.name,
         parentId: item.parent ? item.parent.id.primaryKey : null
-      }};
-    }} catch (e) {{
+      };
+    } catch (e) {
       return null;
-    }}
-  }})
+    }
+  })
   .filter(item => item !== null);
 const foldersById = new Map(folders.map(folder => [folder.id, folder]));
 
-const resolveFolder = (idOrName) => {{
+const resolveFolder = (idOrName) => {
   const byId = foldersById.get(idOrName);
   if (byId) return byId;
   return folders.find(folder => folder.name === idOrName);
-}};
+};
 
 const depthCache = new Map();
-const getDepth = (folderId, stack = new Set()) => {{
+const getDepth = (folderId, stack = new Set()) => {
   if (depthCache.has(folderId)) return depthCache.get(folderId);
   if (stack.has(folderId)) return 0;
   stack.add(folderId);
   const folder = foldersById.get(folderId);
   let depth = 0;
-  if (folder && folder.parentId && foldersById.has(folder.parentId)) {{
+  if (folder && folder.parentId && foldersById.has(folder.parentId)) {
     depth = getDepth(folder.parentId, stack) + 1;
-  }}
+  }
   stack.delete(folderId);
   depthCache.set(folderId, depth);
   return depth;
-}};
+};
 
-const existsFolderById = (folderId) => {{
-  return document.flattenedFolders.some(folder => {{
-    try {{
+const existsFolderById = (folderId) => {
+  return document.flattenedFolders.some(folder => {
+    try {
       return folder.id.primaryKey === folderId;
-    }} catch (e) {{
+    } catch (e) {
       return false;
-    }}
-  }});
-}};
+    }
+  });
+};
 
-const getLiveFolderById = (folderId) => {{
-  return document.flattenedFolders.find(folder => {{
-    try {{
+const getLiveFolderById = (folderId) => {
+  return document.flattenedFolders.find(folder => {
+    try {
       return folder.id.primaryKey === folderId;
-    }} catch (e) {{
+    } catch (e) {
       return false;
-    }}
-  }});
-}};
+    }
+  });
+};"#;
 
-const results = new Array(requests.length);
+/// Deletes the resolved folders deepest first, so a subfolder is never
+/// deleted with its parent before its own turn, and records one result per
+/// request.
+const DELETE_FOLDERS_DEEPEST_FIRST: &str = r#"const results = new Array(requests.length);
 const unresolved = [];
 const resolved = [];
 
-requests.forEach(request => {{
+requests.forEach(request => {
   const folder = resolveFolder(request.idOrName);
-  if (!folder) {{
+  if (!folder) {
     unresolved.push(request);
     return;
-  }}
-  resolved.push({{
+  }
+  resolved.push({
     ...request,
     folder,
     depth: getDepth(folder.id)
-  }});
-}});
+  });
+});
 
 resolved
   .sort((left, right) => right.depth - left.depth || left.index - right.index)
-  .forEach(request => {{
+  .forEach(request => {
     const resolvedId = request.folder.id;
     const resolvedName = request.folder.name;
     const liveFolder = getLiveFolderById(resolvedId);
-    if (!liveFolder) {{
-      results[request.index] = {{
+    if (!liveFolder) {
+      results[request.index] = {
         id_or_name: request.idOrName,
         id: resolvedId,
         name: resolvedName,
         deleted: true,
         error: null
-      }};
+      };
       return;
-    }}
-    try {{
+    }
+    try {
       deleteObject(liveFolder);
-      results[request.index] = {{
+      results[request.index] = {
         id_or_name: request.idOrName,
         id: resolvedId,
         name: resolvedName,
         deleted: true,
         error: null
-      }};
-    }} catch (e) {{
-      if (!existsFolderById(resolvedId)) {{
-        results[request.index] = {{
+      };
+    } catch (e) {
+      if (!existsFolderById(resolvedId)) {
+        results[request.index] = {
           id_or_name: request.idOrName,
           id: resolvedId,
           name: resolvedName,
           deleted: true,
           error: null
-        }};
+        };
         return;
-      }}
+      }
       const errorMessage = e && e.message ? String(e.message) : String(e);
-      results[request.index] = {{
+      results[request.index] = {
         id_or_name: request.idOrName,
         id: resolvedId,
         name: resolvedName,
         deleted: false,
         error: errorMessage
-      }};
-    }}
-  }});
+      };
+    }
+  });
 
-unresolved.forEach(request => {{
-  results[request.index] = {{
+unresolved.forEach(request => {
+  results[request.index] = {
     id_or_name: request.idOrName,
     id: null,
     name: null,
     deleted: false,
     error: "not found"
-  }};
-}});
-
-const deletedCount = results.filter(result => result.deleted).length;
-const failedCount = results.length - deletedCount;
-
-return {{
-  summary: {{
-    requested: results.length,
-    deleted: deletedCount,
-    failed: failedCount
-  }},
-  partial_success: deletedCount > 0 && failedCount > 0,
-  results: results
-}};"#
-    );
-    runner.run_omnijs(&script).await
-}
+  };
+});"#;

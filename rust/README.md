@@ -37,14 +37,19 @@ rust/
   src/
     main.rs             # entry point: --version/--help, stdio transport
     lib.rs              # declares the modules below
-    server.rs           # parameter structs, tool/prompt/resource registration, MCP instructions
+    params/             # MCP parameter structs, one file per tool area (tasks, projects,
+                        #   tags and folders); re-exported from server
+    server/             # OmniFocusServer: mod.rs holds the handler, prompts, resources and
+                        #   MCP instructions and adds up one tool router per area file
+                        #   (task_read_tools, task_write_tools, notification_tools,
+                        #   project_tools, tag_tools, folder_tools, view_tools)
     jxa.rs              # osascript runner (30 s timeout, one call at a time), escape_for_jxa,
                         #   error messages
-    error.rs            # OmniFocusError, the error type of every tool; server.rs reports
+    error.rs            # OmniFocusError, the error type of every tool; the server reports
                         #   Validation as invalid_params and every other kind as internal_error
     types.rs            # result structs (task summaries, counts)
-    js_helpers.rs       # shared Omni Automation snippets: dates, project status, review
-                        #   intervals, folder/project resolution
+    js_helpers.rs       # shared Omni Automation snippets: dates, planned dates, project and
+                        #   folder status, task status, review intervals, id-or-name resolution
     lenient_scalars.rs  # integer/number/boolean parameters that also accept strings
     flexible_tags.rs    # `tags` as an array or a JSON-array string
     review_interval.rs  # parses "N unit" review intervals
@@ -52,14 +57,18 @@ rust/
     prompts.rs          # daily_review, weekly_review, inbox_processing, project_planning
     tools/
       mod.rs            # declares the tool modules; folders_clean.rs is the module `folders`
-      tasks.rs          # task tools
-      utility.rs        # uncomplete_task and append_to_note as registered by the server
+      tasks/            # task tools, one file per group: list, search, counts, reads,
+                        #   create, update, lifecycle, moves, batch, notifications; the
+                        #   shared list/search script lives in listing_script.rs and filters.rs
+      projects/         # project tools: list, reads, writes, lifecycle
+      utility.rs        # uncomplete_task and append_to_note
                         #   (the server and examples/smoke_test.rs both use these)
-      projects.rs       # project tools
       tags.rs           # tag tools
       folders_clean.rs  # folder tools
       forecast.rs       # get_forecast
       perspectives.rs   # list_perspectives
+      batch_delete.rs   # id/name validation and summary shared by the batch deletes
+      js_values.rs      # Rust values as JavaScript literals
   tests/                # none contacts OmniFocus except where marked LIVE
     common/mod.rs                      # runs snippets in the macOS `jsc` shell
     jxa_test.rs                        # escaping, error messages, reply unwrapping
@@ -79,6 +88,12 @@ rust/
     server_info_test.rs                # server name and version sent in `initialize`
     task_counts_planned_test.rs        # planned-date filters of get_task_counts
     tool_descriptions_test.rs          # tool descriptions state the date and id-or-name rules
+    task_status_helpers_test.rs        # remaining/available/completed/stalled in JavaScriptCore
+    task_status_tools_test.rs          # which tools use the task status helpers
+    folder_status_test.rs              # folder status naming
+    tag_resolution_test.rs             # unknown tag names fail on writes
+    planned_date_support_test.rs       # planned-date filters on unmigrated databases
+    planned_date_write_test.rs         # plannedDate on the write tools
     integration_test.rs                # LIVE database; needs --features integration and
                                        #   OMNIFOCUS_INTEGRATION=1
   examples/
