@@ -158,6 +158,13 @@ pub const JS_FOLDER_STATUS: &str = r#"function normalizeFolderStatus(folder) {
 ///   filter or sort in the error.
 /// - `readPlannedDate(task, supportsPlannedDate)`: safely reads the value or
 ///   returns `null` for compatibility when the capability is absent.
+/// - `setPlannedDate(task, value)`: writes `value` (a `Date`, never `null`) to
+///   `task.plannedDate`. On a database that has not been migrated for planned
+///   dates the assignment throws, and this turns that throw into the same
+///   migration error the read tools raise, so a caller can fail a write with
+///   one consistent message. Callers perform the support check (and the
+///   "before changing anything" guard) themselves, before creating or
+///   mutating anything, using `detectPlannedDateSupport`.
 pub const JS_PLANNED_DATE: &str = r#"function detectPlannedDateSupport(tasks) {
   try {
     const sampleTask = tasks[0];
@@ -194,6 +201,13 @@ function readPlannedDate(task, supportsPlannedDate) {
     return value === undefined ? null : value;
   } catch (error) {
     return null;
+  }
+}
+function setPlannedDate(task, value) {
+  try {
+    task.plannedDate = value;
+  } catch (error) {
+    throw new Error("plannedDate requires an OmniFocus database migrated to support planned dates");
   }
 }
 "#;

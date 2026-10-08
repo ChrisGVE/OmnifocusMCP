@@ -10,6 +10,47 @@ issue numbers in them, and every "upstream #N" below, refer to that project's tr
 
 ## [Unreleased]
 
+### Added
+- `create_task`, `create_subtask`, `create_tasks_batch` and `update_task` accept an optional
+  `plannedDate`, written the same way as `dueDate` and `deferDate` (a bare `YYYY-MM-DD` becomes
+  that local day at the default planned time; the server uses 09:00 when it cannot read the
+  setting). Writing a `plannedDate` on a database that has not been migrated for planned dates
+  fails with `plannedDate requires an OmniFocus database migrated to support planned dates` before
+  anything changes; when the parameter is absent the property is never written. The tasks these
+  tools return now include `plannedDate` (ISO string or `null`).
+
+### Fixed
+- `create_project` and `create_tag` return the same object shape as `get_project` and a `list_tags`
+  tag respectively, instead of only an id.
+- Removed the duplicate `uncomplete_task` and `append_to_note` from `rust/src/tools/tasks.rs`; the
+  server and the `smoke_test` example now use the single copies in `rust/src/tools/utility.rs`.
+- Tag-valued writes now resolve each supplied id or exact name before changing anything and fail
+  with `Tag not found: <value>` instead of silently skipping an unknown tag.
+- Folder status output now compares `Folder.Status` enum members directly and reports an
+  unrecognised value as `unknown` instead of `active`; `get_folder` still normalises its child
+  projects with the separate project-status helper.
+- `list_tasks`, `search_tasks` and `get_task_counts` now reject planned-date filters that an older,
+  unmigrated database cannot honour. Planned-date sorting fails for the same reason instead of
+  silently leaving the order unchanged.
+- `create_tasks_batch` now resolves and validates every entry's project, tags and dates before it
+  creates any task, and validation errors identify the failing entry's index.
+- Task summaries now report each task's real inbox and sequential-action-group state instead of
+  silently defaulting both fields to `false`.
+- The `daily_review` prompt now excludes completed and otherwise non-remaining tasks from its
+  flagged-task section.
+- The `delete_tag` tool description now explains the non-destructive alternative and requires
+  explicit user confirmation before deletion.
+- Unrecognised `osascript` failures now carry one `JXA execution failed:` prefix instead of two.
+- Task status filters and open-task counts now use OmniFocus's effective state: `available`
+  excludes blocked, future-deferred and on-hold work, while `overdue`, `due_soon`, forecast and
+  remaining counts exclude completed and dropped tasks and tasks in completed or dropped projects.
+- Project root tasks exposed by `document.flattenedTasks` are no longer returned, found by task id,
+  or included in task, project, tag and forecast counts.
+- Active single-action lists are reported as stalled only when they have remaining tasks but none
+  is available; their always-null `nextTask` no longer makes every such list stalled.
+- Completed task counts include tasks completed through a containing task or completed project,
+  while dropped tasks and tasks in dropped projects remain excluded.
+
 ## [2.0.0] - 2026-10-07
 
 This is a major release because existing calls can now fail or behave differently. Those changes
@@ -61,32 +102,6 @@ are marked **Breaking**. Upgrade steps:
   descriptions say that `project` and `parent` take an id or an exact name.
 
 ### Fixed
-- Tag-valued writes now resolve each supplied id or exact name before changing anything and fail
-  with `Tag not found: <value>` instead of silently skipping an unknown tag.
-- Folder status output now compares `Folder.Status` enum members directly and reports an
-  unrecognised value as `unknown` instead of `active`; `get_folder` still normalises its child
-  projects with the separate project-status helper.
-- `list_tasks`, `search_tasks` and `get_task_counts` now reject planned-date filters that an older,
-  unmigrated database cannot honour. Planned-date sorting fails for the same reason instead of
-  silently leaving the order unchanged.
-- `create_tasks_batch` now resolves and validates every entry's project, tags and dates before it
-  creates any task, and validation errors identify the failing entry's index.
-- Task summaries now report each task's real inbox and sequential-action-group state instead of
-  silently defaulting both fields to `false`.
-- The `daily_review` prompt now excludes completed and otherwise non-remaining tasks from its
-  flagged-task section.
-- The `delete_tag` tool description now explains the non-destructive alternative and requires
-  explicit user confirmation before deletion.
-- Unrecognised `osascript` failures now carry one `JXA execution failed:` prefix instead of two.
-- Task status filters and open-task counts now use OmniFocus's effective state: `available`
-  excludes blocked, future-deferred and on-hold work, while `overdue`, `due_soon`, forecast and
-  remaining counts exclude completed and dropped tasks and tasks in completed or dropped projects.
-- Project root tasks exposed by `document.flattenedTasks` are no longer returned, found by task id,
-  or included in task, project, tag and forecast counts.
-- Active single-action lists are reported as stalled only when they have remaining tasks but none
-  is available; their always-null `nextTask` no longer makes every such list stalled.
-- Completed task counts include tasks completed through a containing task or completed project,
-  while dropped tasks and tasks in dropped projects remain excluded.
 - Integer, number and boolean parameters accept their string encoding (`"30"`, `"true"`), as sent
   by MCP clients that serialize every argument as a string. Integral floats (`30.0`) are accepted
   for integers. The advertised schema is unchanged.

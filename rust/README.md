@@ -54,7 +54,7 @@ rust/
       mod.rs            # declares the tool modules; folders_clean.rs is the module `folders`
       tasks.rs          # task tools
       utility.rs        # uncomplete_task and append_to_note as registered by the server
-                        #   (tasks.rs holds identical copies, used by examples/smoke_test.rs)
+                        #   (the server and examples/smoke_test.rs both use these)
       projects.rs       # project tools
       tags.rs           # tag tools
       folders_clean.rs  # folder tools

@@ -46,10 +46,9 @@ use crate::{
             delete_task, delete_tasks_batch, duplicate_task, get_inbox, get_task,
             get_task_counts_with_added_changed, list_notifications, list_subtasks,
             list_tasks_with_added_changed, move_task, move_tasks_batch, remove_notification,
-            search_tasks_with_added_changed, set_task_repetition, uncomplete_task, update_task,
-            CreateTaskInput,
+            search_tasks_with_added_changed, set_task_repetition, update_task, CreateTaskInput,
         },
-        utility::append_to_note as append_to_note_tool,
+        utility::{append_to_note as append_to_note_tool, uncomplete_task},
     },
 };
 
@@ -242,6 +241,8 @@ pub struct CreateTaskParams {
     pub due_date: Option<String>,
     #[serde(rename = "deferDate", alias = "defer_date")]
     pub defer_date: Option<String>,
+    #[serde(rename = "plannedDate", alias = "planned_date")]
+    pub planned_date: Option<String>,
     pub flagged: Option<LenientBool>,
     pub tags: Option<FlexibleTagList>,
     #[serde(rename = "estimatedMinutes", alias = "estimated_minutes")]
@@ -258,6 +259,8 @@ pub struct CreateSubtaskParams {
     due_date: Option<String>,
     #[serde(rename = "deferDate", alias = "defer_date")]
     defer_date: Option<String>,
+    #[serde(rename = "plannedDate", alias = "planned_date")]
+    planned_date: Option<String>,
     flagged: Option<LenientBool>,
     tags: Option<FlexibleTagList>,
     #[serde(rename = "estimatedMinutes", alias = "estimated_minutes")]
@@ -283,6 +286,8 @@ pub struct BatchCreateTaskInput {
     pub due_date: Option<String>,
     #[serde(rename = "deferDate", alias = "defer_date")]
     pub defer_date: Option<String>,
+    #[serde(rename = "plannedDate", alias = "planned_date")]
+    pub planned_date: Option<String>,
     pub flagged: Option<LenientBool>,
     pub tags: Option<FlexibleTagList>,
     #[serde(rename = "estimatedMinutes", alias = "estimated_minutes")]
@@ -299,6 +304,8 @@ pub struct UpdateTaskParams {
     pub due_date: Option<String>,
     #[serde(rename = "deferDate", alias = "defer_date")]
     pub defer_date: Option<String>,
+    #[serde(rename = "plannedDate", alias = "planned_date")]
+    pub planned_date: Option<String>,
     pub flagged: Option<LenientBool>,
     pub tags: Option<FlexibleTagList>,
     #[serde(rename = "estimatedMinutes", alias = "estimated_minutes")]
@@ -814,7 +821,7 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
     }
 
     #[tool(
-        description = "create one task in inbox or a project (id or exact name). accepts name plus optional note, dates, flagged, tags, and estimated minutes. dates take YYYY-MM-DD or an ISO 8601 date-time; a bare date gets your omnifocus default time for that field. returns created task id/name."
+        description = "create one task in inbox or a project (id or exact name). accepts name plus optional note, dates, flagged, tags, and estimated minutes. dates take YYYY-MM-DD or an ISO 8601 date-time; a bare date gets your omnifocus default time for that field. returns the created task (id, name, plannedDate)."
     )]
     async fn create_task(
         &self,
@@ -827,6 +834,7 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
             params.note.as_deref(),
             params.due_date.as_deref(),
             params.defer_date.as_deref(),
+            params.planned_date.as_deref(),
             params.flagged.map(bool::from),
             tags_as_opt_vec(params.tags),
             params.estimated_minutes.map(i32::from),
@@ -837,7 +845,7 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
     }
 
     #[tool(
-        description = "create multiple tasks in a single omnijs call. each item accepts the same fields as create_task; returns created task ids and names."
+        description = "create multiple tasks in a single omnijs call. each item accepts the same fields as create_task; returns the created tasks (id, name, plannedDate)."
     )]
     async fn create_tasks_batch(
         &self,
@@ -852,6 +860,7 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
                 note: task.note,
                 due_date: task.due_date,
                 defer_date: task.defer_date,
+                planned_date: task.planned_date,
                 flagged: task.flagged.map(bool::from),
                 tags: tags_as_opt_vec(task.tags),
                 estimated_minutes: task.estimated_minutes.map(i32::from),
@@ -864,7 +873,7 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
     }
 
     #[tool(
-        description = "create a subtask under an existing parent task id. supports optional note, dates, flagged, tags, and estimatedMinutes. dates take YYYY-MM-DD or an ISO 8601 date-time; a bare date gets your omnifocus default time for that field. returns child and parent references."
+        description = "create a subtask under an existing parent task id. supports optional note, dates, flagged, tags, and estimatedMinutes. dates take YYYY-MM-DD or an ISO 8601 date-time; a bare date gets your omnifocus default time for that field. returns the created task plus parent references."
     )]
     async fn create_subtask(
         &self,
@@ -877,6 +886,7 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
             params.note.as_deref(),
             params.due_date.as_deref(),
             params.defer_date.as_deref(),
+            params.planned_date.as_deref(),
             params.flagged.map(bool::from),
             tags_as_opt_vec(params.tags),
             params.estimated_minutes.map(i32::from),
@@ -931,7 +941,7 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
     }
 
     #[tool(
-        description = "update an existing task by id, modifying only provided fields. supports name, note, due/defer dates, flagged, tags replacement, and estimatedMinutes. dates take YYYY-MM-DD or an ISO 8601 date-time; a bare date gets your omnifocus default time for that field."
+        description = "update an existing task by id, modifying only provided fields. supports name, note, due/defer/planned dates, flagged, tags replacement, and estimatedMinutes. dates take YYYY-MM-DD or an ISO 8601 date-time; a bare date gets your omnifocus default time for that field."
     )]
     async fn update_task(
         &self,
@@ -944,6 +954,7 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
             params.note.as_deref(),
             params.due_date.as_deref(),
             params.defer_date.as_deref(),
+            params.planned_date.as_deref(),
             params.flagged.map(bool::from),
             tags_as_opt_vec(params.tags),
             params.estimated_minutes.map(i32::from),
@@ -1100,7 +1111,7 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
     }
 
     #[tool(
-        description = "create a project with optional folder (id or exact name), note, due/defer dates, and sequential mode. dates take YYYY-MM-DD or an ISO 8601 date-time; a bare date gets your omnifocus default time for that field. returns created project id/name."
+        description = "create a project with optional folder (id or exact name), note, due/defer dates, and sequential mode. dates take YYYY-MM-DD or an ISO 8601 date-time; a bare date gets your omnifocus default time for that field. returns the created project with the same fields as get_project."
     )]
     async fn create_project(
         &self,
@@ -1268,7 +1279,7 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
     }
 
     #[tool(
-        description = "create a tag with optional parent tag name and return created id/name/parent."
+        description = "create a tag with optional parent tag name; returns the created tag (id, name, parent, availableTaskCount, totalTaskCount, status)."
     )]
     async fn create_tag(
         &self,

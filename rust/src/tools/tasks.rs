@@ -1651,6 +1651,8 @@ pub struct CreateTaskInput {
     pub due_date: Option<String>,
     #[serde(rename = "deferDate")]
     pub defer_date: Option<String>,
+    #[serde(rename = "plannedDate")]
+    pub planned_date: Option<String>,
     pub flagged: Option<bool>,
     pub tags: Option<Vec<String>>,
     #[serde(rename = "estimatedMinutes")]
@@ -1665,6 +1667,7 @@ pub async fn create_task<R: JxaRunner>(
     note: Option<&str>,
     due_date: Option<&str>,
     defer_date: Option<&str>,
+    planned_date: Option<&str>,
     flagged: Option<bool>,
     tags: Option<Vec<String>>,
     estimated_minutes: Option<i32>,
@@ -1695,6 +1698,9 @@ pub async fn create_task<R: JxaRunner>(
     let defer_date_value = defer_date
         .map(escape_for_jxa)
         .unwrap_or_else(|| "null".to_string());
+    let planned_date_value = planned_date
+        .map(escape_for_jxa)
+        .unwrap_or_else(|| "null".to_string());
     let flagged_value = flagged
         .map(|value| {
             if value {
@@ -1715,18 +1721,26 @@ pub async fn create_task<R: JxaRunner>(
 
     let script = format!(
         r#"{JS_DATE_HELPERS}
+{JS_PLANNED_DATE}
 {JS_RESOLVERS}
 const taskName = {task_name};
 const projectName = {project_name};
 const noteValue = {note_value};
 const dueDateValue = {due_date_value};
 const deferDateValue = {defer_date_value};
+const plannedDateValue = {planned_date_value};
 const flaggedValue = {flagged_value};
 const tagNames = {tags_value};
 const estimatedMinutesValue = {estimated_minutes_value};
+const supportsPlannedDate = detectPlannedDateSupport(document.flattenedTasks);
 const parsedDueDate = dueDateValue === null ? null : parseWriteDate(dueDateValue, "dueDate", "DefaultDueTime", "17:00");
 const parsedDeferDate = deferDateValue === null ? null : parseWriteDate(deferDateValue, "deferDate", "DefaultStartTime", "00:00");
+const parsedPlannedDate = plannedDateValue === null ? null : parseWriteDate(plannedDateValue, "plannedDate", "DefaultPlannedTime", "09:00");
 const resolvedTags = tagNames === null ? [] : tagNames.map(tagName => resolveTag(tagName));
+
+if (parsedPlannedDate !== null && !supportsPlannedDate) {{
+  throw new Error("plannedDate requires an OmniFocus database migrated to support planned dates");
+}}
 
 const parent = (() => {{
   if (projectName === null || projectName === "") return inbox.ending;
@@ -1739,14 +1753,17 @@ const task = new Task(taskName, parent);
 if (noteValue !== null) task.note = noteValue;
 if (parsedDueDate !== null) task.dueDate = parsedDueDate;
 if (parsedDeferDate !== null) task.deferDate = parsedDeferDate;
+if (parsedPlannedDate !== null) setPlannedDate(task, parsedPlannedDate);
 if (flaggedValue !== null) task.flagged = flaggedValue;
 if (estimatedMinutesValue !== null) task.estimatedMinutes = estimatedMinutesValue;
 
 resolvedTags.forEach(tag => task.addTag(tag));
 
+const plannedDate = readPlannedDate(task, supportsPlannedDate);
 return {{
   id: task.id.primaryKey,
-  name: task.name
+  name: task.name,
+  plannedDate: plannedDate ? plannedDate.toISOString() : null
 }};"#
     );
 
@@ -1761,6 +1778,7 @@ pub async fn create_subtask<R: JxaRunner>(
     note: Option<&str>,
     due_date: Option<&str>,
     defer_date: Option<&str>,
+    planned_date: Option<&str>,
     flagged: Option<bool>,
     tags: Option<Vec<String>>,
     estimated_minutes: Option<i32>,
@@ -1787,6 +1805,9 @@ pub async fn create_subtask<R: JxaRunner>(
     let defer_date_value = defer_date
         .map(escape_for_jxa)
         .unwrap_or_else(|| "null".to_string());
+    let planned_date_value = planned_date
+        .map(escape_for_jxa)
+        .unwrap_or_else(|| "null".to_string());
     let flagged_value = flagged
         .map(|value| {
             if value {
@@ -1807,6 +1828,7 @@ pub async fn create_subtask<R: JxaRunner>(
 
     let script = format!(
         r#"{JS_DATE_HELPERS}
+{JS_PLANNED_DATE}
 {JS_PROJECT_STATUS}
 {JS_TASK_STATUS}
 {JS_RESOLVERS}
@@ -1815,11 +1837,14 @@ const parentTaskId = {parent_task_id_value};
 const noteValue = {note_value};
 const dueDateValue = {due_date_value};
 const deferDateValue = {defer_date_value};
+const plannedDateValue = {planned_date_value};
 const flaggedValue = {flagged_value};
 const tagNames = {tags_value};
 const estimatedMinutesValue = {estimated_minutes_value};
+const supportsPlannedDate = detectPlannedDateSupport(document.flattenedTasks);
 const parsedDueDate = dueDateValue === null ? null : parseWriteDate(dueDateValue, "dueDate", "DefaultDueTime", "17:00");
 const parsedDeferDate = deferDateValue === null ? null : parseWriteDate(deferDateValue, "deferDate", "DefaultStartTime", "00:00");
+const parsedPlannedDate = plannedDateValue === null ? null : parseWriteDate(plannedDateValue, "plannedDate", "DefaultPlannedTime", "09:00");
 
 const parentTask = document.flattenedTasks.find(item => item.id.primaryKey === parentTaskId && !isProjectRootTask(item));
 if (!parentTask) {{
@@ -1827,21 +1852,28 @@ if (!parentTask) {{
 }}
 const resolvedTags = tagNames === null ? [] : tagNames.map(tagName => resolveTag(tagName));
 
+if (parsedPlannedDate !== null && !supportsPlannedDate) {{
+  throw new Error("plannedDate requires an OmniFocus database migrated to support planned dates");
+}}
+
 const task = new Task(taskName, parentTask.ending);
 
 if (noteValue !== null) task.note = noteValue;
 if (parsedDueDate !== null) task.dueDate = parsedDueDate;
 if (parsedDeferDate !== null) task.deferDate = parsedDeferDate;
+if (parsedPlannedDate !== null) setPlannedDate(task, parsedPlannedDate);
 if (flaggedValue !== null) task.flagged = flaggedValue;
 if (estimatedMinutesValue !== null) task.estimatedMinutes = estimatedMinutesValue;
 
 resolvedTags.forEach(tag => task.addTag(tag));
 
+const plannedDate = readPlannedDate(task, supportsPlannedDate);
 return {{
   id: task.id.primaryKey,
   name: task.name,
   parentTaskId: parentTask.id.primaryKey,
-  parentTaskName: parentTask.name
+  parentTaskName: parentTask.name,
+  plannedDate: plannedDate ? plannedDate.toISOString() : null
 }};"#
     );
 
@@ -1970,6 +2002,7 @@ pub async fn create_tasks_batch<R: JxaRunner>(
             note: task.note,
             due_date: task.due_date,
             defer_date: task.defer_date,
+            planned_date: task.planned_date,
             flagged: task.flagged,
             tags: task.tags,
             estimated_minutes: task.estimated_minutes,
@@ -1979,6 +2012,7 @@ pub async fn create_tasks_batch<R: JxaRunner>(
     let tasks_value = serde_json::to_string(&normalized)?;
     let script = format!(
         r#"{JS_DATE_HELPERS}
+{JS_PLANNED_DATE}
 {JS_RESOLVERS}
 const taskInputs = {tasks_value};
 
@@ -2009,6 +2043,8 @@ const resolvedTags = taskInputs.map((input, index) => {{
   }});
 }});
 
+const supportsPlannedDate = detectPlannedDateSupport(document.flattenedTasks);
+
 const isPresent = (value) => value !== null && value !== undefined;
 
 // Parse every date before creating any task, so one bad date cannot leave
@@ -2019,8 +2055,15 @@ const parsedDates = taskInputs.map((input, index) => ({{
     : null,
   deferDate: isPresent(input.deferDate)
     ? parseWriteDate(input.deferDate, "tasks[" + index + "].deferDate", "DefaultStartTime", "00:00")
+    : null,
+  plannedDate: isPresent(input.plannedDate)
+    ? parseWriteDate(input.plannedDate, "tasks[" + index + "].plannedDate", "DefaultPlannedTime", "09:00")
     : null
 }}));
+
+if (parsedDates.some(dates => dates.plannedDate !== null) && !supportsPlannedDate) {{
+  throw new Error("plannedDate requires an OmniFocus database migrated to support planned dates");
+}}
 
 const created = taskInputs.map((input, index) => {{
   const task = new Task(input.name, parents[index]);
@@ -2029,6 +2072,7 @@ const created = taskInputs.map((input, index) => {{
   if (input.note !== null && input.note !== undefined) task.note = input.note;
   if (dates.dueDate !== null) task.dueDate = dates.dueDate;
   if (dates.deferDate !== null) task.deferDate = dates.deferDate;
+  if (dates.plannedDate !== null) setPlannedDate(task, dates.plannedDate);
   if (input.flagged !== null && input.flagged !== undefined) task.flagged = input.flagged;
   if (input.estimatedMinutes !== null && input.estimatedMinutes !== undefined) {{
     task.estimatedMinutes = input.estimatedMinutes;
@@ -2036,9 +2080,11 @@ const created = taskInputs.map((input, index) => {{
 
   resolvedTags[index].forEach(tag => task.addTag(tag));
 
+  const plannedDate = readPlannedDate(task, supportsPlannedDate);
   return {{
     id: task.id.primaryKey,
-    name: task.name
+    name: task.name,
+    plannedDate: plannedDate ? plannedDate.toISOString() : null
   }};
 }});
 
@@ -2144,6 +2190,7 @@ pub async fn update_task<R: JxaRunner>(
     note: Option<&str>,
     due_date: Option<&str>,
     defer_date: Option<&str>,
+    planned_date: Option<&str>,
     flagged: Option<bool>,
     tags: Option<Vec<String>>,
     estimated_minutes: Option<i32>,
@@ -2174,6 +2221,9 @@ pub async fn update_task<R: JxaRunner>(
     if let Some(value) = defer_date {
         updates.insert("deferDate".to_string(), Value::String(value.to_string()));
     }
+    if let Some(value) = planned_date {
+        updates.insert("plannedDate".to_string(), Value::String(value.to_string()));
+    }
     if let Some(value) = flagged {
         updates.insert("flagged".to_string(), Value::Bool(value));
     }
@@ -2192,6 +2242,7 @@ pub async fn update_task<R: JxaRunner>(
 
     let script = format!(
         r#"{JS_DATE_HELPERS}
+{JS_PLANNED_DATE}
 {JS_PROJECT_STATUS}
 {JS_TASK_STATUS}
 {JS_RESOLVERS}
@@ -2203,14 +2254,21 @@ if (!task) {{
 }}
 
 const has = (key) => Object.prototype.hasOwnProperty.call(updates, key);
+const supportsPlannedDate = detectPlannedDateSupport(document.flattenedTasks);
 const parsedDueDate = has("dueDate") ? parseWriteDate(updates.dueDate, "dueDate", "DefaultDueTime", "17:00") : null;
 const parsedDeferDate = has("deferDate") ? parseWriteDate(updates.deferDate, "deferDate", "DefaultStartTime", "00:00") : null;
+const parsedPlannedDate = has("plannedDate") ? parseWriteDate(updates.plannedDate, "plannedDate", "DefaultPlannedTime", "09:00") : null;
 const resolvedTags = has("tags") ? updates.tags.map(tagName => resolveTag(tagName)) : null;
+
+if (parsedPlannedDate !== null && !supportsPlannedDate) {{
+  throw new Error("plannedDate requires an OmniFocus database migrated to support planned dates");
+}}
 
 if (has("name")) task.name = updates.name;
 if (has("note")) task.note = updates.note;
 if (has("dueDate")) task.dueDate = parsedDueDate;
 if (has("deferDate")) task.deferDate = parsedDeferDate;
+if (has("plannedDate")) setPlannedDate(task, parsedPlannedDate);
 if (has("flagged")) task.flagged = updates.flagged;
 if (has("estimatedMinutes")) task.estimatedMinutes = updates.estimatedMinutes;
 
@@ -2222,6 +2280,7 @@ if (has("tags")) {{
   resolvedTags.forEach(tag => task.addTag(tag));
 }}
 
+const plannedDate = readPlannedDate(task, supportsPlannedDate);
 return {{
   id: task.id.primaryKey,
   name: task.name,
@@ -2231,6 +2290,7 @@ return {{
   addedDate: task.added ? task.added.toISOString() : null,
   changedDate: task.modified ? task.modified.toISOString() : null,
   deferDate: task.deferDate ? task.deferDate.toISOString() : null,
+  plannedDate: plannedDate ? plannedDate.toISOString() : null,
   effectiveDueDate: task.effectiveDueDate ? task.effectiveDueDate.toISOString() : null,
   effectiveDeferDate: task.effectiveDeferDate ? task.effectiveDeferDate.toISOString() : null,
   effectiveFlagged: task.effectiveFlagged,
@@ -2612,95 +2672,6 @@ return {{
   failed_count: failedCount,
   partial_success: movedCount > 0 && failedCount > 0,
   results: results
-}};"#
-    );
-    runner.run_omnijs(&script).await
-}
-
-pub async fn uncomplete_task<R: JxaRunner>(runner: &R, task_id: &str) -> Result<Value> {
-    if task_id.trim().is_empty() {
-        return Err(OmniFocusError::Validation(
-            "task_id must not be empty.".to_string(),
-        ));
-    }
-    let task_id_value = escape_for_jxa(task_id.trim());
-    let script = format!(
-        r#"{JS_PROJECT_STATUS}
-{JS_TASK_STATUS}
-const taskId = {task_id_value};
-const task = document.flattenedTasks.find(item => item.id.primaryKey === taskId && !isProjectRootTask(item));
-if (!task) {{
-  throw new Error(`Task not found: ${{taskId}}`);
-}}
-if (!task.completed) {{
-  throw new Error(`Task is not completed: ${{taskId}}`);
-}}
-
-task.markIncomplete();
-
-return {{
-  id: task.id.primaryKey,
-  name: task.name,
-  completed: task.completed
-}};"#
-    );
-    runner.run_omnijs(&script).await
-}
-
-pub async fn append_to_note<R: JxaRunner>(
-    runner: &R,
-    object_type: &str,
-    object_id: &str,
-    text: &str,
-) -> Result<Value> {
-    if !matches!(object_type, "task" | "project") {
-        return Err(OmniFocusError::Validation(
-            "object_type must be one of: task, project.".to_string(),
-        ));
-    }
-    if object_id.trim().is_empty() {
-        return Err(OmniFocusError::Validation(
-            "object_id must not be empty.".to_string(),
-        ));
-    }
-    if text.trim().is_empty() {
-        return Err(OmniFocusError::Validation(
-            "text must not be empty.".to_string(),
-        ));
-    }
-
-    let object_type_value = escape_for_jxa(object_type);
-    let object_id_value = escape_for_jxa(object_id.trim());
-    let text_value = escape_for_jxa(text);
-    let script = format!(
-        r#"{JS_PROJECT_STATUS}
-{JS_TASK_STATUS}
-const objectType = {object_type_value};
-const objectId = {object_id_value};
-const textToAppend = {text_value};
-
-let obj;
-if (objectType === "task") {{
-  obj = document.flattenedTasks.find(item => item.id.primaryKey === objectId && !isProjectRootTask(item));
-  if (!obj) {{
-    throw new Error(`Task not found: ${{objectId}}`);
-  }}
-}} else if (objectType === "project") {{
-  obj = document.flattenedProjects.find(item => item.id.primaryKey === objectId);
-  if (!obj) {{
-    throw new Error(`Project not found: ${{objectId}}`);
-  }}
-}} else {{
-  throw new Error(`Invalid object_type: ${{objectType}}`);
-}}
-
-obj.appendStringToNote(textToAppend);
-
-return {{
-  id: obj.id.primaryKey,
-  name: obj.name,
-  type: objectType,
-  noteLength: obj.note.length
 }};"#
     );
     runner.run_omnijs(&script).await

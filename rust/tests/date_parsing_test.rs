@@ -128,7 +128,7 @@ const D: Option<&str> = Some("2026-07-12");
 #[tokio::test]
 async fn create_task_parses_dates_with_write_helper_before_creating() {
     let runner = CapturingRunner::new(json!({"id": "t1", "name": "x"}));
-    create_task(&runner, "x", None, None, D, D, None, None, None)
+    create_task(&runner, "x", None, None, D, D, None, None, None, None)
         .await
         .expect("create_task");
     let script = runner.script();
@@ -147,7 +147,7 @@ async fn create_task_parses_dates_with_write_helper_before_creating() {
 #[tokio::test]
 async fn create_subtask_parses_dates_with_write_helper_before_creating() {
     let runner = CapturingRunner::new(json!({"id": "c1", "name": "x"}));
-    create_subtask(&runner, "x", "parent-1", None, D, D, None, None, None)
+    create_subtask(&runner, "x", "parent-1", None, D, D, None, None, None, None)
         .await
         .expect("create_subtask");
     let script = runner.script();
@@ -172,6 +172,7 @@ async fn create_tasks_batch_parses_every_date_before_creating_any_task() {
         note: None,
         due_date: Some("2026-07-12".to_string()),
         defer_date: Some("2026-07-12".to_string()),
+        planned_date: None,
         flagged: None,
         tags: None,
         estimated_minutes: None,
@@ -195,9 +196,20 @@ async fn create_tasks_batch_parses_every_date_before_creating_any_task() {
 #[tokio::test]
 async fn update_task_parses_dates_with_write_helper_before_any_change() {
     let runner = CapturingRunner::new(json!({"id": "t1", "name": "x"}));
-    update_task(&runner, "t1", Some("renamed"), None, D, D, None, None, None)
-        .await
-        .expect("update_task");
+    update_task(
+        &runner,
+        "t1",
+        Some("renamed"),
+        None,
+        D,
+        D,
+        None,
+        None,
+        None,
+        None,
+    )
+    .await
+    .expect("update_task");
     let script = runner.script();
     assert_uses_helpers_only(&script);
     assert!(script.contains(&format!(

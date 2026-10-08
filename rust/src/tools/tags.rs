@@ -186,7 +186,14 @@ const tag = (() => {{
   const parentTag = resolveTag(parentName);
   return new Tag(tagName, parentTag.ending);
 }})();
-return {{ id: tag.id.primaryKey }};"#
+return {{
+  id: tag.id.primaryKey,
+  name: tag.name,
+  parent: tag.parent ? tag.parent.name : null,
+  availableTaskCount: 0,
+  totalTaskCount: 0,
+  status: "active"
+}};"#
     );
     runner.run_omnijs(&script).await
 }

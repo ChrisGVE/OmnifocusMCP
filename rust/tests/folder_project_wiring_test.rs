@@ -328,6 +328,7 @@ async fn project_destinations_resolve_the_project() {
             None,
             None,
             None,
+            None,
         )
         .await
         .expect("create_task runs");
@@ -341,6 +342,7 @@ async fn project_destinations_resolve_the_project() {
             note: None,
             due_date: None,
             defer_date: None,
+            planned_date: None,
             flagged: None,
             tags: None,
             estimated_minutes: None,

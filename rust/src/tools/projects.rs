@@ -401,6 +401,7 @@ pub async fn create_project<R: JxaRunner>(
 
     let script = format!(
         r#"{JS_DATE_HELPERS}
+{JS_PROJECT_STATUS}
 {JS_RESOLVERS}
 const projectName = {project_name};
 const folderName = {folder_name};
@@ -423,7 +424,25 @@ if (parsedDeferDate !== null) project.deferDate = parsedDeferDate;
 if (sequentialValue !== null) project.sequential = sequentialValue;
 
 return {{
-  id: project.id.primaryKey
+  id: project.id.primaryKey,
+  name: project.name,
+  status: normalizeProjectStatus(project),
+  folderName: project.parentFolder ? project.parentFolder.name : null,
+  taskCount: 0,
+  remainingTaskCount: 0,
+  completedTaskCount: 0,
+  availableTaskCount: 0,
+  deferDate: project.deferDate ? project.deferDate.toISOString() : null,
+  dueDate: project.dueDate ? project.dueDate.toISOString() : null,
+  completionDate: null,
+  modified: project.modified ? project.modified.toISOString() : null,
+  note: project.note,
+  sequential: project.sequential,
+  isStalled: false,
+  nextTaskId: null,
+  nextTaskName: null,
+  reviewInterval: null,
+  rootTasks: []
 }};"#
     );
 

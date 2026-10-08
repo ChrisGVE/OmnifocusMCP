@@ -78,6 +78,7 @@ Date parameters take a bare date (`YYYY-MM-DD`) or an ISO 8601 date-time.
 | --- | --- |
 | `2026-10-10` written to `dueDate` | 10 October, local time, at the default due time set in OmniFocus (17:00 out of the box; the server also uses 17:00 if it cannot read the setting) |
 | `2026-10-10` written to `deferDate` | 10 October, local time, at the default start time set in OmniFocus (00:00 out of the box; the server also uses 00:00 if it cannot read the setting) |
+| `2026-10-10` written to `plannedDate` | 10 October, local time, at the default planned time set in OmniFocus (the server uses 09:00 if it cannot read the setting) |
 | `2026-10-10` in a filter (`dueBefore`, `added_after`, ...) or in `absoluteDate` | 10 October, local midnight |
 | `2026-10-10T09:30:00Z` or `2026-10-10T09:30:00+02:00` | That exact instant |
 | `2026-10-10T09:30:00` (no offset) | 09:30 local time |
@@ -281,12 +282,12 @@ Creates one task.
 | `name` | string | yes | - | Not empty. |
 | `project` | string | no | inbox | Project id or exact name. |
 | `note` | string | no | - | |
-| `dueDate`, `deferDate` | date | no | - | |
+| `dueDate`, `deferDate`, `plannedDate` | date | no | - | `plannedDate` requires an OmniFocus database migrated for planned dates; on an older database a supplied value fails before anything changes. |
 | `flagged` | boolean | no | - | |
 | `tags` | array of strings | no | - | Ids or exact names of existing tags. An unknown value fails before the task is created. |
 | `estimatedMinutes` | integer | no | - | |
 
-Returns `{id, name}`.
+Returns `{id, name, plannedDate}`.
 
 ### `create_tasks_batch`
 
@@ -298,7 +299,7 @@ Creates several tasks in one OmniFocus call.
 
 Every project, tag and date in the batch is checked before the first task is created, so one bad
 entry creates nothing. The error identifies the entry, for example `tasks[2].project` or
-`tasks[2].tags[0]`. Returns an array of `{id, name}`.
+`tasks[2].tags[0]`. Returns an array of `{id, name, plannedDate}`.
 
 ### `create_subtask`
 
@@ -309,12 +310,12 @@ Creates a task under an existing task.
 | `name` | string | yes | - | Not empty. |
 | `parent_task_id` | string | yes | - | Id of the parent task. |
 | `note` | string | no | - | |
-| `dueDate`, `deferDate` | date | no | - | |
+| `dueDate`, `deferDate`, `plannedDate` | date | no | - | `plannedDate` requires an OmniFocus database migrated for planned dates. |
 | `flagged` | boolean | no | - | |
 | `tags` | array of strings | no | - | As in `create_task`. |
 | `estimatedMinutes` | integer | no | - | |
 
-Returns `{id, name, parentTaskId, parentTaskName}`.
+Returns `{id, name, parentTaskId, parentTaskName, plannedDate}`.
 
 ### `update_task`
 
@@ -325,13 +326,13 @@ Changes only the fields you pass.
 | `task_id` | string | yes | - | |
 | `name` | string | no | - | Not empty when given. |
 | `note` | string | no | - | Replaces the whole note (see `append_to_note`). |
-| `dueDate`, `deferDate` | date | no | - | |
+| `dueDate`, `deferDate`, `plannedDate` | date | no | - | `plannedDate` requires an OmniFocus database migrated for planned dates. |
 | `flagged` | boolean | no | - | |
 | `tags` | array of strings | no | - | Replaces all tags. Every id or exact name must resolve before any field changes. |
 | `estimatedMinutes` | integer | no | - | |
 
 Omitting a field and passing `null` both leave it unchanged, so this tool cannot clear a date.
-Returns the updated task, including effective dates.
+Returns the updated task, including effective dates and `plannedDate`.
 
 ### `complete_task`
 
@@ -556,7 +557,11 @@ Creates one project.
 | `dueDate`, `deferDate` | date | no | - | |
 | `sequential` | boolean | no | - | |
 
-Returns `{id}`.
+Returns the created project, with the same fields as `get_project`: `id`, `name`, `status`,
+`folderName`, `taskCount` (0), `remainingTaskCount` (0), `completedTaskCount` (0),
+`availableTaskCount` (0), `deferDate`, `dueDate`, `completionDate` (`null`), `modified`, `note`,
+`sequential`, `isStalled` (`false`), `nextTaskId` (`null`), `nextTaskName` (`null`),
+`reviewInterval` (`null`) and `rootTasks` (empty).
 
 ### `update_project`
 
@@ -683,7 +688,8 @@ Creates one tag.
 | `name` | string | yes | - | Not empty. |
 | `parent` | string | no | top level | Id or exact name of an existing tag. |
 
-Returns `{id}`.
+Returns the created tag with the same fields as a `list_tags` tag: `id`, `name`, `parent`,
+`availableTaskCount` (0), `totalTaskCount` (0), and `status` (`active`).
 
 ### `update_tag`
 

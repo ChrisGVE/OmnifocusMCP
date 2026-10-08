@@ -139,6 +139,7 @@ async fn task_writes_resolve_all_tags_before_mutating() {
         None,
         None,
         None,
+        None,
         Some(vec!["Home".to_string()]),
         None,
     )
@@ -156,6 +157,7 @@ async fn task_writes_resolve_all_tags_before_mutating() {
         None,
         None,
         None,
+        None,
         Some(vec!["Home".to_string()]),
         None,
     )
@@ -169,6 +171,7 @@ async fn task_writes_resolve_all_tags_before_mutating() {
         &runner,
         "task-1",
         Some("Renamed"),
+        None,
         None,
         None,
         None,
@@ -235,6 +238,7 @@ fn batch_input(name: &str, project: Option<&str>, tags: Option<Vec<&str>>) -> Cr
         note: None,
         due_date: None,
         defer_date: None,
+        planned_date: None,
         flagged: None,
         tags: tags.map(|values| values.into_iter().map(str::to_string).collect()),
         estimated_minutes: None,

@@ -182,6 +182,8 @@ A bare date such as `2026-10-10` means that day in your local time zone:
   server also uses 17:00 if it cannot read the setting).
 - Written to a defer date, it gets the default start time set in OmniFocus (00:00 out of the box;
   the server also uses 00:00 if it cannot read the setting).
+- Written to a planned date, it gets the default planned time set in OmniFocus (the server uses
+  09:00 if it cannot read the setting).
 - In a filter such as `dueBefore`, it means local midnight at the start of that day.
 
 A date-time with `Z` or an offset (`2026-10-10T09:30:00+02:00`) is used as given. An invalid date
@@ -228,7 +230,9 @@ assistant. They ask it to:
 - **Resources are capped at 100 items.** `omnifocus://today` returns up to 100 per section.
 - **Planned dates need an OmniFocus version that has them.** On an older version,
   every returned `plannedDate` is `null`. Requests using `plannedBefore`, `plannedAfter`, or a
-  planned-date sort fail explicitly because the database cannot honour them.
+  planned-date sort fail explicitly because the database cannot honour them, and writing a
+  `plannedDate` fails with `plannedDate requires an OmniFocus database migrated to support planned
+  dates`.
 - **The `daily_review` flagged list can be filled by completed tasks.** It takes the first 25
   flagged tasks in OmniFocus order, completed or not, so in a database with many completed flagged
   tasks the current ones can be left out.

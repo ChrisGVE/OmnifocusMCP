@@ -18,9 +18,9 @@ use omnifocus_mcp::{
         tasks::{
             complete_task, create_subtask, create_task, create_tasks_batch, delete_task,
             delete_tasks_batch, duplicate_task, move_task, move_tasks_batch, set_task_repetition,
-            uncomplete_task, update_task, CreateTaskInput,
+            update_task, CreateTaskInput,
         },
-        utility::append_to_note,
+        utility::{append_to_note, uncomplete_task},
     },
 };
 use serde_json::{json, Value};
@@ -77,6 +77,7 @@ async fn write_task_tools_happy_path() {
         Some("note"),
         Some("2026-03-01T12:00:00Z"),
         Some("2026-02-29T12:00:00Z"),
+        None,
         Some(true),
         Some(vec!["home".to_string()]),
         Some(30),
@@ -93,6 +94,7 @@ async fn write_task_tools_happy_path() {
             note: Some("note".to_string()),
             due_date: None,
             defer_date: None,
+            planned_date: None,
             flagged: Some(false),
             tags: Some(vec!["home".to_string()]),
             estimated_minutes: Some(15),
@@ -114,6 +116,7 @@ async fn write_task_tools_happy_path() {
         Some("note"),
         Some("2026-03-02T12:00:00Z"),
         Some("2026-03-01T12:00:00Z"),
+        None,
         Some(true),
         Some(vec!["home".to_string()]),
         Some(10),
@@ -142,6 +145,7 @@ async fn write_task_tools_happy_path() {
         "t1",
         Some("updated"),
         Some("updated note"),
+        None,
         None,
         None,
         Some(false),
@@ -834,15 +838,15 @@ async fn validation_errors_for_write_tools() {
     let runner = MockRunner { payload: json!({}) };
 
     assert!(matches!(
-        create_task(&runner, "   ", None, None, None, None, None, None, None).await,
+        create_task(&runner, "   ", None, None, None, None, None, None, None, None).await,
         Err(OmniFocusError::Validation(_))
     ));
     assert!(matches!(
-        create_subtask(&runner, "   ", "task-id", None, None, None, None, None, None).await,
+        create_subtask(&runner, "   ", "task-id", None, None, None, None, None, None, None).await,
         Err(OmniFocusError::Validation(_))
     ));
     assert!(matches!(
-        create_subtask(&runner, "name", "   ", None, None, None, None, None, None).await,
+        create_subtask(&runner, "name", "   ", None, None, None, None, None, None, None).await,
         Err(OmniFocusError::Validation(_))
     ));
     assert!(matches!(
@@ -862,6 +866,7 @@ async fn validation_errors_for_write_tools() {
             &runner,
             "name",
             Some("   "),
+            None,
             None,
             None,
             None,
@@ -1505,6 +1510,7 @@ async fn create_task_script_contains_expected_escaped_values() {
         Some(note),
         Some(due_date),
         None,
+        None,
         Some(true),
         Some(vec!["tag-a".to_string(), "tag-b".to_string()]),
         Some(25),
@@ -1543,6 +1549,7 @@ async fn create_task_script_matches_parity_matrix_sample_payload() {
         None,
         None,
         Some("2026-06-01T10:00:00Z"),
+        None,
         None,
         None,
         Some(vec!["Home".to_string(), "Urgent".to_string()]),
@@ -1584,6 +1591,7 @@ async fn create_subtask_script_contains_parent_lookup_and_insert_position() {
         Some("detail"),
         Some("2026-03-10T10:00:00Z"),
         Some("2026-03-09T10:00:00Z"),
+        None,
         Some(true),
         Some(vec!["home".to_string()]),
         Some(15),
@@ -1896,9 +1904,11 @@ async fn rich_task_write_results_emit_live_inbox_and_sequential_values() {
     assert!(duplicate_script.contains("inInbox: duplicatedTask.inInbox,"));
     assert!(duplicate_script.contains("sequential: duplicatedTask.sequential,"));
 
-    update_task(&runner, "task-1", None, None, None, None, None, None, None)
-        .await
-        .expect("update_task should return its payload");
+    update_task(
+        &runner, "task-1", None, None, None, None, None, None, None, None,
+    )
+    .await
+    .expect("update_task should return its payload");
     let update_script = scripts
         .lock()
         .expect("scripts lock should succeed")

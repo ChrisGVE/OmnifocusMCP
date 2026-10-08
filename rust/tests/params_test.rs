@@ -162,7 +162,7 @@ fn create_tasks_batch_params_coerce_nested_strings() {
         json!({"tasks": [{"name": "n", "flagged": "true", "estimatedMinutes": "30"}]}),
         json!({"tasks": [{
             "name": "n", "project": null, "note": null, "dueDate": null, "deferDate": null,
-            "flagged": true, "tags": null, "estimatedMinutes": 30
+            "plannedDate": null, "flagged": true, "tags": null, "estimatedMinutes": 30
         }]}),
     );
 }
