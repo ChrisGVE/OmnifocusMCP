@@ -136,7 +136,9 @@ UTC, or `null`.
 `completed` is true when the task is done directly, through a containing task, or through a
 completed project, the same definition the `completed` status filter uses. A task left open when its
 project was completed is reported `completed: true`, although OmniFocus keeps its own checkbox
-clear. Every tool that returns a task's `completed` uses this definition.
+clear. Every tool that returns a task's `completed` uses this definition. A dropped task is never
+completed: it reads `completed: false` like an open task, and `taskStatus: "dropped"` is what tells
+them apart, so a client checking whether a task is still to do reads both fields.
 
 Every task-summary tool reports the task's live `inInbox` and `sequential` values. Some other
 fields are unavailable on narrower summary surfaces:
