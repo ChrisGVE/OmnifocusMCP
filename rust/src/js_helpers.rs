@@ -236,6 +236,9 @@ function setPlannedDate(task, value) {
 ///   task whose `taskStatus` is `Available`, `Next`, `DueSoon` or `Overdue`
 ///   (never `Blocked`), in an active project or in none, not deferred past
 ///   `now` (`effectiveDeferDate`), and with no on-hold tag.
+/// - `projectNextTask(project)`: the project's next action, or `null`.
+///   OmniJS's `project.nextTask` returns the project's own root task when no
+///   child is next; that is reported as no next task.
 /// - `isProjectStalled(project, now)`: an active project with remaining tasks
 ///   but no next task. Single-action lists have no `nextTask`, so they are
 ///   stalled only when none of their remaining tasks is available.
@@ -295,13 +298,18 @@ function isTaskAvailable(task, now) {
   if (ofTaskStatusIsSet(deferDate) && deferDate > now) return false;
   return !task.tags.some(tag => tag.status === Tag.Status.OnHold);
 }
+function projectNextTask(project) {
+  const candidate = project.nextTask;
+  if (!ofTaskStatusIsSet(candidate) || isProjectRootTask(candidate)) return null;
+  return candidate;
+}
 function isProjectStalled(project, now) {
   if (normalizeProjectStatus(project) !== "active") return false;
   if (!project.flattenedTasks.some(task => isTaskRemaining(task))) return false;
   if (project.containsSingletonActions) {
     return !project.flattenedTasks.some(task => isTaskAvailable(task, now));
   }
-  return project.nextTask === null;
+  return projectNextTask(project) === null;
 }
 "#;
 

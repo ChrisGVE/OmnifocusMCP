@@ -152,7 +152,7 @@ const projects = document.flattenedProjects
 const mappedProjects = projects.map(project => {
   const projectId = project.id.primaryKey;
   const counts = projectCounts.get(projectId) || { taskCount: 0, remainingTaskCount: 0 };
-  const nextTask = project.nextTask;
+  const nextTask = projectNextTask(project);
   const isStalled = isProjectStalled(project, now);
   return {
     id: projectId,

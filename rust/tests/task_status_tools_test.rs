@@ -125,7 +125,7 @@ var allProjects = [];
 function fakeProject(id, status) {
   const project = { id: { primaryKey: id }, name: id, status: Project.Status[status],
     parentFolder: null, nextTask: null, flattenedTasks: [], tasks: [], tags: [],
-    deferDate: null, dueDate: null, completionDate: null, modified: null, note: "",
+    deferDate: null, dueDate: null, completionDate: null, task: { modified: null }, note: "",
     flagged: false, sequential: false, containsSingletonActions: false,
     completedByChildren: false, reviewInterval: null };
   allProjects.push(project);

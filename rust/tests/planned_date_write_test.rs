@@ -318,7 +318,7 @@ async fn create_project_returns_the_get_project_shape() {
         "deferDate: project.deferDate ? project.deferDate.toISOString() : null,",
         "dueDate: project.dueDate ? project.dueDate.toISOString() : null,",
         "completionDate: null,",
-        "modified: project.modified ? project.modified.toISOString() : null,",
+        "modified: project.task.modified ? project.task.modified.toISOString() : null,",
         "note: project.note,",
         "sequential: project.sequential,",
         "isStalled: false,",

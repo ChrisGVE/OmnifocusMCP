@@ -85,7 +85,7 @@ const CREATED_PROJECT_RESULT: &str = r#"return {
   deferDate: project.deferDate ? project.deferDate.toISOString() : null,
   dueDate: project.dueDate ? project.dueDate.toISOString() : null,
   completionDate: null,
-  modified: project.modified ? project.modified.toISOString() : null,
+  modified: project.task.modified ? project.task.modified.toISOString() : null,
   note: project.note,
   sequential: project.sequential,
   isStalled: false,

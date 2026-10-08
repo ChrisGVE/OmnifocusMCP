@@ -1731,7 +1731,7 @@ async fn list_projects_script_includes_stalled_and_next_task_fields() {
     assert!(script.contains(r#"return "unknown";"#));
     assert!(!script.contains(r#"if (flattened.includes("completed")) return "completed";"#));
     assert!(!script.contains(r#"if (flattened.includes("active")) return "active";"#));
-    assert!(script.contains("const nextTask = project.nextTask;"));
+    assert!(script.contains("const nextTask = projectNextTask(project);"));
     assert!(script.contains("const isStalled = isProjectStalled(project, now);"));
     assert!(script.contains(
         "completionDate: project.completionDate ? project.completionDate.toISOString() : null,"
@@ -2037,7 +2037,7 @@ async fn get_project_script_includes_stalled_and_count_fields() {
         .lock()
         .expect("script capture lock should succeed")
         .clone();
-    assert!(script.contains("const nextTask = project.nextTask;"));
+    assert!(script.contains("const nextTask = projectNextTask(project);"));
     assert!(script.contains("const isStalled = isProjectStalled(project, now);"));
     assert!(script.contains(
         "completedTaskCount: allProjectTasks.filter(task => isTaskCompleted(task)).length,"
@@ -2048,7 +2048,8 @@ async fn get_project_script_includes_stalled_and_count_fields() {
     assert!(script.contains(
         "completionDate: project.completionDate ? project.completionDate.toISOString() : null,"
     ));
-    assert!(script.contains("modified: project.modified ? project.modified.toISOString() : null,"));
+    assert!(script
+        .contains("modified: project.task.modified ? project.task.modified.toISOString() : null,"));
 }
 
 #[tokio::test]

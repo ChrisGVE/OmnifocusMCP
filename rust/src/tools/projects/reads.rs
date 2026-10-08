@@ -124,7 +124,7 @@ const allProjectTasks = document.flattenedTasks.filter(task => {{
     && task.containingProject.id.primaryKey === project.id.primaryKey;
 }});
 const now = new Date();
-const nextTask = project.nextTask;
+const nextTask = projectNextTask(project);
 const isStalled = isProjectStalled(project, now);
 
 const rootTasks = project.tasks.map(task => {{
@@ -155,7 +155,7 @@ return {{
   deferDate: project.deferDate ? project.deferDate.toISOString() : null,
   dueDate: project.dueDate ? project.dueDate.toISOString() : null,
   completionDate: project.completionDate ? project.completionDate.toISOString() : null,
-  modified: project.modified ? project.modified.toISOString() : null,
+  modified: project.task.modified ? project.task.modified.toISOString() : null,
   note: project.note,
   sequential: project.sequential,
   isStalled: isStalled,
