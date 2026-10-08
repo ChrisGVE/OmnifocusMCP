@@ -224,8 +224,15 @@ const sortedTasks = sortBy === null ? filteredTasks : filteredTasks.slice().sort
   return compareValues(aValue, bValue, isString);
 });"#;
 
-/// Maps each listed task to the summary the tool returns.
-const MAP_LISTED_TASKS: &str = r#"return tasks.map(task => {
+/// Reads planned dates for the summary mapper without requiring them: on a
+/// database not migrated for planned dates every `plannedDate` is `null`.
+/// Needs `JS_PLANNED_DATE`. Used by reads that take no planned-date filter.
+pub(super) const READ_PLANNED_DATES: &str = r#"const supportsPlannedDate = detectPlannedDateSupport(document.flattenedTasks);
+const getPlannedDate = (task) => readPlannedDate(task, supportsPlannedDate);"#;
+
+/// Maps `tasks` to the task summary every listing tool returns (`list_tasks`,
+/// `search_tasks`, `get_inbox`, `list_subtasks`). Needs `getPlannedDate`.
+pub(super) const MAP_LISTED_TASKS: &str = r#"return tasks.map(task => {
   const tags = task.tags.map(taskTag => taskTag.name);
   const plannedDate = getPlannedDate(task);
   return {

@@ -482,8 +482,8 @@ async fn every_task_summary_script_emits_live_inbox_and_sequential_values() {
         .await
         .expect("subtask list should parse");
     let script = captured_script(&runner);
-    assert!(script.contains("inInbox: subtask.inInbox,"));
-    assert!(script.contains("sequential: subtask.sequential,"));
+    assert!(script.contains("inInbox: task.inInbox,"));
+    assert!(script.contains("sequential: task.sequential,"));
 
     get_forecast(&runner, 1)
         .await
@@ -1340,7 +1340,7 @@ async fn get_task_and_list_subtasks_scripts_include_task_status_mapper() {
         .expect("script capture lock should succeed")
         .clone();
     assert!(list_subtasks_script_text.contains("taskStatus: (() => {"));
-    assert!(list_subtasks_script_text.contains("String(subtask.taskStatus)"));
+    assert!(list_subtasks_script_text.contains("String(task.taskStatus)"));
 }
 
 #[tokio::test]

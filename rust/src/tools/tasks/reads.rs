@@ -7,12 +7,15 @@ use serde_json::Value;
 
 use crate::{
     error::{OmniFocusError, Result},
-    js_helpers::{JS_PROJECT_STATUS, JS_TASK_STATUS},
+    js_helpers::{JS_PLANNED_DATE, JS_PROJECT_STATUS, JS_TASK_STATUS},
     jxa::{escape_for_jxa, JxaRunner},
     types::TaskResult,
 };
 
-use super::inputs::parse_task_list;
+use super::{
+    inputs::parse_task_list,
+    listing_script::{MAP_LISTED_TASKS, READ_PLANNED_DATES},
+};
 
 pub async fn get_inbox<R: JxaRunner>(runner: &R, limit: i32) -> Result<Vec<TaskResult>> {
     if limit < 1 {
@@ -22,40 +25,13 @@ pub async fn get_inbox<R: JxaRunner>(runner: &R, limit: i32) -> Result<Vec<TaskR
     }
 
     let script = format!(
-        r#"const tasks = inbox
+        r#"{JS_PLANNED_DATE}
+{READ_PLANNED_DATES}
+const tasks = inbox
   .filter(task => !task.completed)
   .slice(0, {limit});
 
-return tasks.map(task => {{
-  const tags = task.tags.map(tag => tag.name);
-  return {{
-    id: task.id.primaryKey,
-    name: task.name,
-    note: task.note,
-    flagged: task.flagged,
-    dueDate: task.dueDate ? task.dueDate.toISOString() : null,
-    deferDate: task.deferDate ? task.deferDate.toISOString() : null,
-    addedDate: task.added ? task.added.toISOString() : null,
-    changedDate: task.modified ? task.modified.toISOString() : null,
-    completionDate: task.completionDate ? task.completionDate.toISOString() : null,
-    tags: tags,
-    estimatedMinutes: task.estimatedMinutes,
-    inInbox: task.inInbox,
-    hasChildren: task.hasChildren,
-    sequential: task.sequential,
-    taskStatus: (() => {{
-      const s = String(task.taskStatus);
-      if (s.includes("Available")) return "available";
-      if (s.includes("Blocked")) return "blocked";
-      if (s.includes("Next")) return "next";
-      if (s.includes("DueSoon")) return "due_soon";
-      if (s.includes("Overdue")) return "overdue";
-      if (s.includes("Completed")) return "completed";
-      if (s.includes("Dropped")) return "dropped";
-      return "unknown";
-    }})()
-  }};
-}});"#
+{MAP_LISTED_TASKS}"#
     );
 
     let value = runner.run_omnijs(&script).await?;
@@ -73,6 +49,8 @@ pub async fn get_task<R: JxaRunner>(runner: &R, task_id: &str) -> Result<Value> 
     let script = format!(
         r#"{JS_PROJECT_STATUS}
 {JS_TASK_STATUS}
+{JS_PLANNED_DATE}
+{READ_PLANNED_DATES}
 const taskId = {task_id_filter};
 const task = document.flattenedTasks.find(item => item.id.primaryKey === taskId && !isProjectRootTask(item));
 if (!task) {{
@@ -171,43 +149,16 @@ pub async fn list_subtasks<R: JxaRunner>(
     let script = format!(
         r#"{JS_PROJECT_STATUS}
 {JS_TASK_STATUS}
+{JS_PLANNED_DATE}
+{READ_PLANNED_DATES}
 const taskId = {task_id_filter};
 const task = document.flattenedTasks.find(item => item.id.primaryKey === taskId && !isProjectRootTask(item));
 if (!task) {{
   throw new Error(`Task not found: ${{taskId}}`);
 }}
 
-const subtasks = task.children.slice(0, {limit});
-return subtasks.map(subtask => {{
-  const tags = subtask.tags.map(taskTag => taskTag.name);
-  return {{
-    id: subtask.id.primaryKey,
-    name: subtask.name,
-    note: subtask.note,
-    flagged: subtask.flagged,
-    dueDate: subtask.dueDate ? subtask.dueDate.toISOString() : null,
-    addedDate: subtask.added ? subtask.added.toISOString() : null,
-    changedDate: subtask.modified ? subtask.modified.toISOString() : null,
-    deferDate: subtask.deferDate ? subtask.deferDate.toISOString() : null,
-    completed: subtask.completed,
-    tags: tags,
-    estimatedMinutes: subtask.estimatedMinutes,
-    inInbox: subtask.inInbox,
-    hasChildren: subtask.hasChildren,
-    sequential: subtask.sequential,
-    taskStatus: (() => {{
-      const s = String(subtask.taskStatus);
-      if (s.includes("Available")) return "available";
-      if (s.includes("Blocked")) return "blocked";
-      if (s.includes("Next")) return "next";
-      if (s.includes("DueSoon")) return "due_soon";
-      if (s.includes("Overdue")) return "overdue";
-      if (s.includes("Completed")) return "completed";
-      if (s.includes("Dropped")) return "dropped";
-      return "unknown";
-    }})()
-  }};
-}});"#
+const tasks = task.children.slice(0, {limit});
+{MAP_LISTED_TASKS}"#
     );
 
     let value = runner.run_omnijs(&script).await?;

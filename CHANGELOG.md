@@ -26,6 +26,9 @@ issue numbers in them, and every "upstream #N" below, refer to that project's tr
 - `get_project` and `create_project` report `modified` from the project's root
   task; OmniJS projects have no `modified` of their own, so it was always `null`. A project created
   in the same call still reports `null`, as OmniFocus sets the date when it saves.
+- `get_inbox` and `list_subtasks` return the same task summary as `list_tasks`. `list_subtasks`
+  reported `projectName`, `plannedDate` and `completionDate` as `null`, and `get_inbox`
+  `plannedDate`, whatever the task held.
 - `create_project` and `create_tag` return the same object shape as `get_project` and a `list_tags`
   tag respectively, instead of only an id.
 - Removed the duplicate `uncomplete_task` and `append_to_note` from `rust/src/tools/tasks.rs`; the
