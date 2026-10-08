@@ -102,9 +102,11 @@ const sortOrder = {sort_order_filter};
 
 const completedBefore = parseOptionalLocalDate(completedBeforeRaw, "completedBefore");
 const completedAfter = parseOptionalLocalDate(completedAfterRaw, "completedAfter");
+const now = new Date();
 
 const projectCounts = new Map();
 document.flattenedTasks.forEach(task => {{
+  if (isProjectRootTask(task)) return;
   const project = task.containingProject;
   if (!project) return;
   const projectId = project.id.primaryKey;
@@ -116,10 +118,7 @@ document.flattenedTasks.forEach(task => {{
 
 const projects = document.flattenedProjects
   .filter(project => {{
-    const nextTask = project.nextTask;
-    const isStalled = normalizeProjectStatus(project) === "active"
-      && project.flattenedTasks.some(t => isTaskRemaining(t))
-      && nextTask === null;
+    const isStalled = isProjectStalled(project, now);
     if (filterFolder !== null) {{
       const parent = project.parentFolder;
       if (!parent || parent.id.primaryKey !== filterFolder.id.primaryKey) return false;
@@ -135,9 +134,7 @@ const mappedProjects = projects.map(project => {{
   const projectId = project.id.primaryKey;
   const counts = projectCounts.get(projectId) || {{ taskCount: 0, remainingTaskCount: 0 }};
   const nextTask = project.nextTask;
-  const isStalled = normalizeProjectStatus(project) === "active"
-    && project.flattenedTasks.some(t => isTaskRemaining(t))
-    && nextTask === null;
+  const isStalled = isProjectStalled(project, now);
   return {{
     id: projectId,
     name: project.name,
@@ -260,6 +257,7 @@ const counts = {{
   dropped: 0,
   stalled: 0
 }};
+const now = new Date();
 
 document.flattenedProjects.forEach(project => {{
   if (filterFolder !== null) {{
@@ -268,9 +266,7 @@ document.flattenedProjects.forEach(project => {{
   }}
 
   const status = normalizeProjectStatus(project);
-  const isStalled = status === "active"
-    && project.flattenedTasks.some(t => isTaskRemaining(t))
-    && project.nextTask === null;
+  const isStalled = isProjectStalled(project, now);
 
   counts.total += 1;
   if (status === "active") counts.active += 1;
@@ -308,13 +304,13 @@ if (!project) {{
 }}
 
 const allProjectTasks = document.flattenedTasks.filter(task => {{
-  return task.containingProject && task.containingProject.id.primaryKey === project.id.primaryKey;
+  return !isProjectRootTask(task)
+    && task.containingProject
+    && task.containingProject.id.primaryKey === project.id.primaryKey;
 }});
 const now = new Date();
 const nextTask = project.nextTask;
-const isStalled = normalizeProjectStatus(project) === "active"
-  && allProjectTasks.some(task => isTaskRemaining(task))
-  && nextTask === null;
+const isStalled = isProjectStalled(project, now);
 
 const rootTasks = project.tasks.map(task => {{
   return {{
@@ -337,7 +333,7 @@ return {{
   folderName: project.parentFolder ? project.parentFolder.name : null,
   taskCount: allProjectTasks.length,
   remainingTaskCount: allProjectTasks.filter(task => isTaskRemaining(task)).length,
-  completedTaskCount: allProjectTasks.filter(task => task.completed).length,
+  completedTaskCount: allProjectTasks.filter(task => isTaskCompleted(task)).length,
   availableTaskCount: allProjectTasks.filter(task => isTaskAvailable(task, now)).length,
   deferDate: project.deferDate ? project.deferDate.toISOString() : null,
   dueDate: project.dueDate ? project.dueDate.toISOString() : null,
@@ -505,7 +501,9 @@ pub async fn delete_project<R: JxaRunner>(runner: &R, project_id_or_name: &str) 
 
     let project_filter = escape_for_jxa(project_id_or_name.trim());
     let script = format!(
-        r#"const projectFilter = {project_filter};
+        r#"{JS_PROJECT_STATUS}
+{JS_TASK_STATUS}
+const projectFilter = {project_filter};
 const project = document.flattenedProjects.find(item => {{
   return item.id.primaryKey === projectFilter || item.name === projectFilter;
 }});
@@ -516,7 +514,9 @@ if (!project) {{
 const projectId = project.id.primaryKey;
 const projectName = project.name;
 const taskCount = document.flattenedTasks.filter(task => {{
-  return task.containingProject && task.containingProject.id.primaryKey === projectId;
+  return !isProjectRootTask(task)
+    && task.containingProject
+    && task.containingProject.id.primaryKey === projectId;
 }}).length;
 
 deleteObject(project);
@@ -850,7 +850,9 @@ if (has("tags")) {{
 }}
 
 const allProjectTasks = document.flattenedTasks.filter(task => {{
-  return task.containingProject && task.containingProject.id.primaryKey === project.id.primaryKey;
+  return !isProjectRootTask(task)
+    && task.containingProject
+    && task.containingProject.id.primaryKey === project.id.primaryKey;
 }});
 return {{
   id: project.id.primaryKey,

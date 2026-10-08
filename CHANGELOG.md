@@ -61,6 +61,15 @@ are marked **Breaking**. Upgrade steps:
   descriptions say that `project` and `parent` take an id or an exact name.
 
 ### Fixed
+- Task status filters and open-task counts now use OmniFocus's effective state: `available`
+  excludes blocked, future-deferred and on-hold work, while `overdue`, `due_soon`, forecast and
+  remaining counts exclude completed and dropped tasks and tasks in completed or dropped projects.
+- Project root tasks exposed by `document.flattenedTasks` are no longer returned, found by task id,
+  or included in task, project, tag and forecast counts.
+- Active single-action lists are reported as stalled only when they have remaining tasks but none
+  is available; their always-null `nextTask` no longer makes every such list stalled.
+- Completed task counts include tasks completed through a containing task or completed project,
+  while dropped tasks and tasks in dropped projects remain excluded.
 - Integer, number and boolean parameters accept their string encoding (`"30"`, `"true"`), as sent
   by MCP clients that serialize every argument as a string. Integral floats (`30.0`) are accepted
   for integers. The advertised schema is unchanged.

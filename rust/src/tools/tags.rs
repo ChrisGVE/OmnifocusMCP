@@ -51,6 +51,7 @@ const now = new Date();
 
 const tagCounts = new Map();
 document.flattenedTasks.forEach(task => {{
+  if (isProjectRootTask(task)) return;
   task.tags.forEach(tag => {{
     const tagId = tag.id.primaryKey;
     const current = tagCounts.get(tagId) || {{ availableTaskCount: 0, totalTaskCount: 0 }};

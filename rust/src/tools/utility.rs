@@ -2,6 +2,7 @@ use serde_json::Value;
 
 use crate::{
     error::{OmniFocusError, Result},
+    js_helpers::{JS_PROJECT_STATUS, JS_TASK_STATUS},
     jxa::{escape_for_jxa, JxaRunner},
 };
 
@@ -14,8 +15,10 @@ pub async fn uncomplete_task<R: JxaRunner>(runner: &R, task_id: &str) -> Result<
 
     let task_id_value = escape_for_jxa(task_id.trim());
     let script = format!(
-        r#"const taskId = {task_id_value};
-const task = document.flattenedTasks.find(item => item.id.primaryKey === taskId);
+        r#"{JS_PROJECT_STATUS}
+{JS_TASK_STATUS}
+const taskId = {task_id_value};
+const task = document.flattenedTasks.find(item => item.id.primaryKey === taskId && !isProjectRootTask(item));
 if (!task) {{
   throw new Error(`Task not found: ${{taskId}}`);
 }}
@@ -60,13 +63,15 @@ pub async fn append_to_note<R: JxaRunner>(
     let object_id_value = escape_for_jxa(object_id.trim());
     let text_value = escape_for_jxa(text);
     let script = format!(
-        r#"const objectType = {object_type_value};
+        r#"{JS_PROJECT_STATUS}
+{JS_TASK_STATUS}
+const objectType = {object_type_value};
 const objectId = {object_id_value};
 const textToAppend = {text_value};
 
 let obj;
 if (objectType === "task") {{
-  obj = document.flattenedTasks.find(item => item.id.primaryKey === objectId);
+  obj = document.flattenedTasks.find(item => item.id.primaryKey === objectId && !isProjectRootTask(item));
   if (!obj) {{
     throw new Error(`Task not found: ${{objectId}}`);
   }}

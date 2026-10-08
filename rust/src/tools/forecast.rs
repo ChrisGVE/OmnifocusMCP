@@ -49,7 +49,9 @@ const toTaskSummary = (task) => {{
   }};
 }};
 
-const openTasks = document.flattenedTasks.filter(task => isTaskRemaining(task));
+const openTasks = document.flattenedTasks.filter(task => {{
+  return !isProjectRootTask(task) && isTaskRemaining(task);
+}});
 const overdue = [];
 const dueToday = [];
 const flagged = [];

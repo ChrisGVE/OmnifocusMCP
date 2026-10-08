@@ -186,7 +186,7 @@ async fn list_projects_stalled_detection_uses_shared_status() {
         .expect("list_projects runs");
     let script = runner.last_script();
     assert_uses_shared_status("list_projects", &script);
-    assert!(script.contains(r#"const isStalled = normalizeProjectStatus(project) === "active""#));
+    assert!(script.contains("const isStalled = isProjectStalled(project, now);"));
 }
 
 #[tokio::test]

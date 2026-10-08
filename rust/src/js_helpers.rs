@@ -121,7 +121,7 @@ pub const JS_PROJECT_STATUS: &str = r#"function normalizeProjectStatus(project) 
 }
 "#;
 
-/// Task availability: which tasks are still to do, and which can be done now.
+/// Task classification and project availability.
 ///
 /// `task.completed` alone is not enough. OmniFocus documents that a task "may
 /// be effectively considered completed if a containing task is marked
@@ -129,6 +129,13 @@ pub const JS_PROJECT_STATUS: &str = r#"function normalizeProjectStatus(project) 
 /// individual tasks" — a task in a dropped project keeps its own state. So
 /// these read every documented signal, from the task outwards:
 ///
+/// - `isProjectRootTask(task)`: true for the synthetic root task that
+///   `document.flattenedTasks` exposes for a project. OmniFocus does not
+///   include this object in `project.flattenedTasks`, and task-facing tools
+///   must not expose or count it as an action.
+/// - `isTaskCompleted(task)`: completed through its own state, a containing
+///   action group, or a completed project. A dropped task, or a task in a
+///   dropped project, is never completed.
 /// - `isTaskRemaining(task)`: still to do. False when the task is completed
 ///   or dropped, through its own state (`completed`, `taskStatus` `Completed`
 ///   or `Dropped`) or a container's (`effectiveCompletionDate`,
@@ -138,6 +145,9 @@ pub const JS_PROJECT_STATUS: &str = r#"function normalizeProjectStatus(project) 
 ///   task whose `taskStatus` is `Available`, `Next`, `DueSoon` or `Overdue`
 ///   (never `Blocked`), in an active project or in none, not deferred past
 ///   `now` (`effectiveDeferDate`), and with no on-hold tag.
+/// - `isProjectStalled(project, now)`: an active project with remaining tasks
+///   but no next task. Single-action lists have no `nextTask`, so they are
+///   stalled only when none of their remaining tasks is available.
 ///
 /// The documentation does not say which status OmniFocus reports for a task
 /// that is both blocked and due, so the blocking causes it lists and that can
@@ -154,17 +164,31 @@ pub const JS_PROJECT_STATUS: &str = r#"function normalizeProjectStatus(project) 
 pub const JS_TASK_STATUS: &str = r#"function ofTaskStatusIsSet(value) {
   return value !== null && value !== undefined;
 }
+function isProjectRootTask(task) {
+  return ofTaskStatusIsSet(task.project);
+}
 function ofTaskStatusIsActionable(status) {
   return status === Task.Status.Available
     || status === Task.Status.Next
     || status === Task.Status.DueSoon
     || status === Task.Status.Overdue;
 }
-function isTaskRemaining(task) {
-  if (task.completed) return false;
+function isTaskCompleted(task) {
   const status = task.taskStatus;
-  if (status === Task.Status.Completed || status === Task.Status.Dropped) return false;
-  if (ofTaskStatusIsSet(task.effectiveCompletionDate)) return false;
+  if (status === Task.Status.Dropped) return false;
+  if (ofTaskStatusIsSet(task.effectiveDropDate)) return false;
+  const project = task.containingProject;
+  const projectStatus = project ? normalizeProjectStatus(project) : null;
+  if (projectStatus === "dropped") return false;
+  return task.completed
+    || status === Task.Status.Completed
+    || ofTaskStatusIsSet(task.effectiveCompletionDate)
+    || projectStatus === "completed";
+}
+function isTaskRemaining(task) {
+  if (isTaskCompleted(task)) return false;
+  const status = task.taskStatus;
+  if (status === Task.Status.Dropped) return false;
   if (ofTaskStatusIsSet(task.effectiveDropDate)) return false;
   const project = task.containingProject;
   if (!project) return true;
@@ -179,6 +203,14 @@ function isTaskAvailable(task, now) {
   const deferDate = task.effectiveDeferDate;
   if (ofTaskStatusIsSet(deferDate) && deferDate > now) return false;
   return !task.tags.some(tag => tag.status === Tag.Status.OnHold);
+}
+function isProjectStalled(project, now) {
+  if (normalizeProjectStatus(project) !== "active") return false;
+  if (!project.flattenedTasks.some(task => isTaskRemaining(task))) return false;
+  if (project.containsSingletonActions) {
+    return !project.flattenedTasks.some(task => isTaskAvailable(task, now));
+  }
+  return project.nextTask === null;
 }
 "#;
 

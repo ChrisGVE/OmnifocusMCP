@@ -252,6 +252,7 @@ const counts = {{
 }};
 
 for (const task of document.flattenedTasks) {{
+  if (isProjectRootTask(task)) continue;
   if (filterProject !== null) {{
     const containing = task.containingProject;
     if (!containing || containing.id.primaryKey !== filterProject.id.primaryKey) continue;
@@ -285,7 +286,7 @@ for (const task of document.flattenedTasks) {{
 
   counts.total += 1;
   if (task.flagged) counts.flagged += 1;
-  if (task.completed) {{
+  if (isTaskCompleted(task)) {{
     counts.completed += 1;
     continue;
   }}
@@ -629,6 +630,7 @@ const getPlannedDate = (task) => {{
 
 const filteredTasks = document.flattenedTasks
   .filter(task => {{
+    if (isProjectRootTask(task)) return false;
     if (filterProject !== null) {{
       const containing = task.containingProject;
       if (!containing || containing.id.primaryKey !== filterProject.id.primaryKey) return false;
@@ -650,8 +652,8 @@ const filteredTasks = document.flattenedTasks
     if (statusFilter === "all") {{
       statusMatches = true;
     }} else if (statusFilter === "completed") {{
-      statusMatches = task.completed;
-    }} else if (task.completed) {{
+      statusMatches = isTaskCompleted(task);
+    }} else if (isTaskCompleted(task)) {{
       statusMatches = includeCompletedForDateFilter;
     }} else if (isTaskRemaining(task)) {{
       const dueDate = task.dueDate;
@@ -889,8 +891,10 @@ pub async fn get_task<R: JxaRunner>(runner: &R, task_id: &str) -> Result<Value> 
 
     let task_id_filter = escape_for_jxa(task_id.trim());
     let script = format!(
-        r#"const taskId = {task_id_filter};
-const task = document.flattenedTasks.find(item => item.id.primaryKey === taskId);
+        r#"{JS_PROJECT_STATUS}
+{JS_TASK_STATUS}
+const taskId = {task_id_filter};
+const task = document.flattenedTasks.find(item => item.id.primaryKey === taskId && !isProjectRootTask(item));
 if (!task) {{
   throw new Error(`Task not found: ${{taskId}}`);
 }}
@@ -980,8 +984,10 @@ pub async fn list_subtasks<R: JxaRunner>(
 
     let task_id_filter = escape_for_jxa(task_id.trim());
     let script = format!(
-        r#"const taskId = {task_id_filter};
-const task = document.flattenedTasks.find(item => item.id.primaryKey === taskId);
+        r#"{JS_PROJECT_STATUS}
+{JS_TASK_STATUS}
+const taskId = {task_id_filter};
+const task = document.flattenedTasks.find(item => item.id.primaryKey === taskId && !isProjectRootTask(item));
 if (!task) {{
   throw new Error(`Task not found: ${{taskId}}`);
 }}
@@ -1030,8 +1036,10 @@ pub async fn list_notifications<R: JxaRunner>(runner: &R, task_id: &str) -> Resu
 
     let task_id_filter = escape_for_jxa(task_id.trim());
     let script = format!(
-        r#"const taskId = {task_id_filter};
-const task = document.flattenedTasks.find(item => item.id.primaryKey === taskId);
+        r#"{JS_PROJECT_STATUS}
+{JS_TASK_STATUS}
+const taskId = {task_id_filter};
+const task = document.flattenedTasks.find(item => item.id.primaryKey === taskId && !isProjectRootTask(item));
 if (!task) {{
   throw new Error(`Task not found: ${{taskId}}`);
 }}
@@ -1082,10 +1090,12 @@ pub async fn add_notification<R: JxaRunner>(
         .unwrap_or_else(|| "null".to_string());
     let script = format!(
         r#"{JS_DATE_HELPERS}
+{JS_PROJECT_STATUS}
+{JS_TASK_STATUS}
 const taskId = {task_id_filter};
 const absoluteDate = {absolute_date_value};
 const relativeOffset = {relative_offset_value};
-const task = document.flattenedTasks.find(item => item.id.primaryKey === taskId);
+const task = document.flattenedTasks.find(item => item.id.primaryKey === taskId && !isProjectRootTask(item));
 if (!task) {{
   throw new Error(`Task not found: ${{taskId}}`);
 }}
@@ -1134,9 +1144,11 @@ pub async fn remove_notification<R: JxaRunner>(
     let task_id_filter = escape_for_jxa(task_id.trim());
     let notification_id_filter = escape_for_jxa(notification_id.trim());
     let script = format!(
-        r#"const taskId = {task_id_filter};
+        r#"{JS_PROJECT_STATUS}
+{JS_TASK_STATUS}
+const taskId = {task_id_filter};
 const notificationId = {notification_id_filter};
-const task = document.flattenedTasks.find(item => item.id.primaryKey === taskId);
+const task = document.flattenedTasks.find(item => item.id.primaryKey === taskId && !isProjectRootTask(item));
 if (!task) {{
   throw new Error(`Task not found: ${{taskId}}`);
 }}
@@ -1404,6 +1416,7 @@ const getPlannedDate = (task) => {{
 
 const filteredTasks = document.flattenedTasks
   .filter(task => {{
+    if (isProjectRootTask(task)) return false;
     const name = (task.name || "").toLowerCase();
     const note = (task.note || "").toLowerCase();
     if (!(name.includes(queryFilter) || note.includes(queryFilter))) return false;
@@ -1429,8 +1442,8 @@ const filteredTasks = document.flattenedTasks
     if (statusFilter === "all") {{
       statusMatches = true;
     }} else if (statusFilter === "completed") {{
-      statusMatches = task.completed;
-    }} else if (task.completed) {{
+      statusMatches = isTaskCompleted(task);
+    }} else if (isTaskCompleted(task)) {{
       statusMatches = includeCompletedForDateFilter;
     }} else if (isTaskRemaining(task)) {{
       const dueDate = task.dueDate;
@@ -1832,6 +1845,8 @@ pub async fn create_subtask<R: JxaRunner>(
 
     let script = format!(
         r#"{JS_DATE_HELPERS}
+{JS_PROJECT_STATUS}
+{JS_TASK_STATUS}
 const taskName = {task_name};
 const parentTaskId = {parent_task_id_value};
 const noteValue = {note_value};
@@ -1843,7 +1858,7 @@ const estimatedMinutesValue = {estimated_minutes_value};
 const parsedDueDate = dueDateValue === null ? null : parseWriteDate(dueDateValue, "dueDate", "DefaultDueTime", "17:00");
 const parsedDeferDate = deferDateValue === null ? null : parseWriteDate(deferDateValue, "deferDate", "DefaultStartTime", "00:00");
 
-const parentTask = document.flattenedTasks.find(item => item.id.primaryKey === parentTaskId);
+const parentTask = document.flattenedTasks.find(item => item.id.primaryKey === parentTaskId && !isProjectRootTask(item));
 if (!parentTask) {{
   throw new Error(`Parent task not found: ${{parentTaskId}}`);
 }}
@@ -1888,9 +1903,11 @@ pub async fn duplicate_task<R: JxaRunner>(
     let task_id_filter = escape_for_jxa(task_id.trim());
     let include_children_value = if include_children { "true" } else { "false" };
     let script = format!(
-        r#"const taskId = {task_id_filter};
+        r#"{JS_PROJECT_STATUS}
+{JS_TASK_STATUS}
+const taskId = {task_id_filter};
 const includeChildren = {include_children_value};
-const task = document.flattenedTasks.find(item => item.id.primaryKey === taskId);
+const task = document.flattenedTasks.find(item => item.id.primaryKey === taskId && !isProjectRootTask(item));
 if (!task) {{
   throw new Error(`Task not found: ${{taskId}}`);
 }}
@@ -2067,8 +2084,10 @@ pub async fn complete_task<R: JxaRunner>(runner: &R, task_id: &str) -> Result<Va
     }
     let task_id_value = escape_for_jxa(task_id.trim());
     let script = format!(
-        r#"const taskId = {task_id_value};
-const task = document.flattenedTasks.find(item => item.id.primaryKey === taskId);
+        r#"{JS_PROJECT_STATUS}
+{JS_TASK_STATUS}
+const taskId = {task_id_value};
+const task = document.flattenedTasks.find(item => item.id.primaryKey === taskId && !isProjectRootTask(item));
 if (!task) {{
   throw new Error(`Task not found: ${{taskId}}`);
 }}
@@ -2114,10 +2133,12 @@ pub async fn set_task_repetition<R: JxaRunner>(
         .unwrap_or_else(|| "null".to_string());
     let schedule_type_value = escape_for_jxa(schedule_type);
     let script = format!(
-        r#"const taskId = {task_id_value};
+        r#"{JS_PROJECT_STATUS}
+{JS_TASK_STATUS}
+const taskId = {task_id_value};
 const ruleString = {rule_string_value};
 const scheduleTypeInput = {schedule_type_value};
-const task = document.flattenedTasks.find(item => item.id.primaryKey === taskId);
+const task = document.flattenedTasks.find(item => item.id.primaryKey === taskId && !isProjectRootTask(item));
 if (!task) {{
   throw new Error(`Task not found: ${{taskId}}`);
 }}
@@ -2199,9 +2220,11 @@ pub async fn update_task<R: JxaRunner>(
 
     let script = format!(
         r#"{JS_DATE_HELPERS}
+{JS_PROJECT_STATUS}
+{JS_TASK_STATUS}
 const taskId = {task_id_value};
 const updates = {updates_value};
-const task = document.flattenedTasks.find(item => item.id.primaryKey === taskId);
+const task = document.flattenedTasks.find(item => item.id.primaryKey === taskId && !isProjectRootTask(item));
 if (!task) {{
   throw new Error(`Task not found: ${{taskId}}`);
 }}
@@ -2257,8 +2280,10 @@ pub async fn delete_task<R: JxaRunner>(runner: &R, task_id: &str) -> Result<Valu
     }
     let task_id_value = escape_for_jxa(task_id.trim());
     let script = format!(
-        r#"const taskId = {task_id_value};
-const task = document.flattenedTasks.find(item => item.id.primaryKey === taskId);
+        r#"{JS_PROJECT_STATUS}
+{JS_TASK_STATUS}
+const taskId = {task_id_value};
+const task = document.flattenedTasks.find(item => item.id.primaryKey === taskId && !isProjectRootTask(item));
 if (!task) {{
   throw new Error(`Task not found: ${{taskId}}`);
 }}
@@ -2307,9 +2332,12 @@ pub async fn delete_tasks_batch<R: JxaRunner>(runner: &R, task_ids: Vec<String>)
     }
     let task_ids_value = serde_json::to_string(&normalized_task_ids)?;
     let script = format!(
-        r#"const taskIds = {task_ids_value};
+        r#"{JS_PROJECT_STATUS}
+{JS_TASK_STATUS}
+const taskIds = {task_ids_value};
 const taskById = new Map();
 for (const task of document.flattenedTasks) {{
+  if (isProjectRootTask(task)) continue;
   try {{
     taskById.set(task.id.primaryKey, task);
   }} catch (e) {{
@@ -2386,11 +2414,13 @@ pub async fn move_task<R: JxaRunner>(
         .map(|value| escape_for_jxa(value.trim()))
         .unwrap_or_else(|| "null".to_string());
     let script = format!(
-        r#"{JS_RESOLVERS}
+        r#"{JS_PROJECT_STATUS}
+{JS_TASK_STATUS}
+{JS_RESOLVERS}
 const taskId = {task_id_value};
 const projectName = {project_value};
 const parentTaskId = {parent_task_id_value};
-const task = document.flattenedTasks.find(item => item.id.primaryKey === taskId);
+const task = document.flattenedTasks.find(item => item.id.primaryKey === taskId && !isProjectRootTask(item));
 if (!task) {{
   throw new Error(`Task not found: ${{taskId}}`);
 }}
@@ -2400,7 +2430,7 @@ const destinationInfo = (() => {{
     if (parentTaskId === taskId) {{
       throw new Error("Cannot move a task under itself.");
     }}
-    const parentTask = document.flattenedTasks.find(item => item.id.primaryKey === parentTaskId);
+    const parentTask = document.flattenedTasks.find(item => item.id.primaryKey === parentTaskId && !isProjectRootTask(item));
     if (!parentTask) {{
       throw new Error(`Parent task not found: ${{parentTaskId}}`);
     }}
@@ -2506,12 +2536,15 @@ pub async fn move_tasks_batch<R: JxaRunner>(
         .map(escape_for_jxa)
         .unwrap_or_else(|| "null".to_string());
     let script = format!(
-        r#"{JS_RESOLVERS}
+        r#"{JS_PROJECT_STATUS}
+{JS_TASK_STATUS}
+{JS_RESOLVERS}
 const taskIds = {task_ids_value};
 const projectName = {project_value};
 const parentTaskId = {parent_task_id_value};
 const taskById = new Map();
 for (const task of document.flattenedTasks) {{
+  if (isProjectRootTask(task)) continue;
   try {{
     taskById.set(task.id.primaryKey, task);
   }} catch (e) {{
@@ -2520,7 +2553,7 @@ for (const task of document.flattenedTasks) {{
 
 const destinationInfo = (() => {{
   if (parentTaskId !== null && parentTaskId !== "") {{
-    const parentTask = taskById.get(parentTaskId) || document.flattenedTasks.find(item => item.id.primaryKey === parentTaskId);
+    const parentTask = taskById.get(parentTaskId) || document.flattenedTasks.find(item => item.id.primaryKey === parentTaskId && !isProjectRootTask(item));
     if (!parentTask) {{
       throw new Error(`Parent task not found: ${{parentTaskId}}`);
     }}
@@ -2619,8 +2652,10 @@ pub async fn uncomplete_task<R: JxaRunner>(runner: &R, task_id: &str) -> Result<
     }
     let task_id_value = escape_for_jxa(task_id.trim());
     let script = format!(
-        r#"const taskId = {task_id_value};
-const task = document.flattenedTasks.find(item => item.id.primaryKey === taskId);
+        r#"{JS_PROJECT_STATUS}
+{JS_TASK_STATUS}
+const taskId = {task_id_value};
+const task = document.flattenedTasks.find(item => item.id.primaryKey === taskId && !isProjectRootTask(item));
 if (!task) {{
   throw new Error(`Task not found: ${{taskId}}`);
 }}
@@ -2665,13 +2700,15 @@ pub async fn append_to_note<R: JxaRunner>(
     let object_id_value = escape_for_jxa(object_id.trim());
     let text_value = escape_for_jxa(text);
     let script = format!(
-        r#"const objectType = {object_type_value};
+        r#"{JS_PROJECT_STATUS}
+{JS_TASK_STATUS}
+const objectType = {object_type_value};
 const objectId = {object_id_value};
 const textToAppend = {text_value};
 
 let obj;
 if (objectType === "task") {{
-  obj = document.flattenedTasks.find(item => item.id.primaryKey === objectId);
+  obj = document.flattenedTasks.find(item => item.id.primaryKey === objectId && !isProjectRootTask(item));
   if (!obj) {{
     throw new Error(`Task not found: ${{objectId}}`);
   }}

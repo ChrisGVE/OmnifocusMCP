@@ -217,20 +217,6 @@ assistant. They ask it to:
 
 ## Known limitations
 
-- **Task status filters include dropped tasks.** `available`, `overdue` and `due_soon` (in
-  `list_tasks` and `search_tasks`), the counts of `get_task_counts`, `get_forecast`, and the review
-  prompts check only whether the task itself is marked completed. Every other task counts as open:
-  dropped tasks, blocked tasks, tasks in on-hold projects, and tasks in completed or dropped
-  projects. Each returned task carries OmniFocus's own `taskStatus`, which does report `dropped`
-  and `blocked`.
-- **Project and tag task counts include dropped tasks.** The same completed-only check drives
-  `remainingTaskCount` (in `list_projects`, `get_project` and `update_project`),
-  `availableTaskCount` (in `get_project` and `list_tags`), and the stalled test (`isStalled`,
-  `stalledOnly` and the `stalled` count of `get_project_counts`). An active project whose only open
-  tasks are dropped is therefore reported as stalled, including in `omnifocus://projects` and the
-  `weekly_review` prompt.
-- **`available` means two things.** In `list_tasks` and `search_tasks` it is every task not
-  completed, deferred ones included. In `get_task_counts` it excludes tasks deferred to the future.
 - **Duplicate names resolve to the first match.** A name shared by several projects, folders or
   tags selects the first one OmniFocus lists. Use the id to pick a specific one.
 - **Unknown tag names are skipped.** `create_task`, `create_subtask`, `create_tasks_batch`,

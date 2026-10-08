@@ -45,7 +45,7 @@ use omnifocus_mcp::{
         projects::{get_project, get_project_counts, list_projects, update_project},
         tags::list_tags,
         tasks::{
-            get_task_counts_with_added_changed, list_tasks_with_added_changed,
+            get_task, get_task_counts_with_added_changed, list_tasks_with_added_changed,
             search_tasks_with_added_changed,
         },
     },
@@ -126,7 +126,8 @@ function fakeProject(id, status) {
   const project = { id: { primaryKey: id }, name: id, status: Project.Status[status],
     parentFolder: null, nextTask: null, flattenedTasks: [], tasks: [], tags: [],
     deferDate: null, dueDate: null, completionDate: null, modified: null, note: "",
-    flagged: false, sequential: false, completedByChildren: false, reviewInterval: null };
+    flagged: false, sequential: false, containsSingletonActions: false,
+    completedByChildren: false, reviewInterval: null };
   allProjects.push(project);
   return project;
 }
@@ -150,6 +151,21 @@ function dueTask(id, project, fields) {
   for (const key in fields) base[key] = fields[key];
   return fakeTask(id, project, base);
 }
+function projectOnlyTask(id, project, fields) {
+  const task = fakeTask(id, project, fields);
+  allTasks.pop();
+  return task;
+}
+function projectRootTask(id, project) {
+  const task = { id: { primaryKey: id }, name: "task " + id, note: "", flagged: false,
+    completed: false, taskStatus: DUE_STATUS, containingProject: project, project: project,
+    tags: [errand], dueDate: DUE, deferDate: null, effectiveDeferDate: null,
+    completionDate: null, effectiveCompletionDate: null, dropDate: null,
+    effectiveDropDate: null, added: null, modified: null, plannedDate: null,
+    estimatedMinutes: null, hasChildren: false };
+  allTasks.push(task);
+  return task;
+}
 
 var pActive = fakeProject("p-active", "Active");
 var pDone = fakeProject("p-done", "Done");
@@ -157,6 +173,10 @@ var pDropped = fakeProject("p-dropped", "Dropped");
 var pHold = fakeProject("p-hold", "OnHold");
 var pOnlyDropped = fakeProject("p-only-dropped", "Active");
 var pStuck = fakeProject("p-stuck", "Active");
+var pSingleAvailable = fakeProject("p-single-available", "Active");
+var pSingleBlocked = fakeProject("p-single-blocked", "Active");
+pSingleAvailable.containsSingletonActions = true;
+pSingleBlocked.containsSingletonActions = true;
 
 pActive.nextTask = dueTask("control", pActive, {});
 dueTask("blocked", pActive, { taskStatus: Task.Status.Blocked });
@@ -170,9 +190,12 @@ dueTask("in-on-hold-project", pHold, {});
 dueTask("dropped", pOnlyDropped, { taskStatus: Task.Status.Dropped, deferDate: FUTURE,
   effectiveDeferDate: FUTURE, dropDate: PAST, effectiveDropDate: PAST });
 fakeTask("stuck", pStuck, { taskStatus: Task.Status.Blocked });
+projectOnlyTask("single-available", pSingleAvailable, {});
+projectOnlyTask("single-blocked", pSingleBlocked, { taskStatus: Task.Status.Blocked });
 fakeTask("dropped-on-hold", pHold, { taskStatus: Task.Status.Dropped, dropDate: PAST,
   effectiveDropDate: PAST });
 fakeTask("inbox", null, {});
+projectRootTask("project-root", pActive);
 
 var document = { flattenedTasks: allTasks, flattenedProjects: allProjects,
   flattenedTags: [errand] };"#;
@@ -234,6 +257,17 @@ fn assert_uses_shared_task_status(tool: &str, script: &str) {
 
 // ---------------------------------------------------------------- list_tasks / search_tasks
 
+#[tokio::test]
+async fn get_task_lookup_rejects_project_root_tasks() {
+    let runner = CapturingRunner::new(json!({"id": "project-root"}));
+    get_task(&runner, "project-root")
+        .await
+        .expect("get_task captures its script");
+    let script = runner.last_script();
+    assert_uses_shared_task_status("get_task", &script);
+    assert!(script.contains("item.id.primaryKey === taskId && !isProjectRootTask(item)"));
+}
+
 async fn list_tasks_ids(status: &str, due: Due) -> Vec<String> {
     let runner = CapturingRunner::new(json!([]));
     list_tasks_with_added_changed(
@@ -287,12 +321,21 @@ async fn list_tasks_on_hold_is_remaining_tasks_of_on_hold_projects() {
 }
 
 #[tokio::test]
-async fn list_tasks_completed_and_all_are_unchanged() {
+async fn list_tasks_completed_includes_tasks_completed_by_their_project() {
     assert_eq!(
         list_tasks_ids("completed", Due::Overdue).await,
-        ["finished"]
+        ["finished", "in-done-project"]
     );
-    assert_eq!(list_tasks_ids("all", Due::Overdue).await.len(), 11);
+}
+
+#[tokio::test]
+async fn list_and_search_tasks_exclude_project_root_tasks() {
+    let listed = list_tasks_ids("all", Due::Overdue).await;
+    let searched = search_tasks_ids("all", Due::Overdue).await;
+    assert_eq!(listed.len(), 11);
+    assert_eq!(searched.len(), 11);
+    assert!(!listed.contains(&"project-root".to_string()));
+    assert!(!searched.contains(&"project-root".to_string()));
 }
 
 #[tokio::test]
@@ -342,7 +385,7 @@ async fn task_counts_use_the_list_tasks_definitions() {
     let counts = task_counts(Due::Overdue).await;
     assert_eq!(
         counts,
-        json!({"total": 11, "available": 2, "completed": 1, "overdue": 3, "dueSoon": 0,
+        json!({"total": 11, "available": 2, "completed": 2, "overdue": 3, "dueSoon": 0,
             "flagged": 0, "deferred": 1}),
         "available as list_tasks, overdue and deferred over remaining tasks only"
     );
@@ -404,11 +447,16 @@ async fn project_whose_only_open_task_is_dropped_is_not_stalled() {
     assert_eq!(by_id(&active, "p-only-dropped")["isStalled"], false);
     assert_eq!(by_id(&active, "p-stuck")["isStalled"], true);
     assert_eq!(by_id(&active, "p-active")["isStalled"], false);
+    assert_eq!(by_id(&active, "p-single-available")["isStalled"], false);
+    assert_eq!(by_id(&active, "p-single-blocked")["isStalled"], true);
 }
 
 #[tokio::test]
 async fn stalled_only_lists_only_truly_stalled_projects() {
-    assert_eq!(ids(&projects("active", true).await), ["p-stuck"]);
+    assert_eq!(
+        ids(&projects("active", true).await),
+        ["p-stuck", "p-single-blocked"]
+    );
 }
 
 #[tokio::test]
@@ -421,8 +469,8 @@ async fn project_counts_stalled_ignores_dropped_tasks() {
     let script = runner.last_script();
     assert_uses_shared_task_status("get_project_counts", &script);
     let counts = run_against_database("get_project_counts", &script, Due::Overdue);
-    assert_eq!(counts["stalled"], 1);
-    assert_eq!(counts["active"], 3);
+    assert_eq!(counts["stalled"], 2);
+    assert_eq!(counts["active"], 5);
 }
 
 async fn project_details(project: &str) -> Value {
@@ -456,6 +504,7 @@ async fn get_project_on_hold_project_has_remaining_but_no_available_tasks() {
 async fn get_project_done_project_has_no_remaining_tasks() {
     let details = project_details("p-done").await;
     assert_eq!(details["remainingTaskCount"], 0);
+    assert_eq!(details["completedTaskCount"], 1);
     assert_eq!(details["availableTaskCount"], 0);
 }
 
@@ -465,6 +514,15 @@ async fn get_project_only_dropped_tasks_is_not_stalled() {
     assert_eq!(details["remainingTaskCount"], 0);
     assert_eq!(details["availableTaskCount"], 0);
     assert_eq!(details["isStalled"], false);
+}
+
+#[tokio::test]
+async fn get_project_uses_single_action_availability_for_stalled_state() {
+    assert_eq!(
+        project_details("p-single-available").await["isStalled"],
+        false
+    );
+    assert_eq!(project_details("p-single-blocked").await["isStalled"], true);
 }
 
 #[tokio::test]

@@ -181,15 +181,15 @@ Tags are matched by name.
 
 | Value | Returns |
 | --- | --- |
-| `available` | Every task not marked completed, including deferred tasks. |
-| `due_soon` | Not completed, due between now and 7 days from now. |
-| `overdue` | Not completed, due before now. |
-| `on_hold` | Not completed, in a project whose status is on hold. |
-| `completed` | Completed tasks. |
-| `all` | Every task. |
+| `available` | Remaining tasks that OmniFocus reports as actionable (`Available`, `Next`, `DueSoon` or `Overdue`), in an active project or the inbox, not deferred into the future, and without an on-hold tag. |
+| `due_soon` | Remaining tasks due between now and 7 days from now. A blocked task can still match by date. |
+| `overdue` | Remaining tasks due before now. A blocked task can still match by date. |
+| `on_hold` | Remaining tasks in a project whose status is on hold. |
+| `completed` | Tasks completed directly, through a containing task, or through a completed project. Dropped tasks do not match. |
+| `all` | Every action task, including completed and dropped tasks. |
 
-`status` looks only at the task's own completed flag. See
-[Known limitations](../README.md#known-limitations) for what that includes.
+Project root tasks, which OmniFocus includes in `document.flattenedTasks` as project objects rather
+than actions, are excluded from every value.
 
 When `completedBefore` or `completedAfter` is set, the result contains completed tasks whatever
 `status` says, and without a `sortBy` it is sorted by completion date, newest first.
@@ -230,15 +230,17 @@ It takes no `status`, `sortBy`, `sortOrder` or `limit`.
 
 Returns `{total, available, completed, overdue, dueSoon, flagged, deferred}`:
 
-- `total`: every matching task, completed or not.
-- `completed`: matching tasks marked completed.
+- `total`: every matching action task, completed or not. Project root tasks are excluded.
+- `completed`: tasks completed directly, through a containing task, or through a completed
+  project. Dropped tasks and tasks in dropped projects are excluded.
 - `flagged`: matching flagged tasks, completed or not.
-- `available`: not completed, and with no defer date or a defer date in the past.
-- `deferred`: not completed, with a defer date in the future.
-- `overdue`: not completed, due before now.
-- `dueSoon`: not completed, due between now and 7 days from now.
+- `available`: remaining and actionable now, using the same definition as `status: "available"`.
+- `deferred`: remaining, with a defer date in the future.
+- `overdue`: remaining, due before now.
+- `dueSoon`: remaining, due between now and 7 days from now.
 
-`available` here excludes deferred tasks; `status: "available"` in `list_tasks` does not.
+"Remaining" excludes completed and dropped tasks, including completion or dropping inherited from
+a containing task or project. It includes blocked tasks and tasks in on-hold projects.
 
 ### `get_task`
 
@@ -470,9 +472,13 @@ Returns `{taskId, notificationId, removed}`.
 Project status values are `active`, `on_hold`, `completed` and `dropped`. A status the server does
 not recognise is reported as `unknown`.
 
-A project is **stalled** when it is active, has at least one incomplete task, and OmniFocus reports
-no next task for it. Dropped tasks count as incomplete here, as in every project task count; see
-[Known limitations](../README.md#known-limitations).
+A project is **stalled** when it is active and has at least one remaining task, then:
+
+- for a single-action list, none of its remaining tasks is available now;
+- for every other project, OmniFocus reports no `nextTask`.
+
+Completed and dropped tasks are not remaining. Availability also excludes blocked tasks, tasks
+deferred into the future, tasks with an on-hold tag, and tasks outside an active project or inbox.
 
 ### `list_projects`
 
@@ -488,9 +494,11 @@ Lists projects, filtered and sorted.
 | `sortOrder` | string | no | `asc` | `asc` or `desc`. No aliases. |
 | `limit` | integer | no | 100 | Maximum number of projects returned. |
 
-Returns projects with `id`, `name`, `status`, `folderName`, `taskCount`, `remainingTaskCount`
-(tasks not marked completed, dropped ones included), `deferDate`, `dueDate`, `completionDate`,
-`note`, `sequential`, `isStalled`, `nextTaskId`, `nextTaskName`, `reviewInterval`.
+Returns projects with `id`, `name`, `status`, `folderName`, `taskCount`, `remainingTaskCount`,
+`deferDate`, `dueDate`, `completionDate`, `note`, `sequential`, `isStalled`, `nextTaskId`,
+`nextTaskName`, `reviewInterval`. `taskCount` excludes OmniFocus's synthetic project root task.
+`remainingTaskCount` also excludes completed and dropped tasks, including state inherited from a
+containing task or project.
 `reviewInterval` is text such as `"2 weeks"` or `"1 month"`, or `null`.
 
 ### `get_project_counts`
@@ -523,9 +531,11 @@ Reads one project in full.
 | --- | --- | --- | --- | --- |
 | `project_id_or_name` | string | yes | - | |
 
-Returns the `list_projects` fields plus `completedTaskCount`, `availableTaskCount` (tasks not
-marked completed and not deferred to the future, dropped ones included), `modified` (the
-last-modified date) and `rootTasks` (the project's top-level tasks).
+Returns the `list_projects` fields plus `completedTaskCount`, `availableTaskCount`, `modified` (the
+last-modified date) and `rootTasks` (the project's top-level tasks). `completedTaskCount` includes
+tasks completed directly, through a containing task, or through the completed project; dropped
+tasks are excluded. `availableTaskCount` uses the same actionable-now definition as
+`status: "available"`. All counts exclude OmniFocus's synthetic project root task.
 
 ### `create_project`
 
@@ -642,8 +652,9 @@ Lists tags, filtered by status and sorted.
 | `limit` | integer | no | 100 | Maximum number of tags returned. |
 
 Returns `{id, name, parent, availableTaskCount, totalTaskCount, status}` per tag.
-`totalTaskCount` counts every task with the tag; `availableTaskCount` counts those not marked
-completed, dropped and deferred ones included.
+`totalTaskCount` counts every action task with the tag, excluding synthetic project root tasks.
+`availableTaskCount` counts tasks available now: remaining, actionable, not deferred into the
+future, without an on-hold tag, and in an active project or the inbox.
 
 ### `search_tags`
 
@@ -772,7 +783,9 @@ Returns `{summary: {requested, deleted, failed}, partial_success, results}`.
 
 ### `get_forecast`
 
-Looks at tasks not marked completed and returns five sections plus their full counts.
+Looks at remaining action tasks and returns five sections plus their full counts. Completed and
+dropped tasks, tasks in completed or dropped projects, and synthetic project root tasks are
+excluded. Blocked tasks and tasks in on-hold projects remain eligible for date-based sections.
 
 | Key | Type | Required | Default | Notes |
 | --- | --- | --- | --- | --- |

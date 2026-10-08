@@ -1615,7 +1615,7 @@ async fn list_projects_script_includes_stalled_and_next_task_fields() {
     assert!(!script.contains(r#"if (flattened.includes("completed")) return "completed";"#));
     assert!(!script.contains(r#"if (flattened.includes("active")) return "active";"#));
     assert!(script.contains("const nextTask = project.nextTask;"));
-    assert!(script.contains(r#"const isStalled = normalizeProjectStatus(project) === "active""#));
+    assert!(script.contains("const isStalled = isProjectStalled(project, now);"));
     assert!(script.contains(
         "completionDate: project.completionDate ? project.completionDate.toISOString() : null,"
     ));
@@ -1927,9 +1927,10 @@ async fn get_project_script_includes_stalled_and_count_fields() {
         .expect("script capture lock should succeed")
         .clone();
     assert!(script.contains("const nextTask = project.nextTask;"));
-    assert!(script.contains(r#"const isStalled = normalizeProjectStatus(project) === "active""#));
-    assert!(script
-        .contains("completedTaskCount: allProjectTasks.filter(task => task.completed).length,"));
+    assert!(script.contains("const isStalled = isProjectStalled(project, now);"));
+    assert!(script.contains(
+        "completedTaskCount: allProjectTasks.filter(task => isTaskCompleted(task)).length,"
+    ));
     assert!(script.contains(
         "availableTaskCount: allProjectTasks.filter(task => isTaskAvailable(task, now)).length,"
     ));

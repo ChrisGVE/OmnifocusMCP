@@ -59,6 +59,18 @@ fn verdicts(fields: &str) -> String {
     )
 }
 
+/// `[isTaskRemaining, isTaskCompleted]` for one fake task.
+fn completion_verdicts(fields: &str) -> String {
+    let prelude = format!("{FAKES}\n{JS_PROJECT_STATUS}\n{JS_TASK_STATUS}");
+    common::run_jsc(
+        &prelude,
+        &format!(
+            "const task = fakeTask({fields});\n\
+             print(JSON.stringify([isTaskRemaining(task), isTaskCompleted(task)]));"
+        ),
+    )
+}
+
 #[test]
 fn snippet_compiles_alongside_the_project_status_snippet_it_needs() {
     common::assert_script_compiles(
@@ -248,4 +260,107 @@ fn task_with_active_tags_is_available() {
         verdicts("{ tags: [withTag(\"Active\")] }"),
         REMAINING_AND_AVAILABLE
     );
+}
+
+// ---------------------------------------------------------------- project roots
+
+#[test]
+fn project_root_task_requires_a_non_null_project_property() {
+    let prelude = format!("{FAKES}\n{JS_PROJECT_STATUS}\n{JS_TASK_STATUS}");
+    let result = common::run_jsc(
+        &prelude,
+        "print(JSON.stringify([\
+           isProjectRootTask({ project: {} }),\
+           isProjectRootTask({ project: null }),\
+           isProjectRootTask({ project: undefined }),\
+           isProjectRootTask({})\
+         ]));",
+    );
+    assert_eq!(result, "[true,false,false,false]");
+}
+
+// ---------------------------------------------------------------- completion
+
+#[test]
+fn completed_signals_make_a_task_completed() {
+    assert_eq!(completion_verdicts("{ completed: true }"), "[false,true]");
+    assert_eq!(
+        completion_verdicts("{ taskStatus: Task.Status.Completed }"),
+        "[false,true]"
+    );
+    assert_eq!(
+        completion_verdicts("{ effectiveCompletionDate: PAST }"),
+        "[false,true]"
+    );
+    assert_eq!(
+        completion_verdicts("{ containingProject: inProject(\"Done\") }"),
+        "[false,true]"
+    );
+}
+
+#[test]
+fn dropped_signals_take_precedence_over_completed_signals() {
+    assert_eq!(
+        completion_verdicts(
+            "{ completed: true, taskStatus: Task.Status.Dropped, effectiveCompletionDate: PAST }"
+        ),
+        "[false,false]"
+    );
+    assert_eq!(
+        completion_verdicts("{ completed: true, containingProject: inProject(\"Dropped\") }"),
+        "[false,false]"
+    );
+}
+
+#[test]
+fn remaining_and_completed_are_mutually_exclusive_for_every_supported_state() {
+    let cases = [
+        "{}",
+        "{ completed: true }",
+        "{ taskStatus: Task.Status.Completed }",
+        "{ taskStatus: Task.Status.Dropped }",
+        "{ effectiveCompletionDate: PAST }",
+        "{ effectiveDropDate: PAST }",
+        "{ containingProject: inProject(\"Active\") }",
+        "{ containingProject: inProject(\"Done\") }",
+        "{ containingProject: inProject(\"Dropped\") }",
+        "{ containingProject: inProject(\"OnHold\") }",
+    ];
+    for fields in cases {
+        assert_ne!(completion_verdicts(fields), "[true,true]", "case: {fields}");
+    }
+}
+
+// ---------------------------------------------------------------- stalled projects
+
+#[test]
+fn regular_project_is_stalled_when_it_has_remaining_tasks_but_no_next_task() {
+    let prelude = format!("{FAKES}\n{JS_PROJECT_STATUS}\n{JS_TASK_STATUS}");
+    let result = common::run_jsc(
+        &prelude,
+        "const task = fakeTask({});\
+         const project = { status: Project.Status.Active, containsSingletonActions: false,\
+           flattenedTasks: [task], nextTask: null };\
+         task.containingProject = project;\
+         print(isProjectStalled(project, NOW));",
+    );
+    assert_eq!(result, "true");
+}
+
+#[test]
+fn single_action_list_is_stalled_only_when_none_of_its_tasks_is_available() {
+    let prelude = format!("{FAKES}\n{JS_PROJECT_STATUS}\n{JS_TASK_STATUS}");
+    let result = common::run_jsc(
+        &prelude,
+        "const available = fakeTask({});\
+         const blocked = fakeTask({ taskStatus: Task.Status.Blocked });\
+         const project = { status: Project.Status.Active, containsSingletonActions: true,\
+           flattenedTasks: [available, blocked], nextTask: null };\
+         available.containingProject = project; blocked.containingProject = project;\
+         const withAvailable = isProjectStalled(project, NOW);\
+         project.flattenedTasks = [blocked];\
+         const withoutAvailable = isProjectStalled(project, NOW);\
+         print(JSON.stringify([withAvailable, withoutAvailable]));",
+    );
+    assert_eq!(result, "[false,true]");
 }
