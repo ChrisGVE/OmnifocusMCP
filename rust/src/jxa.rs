@@ -19,7 +19,7 @@ pub fn escape_for_jxa(value: &str) -> String {
     }
 }
 
-fn friendly_jxa_error(stderr: &str) -> String {
+pub fn friendly_jxa_error(stderr: &str) -> String {
     let lowered = stderr.to_lowercase();
     if lowered.contains("not running") && lowered.contains("omnifocus") {
         return "OmniFocus is not running. Please open OmniFocus and try again.".to_string();
@@ -38,7 +38,7 @@ fn friendly_jxa_error(stderr: &str) -> String {
     if lowered.contains("syntax error") {
         return format!("JXA script syntax error: {}", stderr.trim());
     }
-    format!("JXA execution failed: {}", stderr.trim())
+    stderr.trim().to_string()
 }
 
 pub fn friendly_omnijs_error(error: &str) -> String {

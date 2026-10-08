@@ -390,6 +390,123 @@ fn task_value(id: &str, name: &str) -> Value {
     })
 }
 
+#[test]
+fn task_summary_requires_live_inbox_and_sequential_fields() {
+    let mut payload = task_value("t1", "task");
+    let object = payload
+        .as_object_mut()
+        .expect("task fixture should be an object");
+    object.remove("inInbox");
+    object.remove("sequential");
+
+    assert!(serde_json::from_value::<omnifocus_mcp::types::TaskResult>(payload).is_err());
+
+    let mut live_payload = task_value("t2", "sequential inbox task");
+    live_payload["sequential"] = Value::Bool(true);
+    let summary = serde_json::from_value::<omnifocus_mcp::types::TaskResult>(live_payload)
+        .expect("live task booleans should deserialize");
+    assert!(summary.in_inbox);
+    assert!(summary.sequential);
+}
+
+fn captured_script(runner: &CapturingRunner) -> String {
+    runner
+        .last_script
+        .lock()
+        .expect("script capture lock should succeed")
+        .clone()
+}
+
+#[tokio::test]
+async fn every_task_summary_script_emits_live_inbox_and_sequential_values() {
+    let last_script = Arc::new(Mutex::new(String::new()));
+    let runner = CapturingRunner {
+        payload: json!([task_value("t1", "task")]),
+        last_script,
+    };
+
+    get_inbox(&runner, 1).await.expect("inbox should parse");
+    let script = captured_script(&runner);
+    assert!(script.contains("inInbox: task.inInbox,"));
+    assert!(script.contains("sequential: task.sequential,"));
+
+    list_tasks(
+        &runner,
+        None,
+        None,
+        None,
+        "any",
+        None,
+        "available",
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        1,
+    )
+    .await
+    .expect("task list should parse");
+    let script = captured_script(&runner);
+    assert!(script.contains("inInbox: task.inInbox,"));
+    assert!(script.contains("sequential: task.sequential,"));
+
+    search_tasks(
+        &runner,
+        "task",
+        None,
+        None,
+        None,
+        "any",
+        None,
+        "available",
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        "asc",
+        1,
+    )
+    .await
+    .expect("task search should parse");
+    let script = captured_script(&runner);
+    assert!(script.contains("inInbox: task.inInbox,"));
+    assert!(script.contains("sequential: task.sequential,"));
+
+    list_subtasks(&runner, "parent", 1)
+        .await
+        .expect("subtask list should parse");
+    let script = captured_script(&runner);
+    assert!(script.contains("inInbox: subtask.inInbox,"));
+    assert!(script.contains("sequential: subtask.sequential,"));
+
+    get_forecast(&runner, 1)
+        .await
+        .expect("forecast should return its payload");
+    let script = captured_script(&runner);
+    assert!(script.contains("inInbox: task.inInbox,"));
+    assert!(script.contains("sequential: task.sequential,"));
+
+    get_task(&runner, "t1")
+        .await
+        .expect("task details should return their payload");
+    let script = captured_script(&runner);
+    assert!(script.contains("inInbox: task.inInbox,"));
+    assert!(script.contains("sequential: task.sequential,"));
+
+    get_project(&runner, "project")
+        .await
+        .expect("project details should return their payload");
+    let script = captured_script(&runner);
+    assert!(script.contains("inInbox: task.inInbox,"));
+    assert!(script.contains("sequential: task.sequential,"));
+}
+
 #[tokio::test]
 async fn read_task_tools_happy_path() {
     let inbox_runner = MockRunner {
@@ -3182,7 +3299,9 @@ async fn list_tasks_added_changed_filters_and_payload_fields_are_included() {
             "name": "dated task",
             "addedDate": "2026-02-01T09:00:00Z",
             "changedDate": "2026-02-08T12:00:00Z",
-            "taskStatus": "available"
+            "taskStatus": "available",
+            "inInbox": true,
+            "sequential": true
         }]),
         last_script: last_script.clone(),
     };
@@ -3258,7 +3377,9 @@ async fn search_tasks_added_changed_filters_and_payload_fields_are_included() {
             "name": "shape",
             "addedDate": "2026-02-01T09:00:00Z",
             "changedDate": "2026-02-08T12:00:00Z",
-            "taskStatus": "available"
+            "taskStatus": "available",
+            "inInbox": true,
+            "sequential": true
         }]),
         last_script: last_script.clone(),
     };

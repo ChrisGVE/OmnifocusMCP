@@ -45,6 +45,8 @@ const toTaskSummary = (task) => {{
     projectName: task.containingProject ? task.containingProject.name : null,
     tags: task.tags.map(tag => tag.name),
     estimatedMinutes: task.estimatedMinutes,
+    inInbox: task.inInbox,
+    sequential: task.sequential,
     hasChildren: task.hasChildren
   }};
 }};

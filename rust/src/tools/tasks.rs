@@ -369,7 +369,9 @@ return tasks.map(task => {{
     completionDate: task.completionDate ? task.completionDate.toISOString() : null,
     tags: tags,
     estimatedMinutes: task.estimatedMinutes,
+    inInbox: task.inInbox,
     hasChildren: task.hasChildren,
+    sequential: task.sequential,
     taskStatus: (() => {{
       const s = String(task.taskStatus);
       if (s.includes("Available")) return "available";
@@ -762,7 +764,9 @@ return tasks.map(task => {{
     projectName: task.containingProject ? task.containingProject.name : null,
     tags: tags,
     estimatedMinutes: task.estimatedMinutes,
+    inInbox: task.inInbox,
     hasChildren: task.hasChildren,
+    sequential: task.sequential,
     taskStatus: (() => {{
       const s = String(task.taskStatus);
       if (s.includes("Available")) return "available";
@@ -954,6 +958,7 @@ return {{
     return "unknown";
   }})(),
   projectName: task.containingProject ? task.containingProject.name : null,
+  inInbox: task.inInbox,
   tags: task.tags.map(tag => tag.name),
   estimatedMinutes: task.estimatedMinutes,
   children: children,
@@ -1007,7 +1012,9 @@ return subtasks.map(subtask => {{
     completed: subtask.completed,
     tags: tags,
     estimatedMinutes: subtask.estimatedMinutes,
+    inInbox: subtask.inInbox,
     hasChildren: subtask.hasChildren,
+    sequential: subtask.sequential,
     taskStatus: (() => {{
       const s = String(subtask.taskStatus);
       if (s.includes("Available")) return "available";
@@ -1554,7 +1561,9 @@ return tasks.map(task => {{
     projectName: task.containingProject ? task.containingProject.name : null,
     tags: tags,
     estimatedMinutes: task.estimatedMinutes,
+    inInbox: task.inInbox,
     hasChildren: task.hasChildren,
+    sequential: task.sequential,
     taskStatus: (() => {{
       const s = String(task.taskStatus);
       if (s.includes("Available")) return "available";
@@ -1971,6 +1980,7 @@ return {{
   tags: duplicatedTask.tags.map(tag => tag.name),
   estimatedMinutes: duplicatedTask.estimatedMinutes,
   hasChildren: duplicatedTask.hasChildren,
+  sequential: duplicatedTask.sequential,
   taskStatus: taskStatusValue(duplicatedTask)
 }};"#
     );
@@ -2265,7 +2275,9 @@ return {{
   effectiveFlagged: task.effectiveFlagged,
   completed: task.completed,
   projectName: task.containingProject ? task.containingProject.name : null,
+  inInbox: task.inInbox,
   tags: task.tags.map(tag => tag.name),
+  sequential: task.sequential,
   estimatedMinutes: task.estimatedMinutes
 }};"#
     );

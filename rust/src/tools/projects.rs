@@ -322,6 +322,8 @@ const rootTasks = project.tasks.map(task => {{
     deferDate: task.deferDate ? task.deferDate.toISOString() : null,
     completed: task.completed,
     tags: task.tags.map(tag => tag.name),
+    inInbox: task.inInbox,
+    sequential: task.sequential,
     estimatedMinutes: task.estimatedMinutes
   }};
 }});

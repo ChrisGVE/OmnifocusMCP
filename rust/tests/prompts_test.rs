@@ -1,4 +1,8 @@
-use std::{future::Future, pin::Pin};
+use std::{
+    future::Future,
+    pin::Pin,
+    sync::{Arc, Mutex},
+};
 
 use omnifocus_mcp::{
     error::OmniFocusError,
@@ -100,6 +104,43 @@ async fn prompt_rendering_contains_expected_sections() {
         .expect("project planning should render");
     assert!(planning.contains("project_details_json"));
     assert!(planning.contains("project_available_tasks_json"));
+}
+
+#[derive(Clone, Default)]
+struct PromptScriptRunner {
+    scripts: Arc<Mutex<Vec<String>>>,
+}
+
+impl JxaRunner for PromptScriptRunner {
+    fn run_omnijs<'a>(
+        &'a self,
+        script: &'a str,
+    ) -> Pin<Box<dyn Future<Output = omnifocus_mcp::error::Result<Value>> + Send + 'a>> {
+        self.scripts
+            .lock()
+            .expect("prompt script capture lock should succeed")
+            .push(script.to_string());
+        Box::pin(async { Ok(json!([])) })
+    }
+}
+
+#[tokio::test]
+async fn daily_review_requests_only_remaining_flagged_tasks() {
+    let runner = PromptScriptRunner::default();
+
+    daily_review(&runner)
+        .await
+        .expect("daily review should render");
+
+    let scripts = runner
+        .scripts
+        .lock()
+        .expect("prompt script capture lock should succeed");
+    let flagged_script = scripts
+        .iter()
+        .find(|script| script.contains("const flaggedFilter = true;"))
+        .expect("daily review should request flagged tasks");
+    assert!(flagged_script.contains("const statusFilter = \"available\";"));
 }
 
 #[tokio::test]

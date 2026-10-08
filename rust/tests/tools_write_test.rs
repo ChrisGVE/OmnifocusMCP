@@ -1876,6 +1876,40 @@ async fn duplicate_task_script_supports_child_toggle_and_summary_fields() {
 }
 
 #[tokio::test]
+async fn rich_task_write_results_emit_live_inbox_and_sequential_values() {
+    let scripts = Arc::new(Mutex::new(Vec::new()));
+    let runner = RecordingRunner {
+        payload: json!({"id": "task-1"}),
+        scripts: Arc::clone(&scripts),
+        error_message: None,
+    };
+
+    duplicate_task(&runner, "task-1", false)
+        .await
+        .expect("duplicate_task should return its payload");
+    let duplicate_script = scripts
+        .lock()
+        .expect("scripts lock should succeed")
+        .last()
+        .cloned()
+        .expect("duplicate script should be captured");
+    assert!(duplicate_script.contains("inInbox: duplicatedTask.inInbox,"));
+    assert!(duplicate_script.contains("sequential: duplicatedTask.sequential,"));
+
+    update_task(&runner, "task-1", None, None, None, None, None, None, None)
+        .await
+        .expect("update_task should return its payload");
+    let update_script = scripts
+        .lock()
+        .expect("scripts lock should succeed")
+        .last()
+        .cloned()
+        .expect("update script should be captured");
+    assert!(update_script.contains("inInbox: task.inInbox,"));
+    assert!(update_script.contains("sequential: task.sequential,"));
+}
+
+#[tokio::test]
 async fn move_task_script_supports_parent_destination_with_guards() {
     let scripts = Arc::new(Mutex::new(Vec::new()));
     let runner = RecordingRunner {

@@ -2,7 +2,10 @@ use std::{future::Future, pin::Pin};
 
 use omnifocus_mcp::{
     error::OmniFocusError,
-    jxa::{escape_for_jxa, run_script_with_runner, unwrap_omnijs_envelope, JxaRunner},
+    jxa::{
+        escape_for_jxa, friendly_jxa_error, run_script_with_runner, unwrap_omnijs_envelope,
+        JxaRunner,
+    },
 };
 use serde_json::{json, Value};
 
@@ -34,6 +37,16 @@ fn omnifocus_error_display_messages_match_expected() {
 
     let io = OmniFocusError::Io(std::io::Error::other("denied"));
     assert_eq!(io.to_string(), "I/O error while running JXA: denied");
+}
+
+#[test]
+fn unknown_jxa_failure_has_single_execution_prefix() {
+    let error = OmniFocusError::JxaExecution(friendly_jxa_error("unexpected osascript failure"));
+
+    assert_eq!(
+        error.to_string(),
+        "JXA execution failed: unexpected osascript failure"
+    );
 }
 
 #[derive(Clone)]

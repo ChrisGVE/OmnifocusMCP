@@ -101,3 +101,15 @@ fn create_folder_takes_a_parent_id_or_exact_name() {
     assert!(text.contains("parent folder (id or exact name)"), "{text}");
     assert!(!text.contains("folder name"), "{text}");
 }
+
+#[test]
+fn delete_tag_requires_confirmation_and_points_edits_to_update_tag() {
+    let text = description("delete_tag");
+    assert!(text.contains("removes the tag"), "{text}");
+    assert!(text.contains("unassigns it from linked tasks"), "{text}");
+    assert!(text.contains("use update_tag"), "{text}");
+    assert!(
+        text.contains("ask the user for explicit confirmation"),
+        "{text}"
+    );
+}

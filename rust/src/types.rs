@@ -28,13 +28,12 @@ pub struct TaskResult {
     pub tags: Vec<String>,
     #[serde(rename = "estimatedMinutes", alias = "estimated_minutes", default)]
     pub estimated_minutes: Option<i32>,
-    #[serde(rename = "inInbox", alias = "in_inbox", default)]
+    #[serde(rename = "inInbox", alias = "in_inbox")]
     pub in_inbox: bool,
     #[serde(rename = "hasChildren", alias = "has_children", default)]
     pub has_children: bool,
     #[serde(rename = "taskStatus", alias = "task_status", default)]
     pub task_status: String,
-    #[serde(default)]
     pub sequential: bool,
 }
 

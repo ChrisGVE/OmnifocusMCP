@@ -16,7 +16,12 @@ impl JxaRunner for ResourceRunner {
     ) -> Pin<Box<dyn Future<Output = omnifocus_mcp::error::Result<Value>> + Send + 'a>> {
         Box::pin(async move {
             if script.contains("const tasks = inbox") {
-                return Ok(json!([{ "id": "task-1", "name": "inbox item" }]));
+                return Ok(json!([{
+                    "id": "task-1",
+                    "name": "inbox item",
+                    "inInbox": true,
+                    "sequential": false
+                }]));
             }
             if script.contains("const now = new Date();")
                 && script.contains("const toTaskSummary = (task) =>")

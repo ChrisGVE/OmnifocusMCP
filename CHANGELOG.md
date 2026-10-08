@@ -61,6 +61,13 @@ are marked **Breaking**. Upgrade steps:
   descriptions say that `project` and `parent` take an id or an exact name.
 
 ### Fixed
+- Task summaries now report each task's real inbox and sequential-action-group state instead of
+  silently defaulting both fields to `false`.
+- The `daily_review` prompt now excludes completed and otherwise non-remaining tasks from its
+  flagged-task section.
+- The `delete_tag` tool description now explains the non-destructive alternative and requires
+  explicit user confirmation before deletion.
+- Unrecognised `osascript` failures now carry one `JXA execution failed:` prefix instead of two.
 - Task status filters and open-task counts now use OmniFocus's effective state: `available`
   excludes blocked, future-deferred and on-hold work, while `overdue`, `due_soon`, forecast and
   remaining counts exclude completed and dropped tasks and tasks in completed or dropped projects.

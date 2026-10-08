@@ -1297,7 +1297,7 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
     }
 
     #[tool(
-        description = "delete a tag by id or name. warning: tasks using this tag will lose the tag assignment."
+        description = "delete a tag by id or name. destructive operation: this removes the tag and unassigns it from linked tasks. use update_tag for non-destructive edits. before calling, ask the user for explicit confirmation."
     )]
     async fn delete_tag(
         &self,

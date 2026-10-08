@@ -28,7 +28,7 @@ pub async fn daily_review<R: JxaRunner>(runner: &R) -> Result<String> {
         None,
         "any",
         Some(true),
-        "all",
+        "available",
         None,
         None,
         None,

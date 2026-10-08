@@ -131,16 +131,18 @@ these fields: `id`, `name`, `note`, `flagged`, `completed`, `projectName`, `dueD
 `estimatedMinutes`, `hasChildren`, `taskStatus`, `inInbox`, `sequential`. Dates are ISO 8601 in
 UTC, or `null`.
 
-Not every tool fills every field. A field a tool does not fill is always `null` (`false` for
-`inInbox` and `sequential`), whatever the task holds, so it must not be read as "no value":
+Every task-summary tool reports the task's live `inInbox` and `sequential` values. Some other
+fields are unavailable on narrower summary surfaces:
 
-| Tool | Fields always `null` or `false` |
+| Tool | Fields unavailable (`null`) |
 | --- | --- |
-| `get_inbox` | `projectName`, `plannedDate`, `inInbox`, `sequential` |
-| `list_tasks`, `search_tasks` | `inInbox`, `sequential` |
-| `list_subtasks` | `projectName`, `completionDate`, `plannedDate`, `inInbox`, `sequential` |
+| `get_inbox` | `projectName`, `plannedDate` |
+| `list_tasks`, `search_tasks` | none |
+| `list_subtasks` | `projectName`, `completionDate`, `plannedDate` |
 
-`get_task` returns the real values of all of these except `inInbox`.
+`get_task` returns the real values of all of these. Forecast task summaries, project `rootTasks`,
+and rich task results from `duplicate_task` and `update_task` also include the live `inInbox` and
+`sequential` values.
 
 `taskStatus` is OmniFocus's own status of the task: `available`, `blocked`, `next`, `due_soon`,
 `overdue`, `completed`, `dropped`, or `unknown`.
@@ -692,7 +694,8 @@ At least one of `name` and `status` is required. Returns `{id, name, status}`.
 
 ### `delete_tag`
 
-Deletes a tag immediately; tasks keep existing but lose the tag.
+Deletes a tag immediately, unassigning it from linked tasks. Use `update_tag` for non-destructive
+edits, and ask the user for explicit confirmation before calling.
 
 | Key | Type | Required | Default | Notes |
 | --- | --- | --- | --- | --- |
