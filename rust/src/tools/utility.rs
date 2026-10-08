@@ -23,6 +23,18 @@ if (!task) {{
   throw new Error(`Task not found: ${{taskId}}`);
 }}
 if (!task.completed) {{
+  if (isTaskCompleted(task)) {{
+    // Done through a completed container, not its own flag: name the container
+    // (the nearest completed ancestor, else the completed project).
+    let holder = task.parent;
+    while (holder && !holder.completed) holder = holder.parent;
+    const holderName = holder ? holder.name
+      : (task.containingProject ? task.containingProject.name : null);
+    throw new Error(
+      `Task ${{taskId}} is completed through its project or a containing task; `
+        + `reopen that instead: ${{holderName}}`
+    );
+  }}
   throw new Error(`Task is not completed: ${{taskId}}`);
 }}
 
@@ -31,7 +43,7 @@ task.markIncomplete();
 return {{
   id: task.id.primaryKey,
   name: task.name,
-  completed: task.completed
+  completed: isTaskCompleted(task)
 }};"#
     );
     runner.run_omnijs(&script).await

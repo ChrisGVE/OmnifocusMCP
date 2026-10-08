@@ -83,7 +83,7 @@ const FORECAST_TASK_SUMMARY: &str = r#"const toTaskSummary = (task) => {
     name: task.name,
     note: task.note,
     flagged: task.flagged,
-    completed: task.completed,
+    completed: isTaskCompleted(task),
     dueDate: task.dueDate ? task.dueDate.toISOString() : null,
     deferDate: task.deferDate ? task.deferDate.toISOString() : null,
     completionDate: task.completionDate ? task.completionDate.toISOString() : null,

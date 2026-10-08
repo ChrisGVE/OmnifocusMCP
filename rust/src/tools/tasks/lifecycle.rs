@@ -32,7 +32,7 @@ task.markComplete();
 return {{
   id: task.id.primaryKey,
   name: task.name,
-  completed: task.completed
+  completed: isTaskCompleted(task)
 }};"#
     );
     runner.run_omnijs(&script).await

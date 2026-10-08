@@ -25,7 +25,9 @@ pub async fn get_inbox<R: JxaRunner>(runner: &R, limit: i32) -> Result<Vec<TaskR
     }
 
     let script = format!(
-        r#"{JS_PLANNED_DATE}
+        r#"{JS_PROJECT_STATUS}
+{JS_TASK_STATUS}
+{JS_PLANNED_DATE}
 {READ_PLANNED_DATES}
 const tasks = inbox
   .filter(task => !task.completed)
@@ -61,7 +63,7 @@ const children = task.children.map(child => {{
   return {{
     id: child.id.primaryKey,
     name: child.name,
-    completed: child.completed
+    completed: isTaskCompleted(child)
   }};
 }});
 
@@ -101,7 +103,7 @@ const TASK_DETAILS_RESULT: &str = r#"return {
   effectiveDueDate: task.effectiveDueDate ? task.effectiveDueDate.toISOString() : null,
   effectiveDeferDate: task.effectiveDeferDate ? task.effectiveDeferDate.toISOString() : null,
   effectiveFlagged: task.effectiveFlagged,
-  completed: task.completed,
+  completed: isTaskCompleted(task),
   completionDate: task.completionDate ? task.completionDate.toISOString() : null,
   addedDate: task.added ? task.added.toISOString() : null,
   changedDate: task.modified ? task.modified.toISOString() : null,

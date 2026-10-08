@@ -19,17 +19,21 @@ use std::{
 
 use omnifocus_mcp::{
     jxa::JxaRunner,
-    tools::tasks::{get_inbox, list_subtasks},
+    tools::{
+        tasks::{get_inbox, list_subtasks},
+        utility::uncomplete_task,
+    },
 };
 use serde_json::{json, Value};
 
-/// One project holding a parent task with a completed, planned child, and an
-/// inbox task with a planned date. `PLANNED_THROWS` simulates a database not
+/// One project holding a parent task with a completed, planned child, an
+/// inbox task with a planned date, and a completed project whose open task was
+/// left unmarked (OmniFocus keeps that task's own `completed` false). `PLANNED_THROWS` simulates a database not
 /// migrated for planned dates, where reading `plannedDate` throws.
 const FAKE_DATABASE: &str = r#"function FakeEnum(name) { this.name = name; }
 FakeEnum.prototype.toString = function () { return "[object Task.Status: " + this.name + "]"; };
 var Task = { Status: { Available: new FakeEnum("Available"), Completed: new FakeEnum("Completed") } };
-var Project = { Status: { Active: new FakeEnum("Active") } };
+var Project = { Status: { Active: new FakeEnum("Active"), Done: new FakeEnum("Done") } };
 var PLANNED = new Date(Date.UTC(2026, 9, 9, 7, 0));
 var DONE = new Date(Date.UTC(2026, 9, 1, 12, 0));
 function fakeTask(id, fields) {
@@ -53,7 +57,11 @@ var parent = fakeTask("parent", { containingProject: education, hasChildren: tru
   children: [child] });
 var inboxTask = fakeTask("inbox", { inInbox: true, plannedDate: PLANNED });
 var inbox = [inboxTask];
-var document = { flattenedTasks: [parent, child, inboxTask] };"#;
+var closed = { id: { primaryKey: "p2" }, name: "Closed", status: Project.Status.Done };
+var leftover = fakeTask("leftover", { containingProject: closed });
+var closedParent = fakeTask("closed-parent", { containingProject: closed, hasChildren: true,
+  children: [leftover] });
+var document = { flattenedTasks: [parent, child, inboxTask, closedParent, leftover] };"#;
 
 /// Records the script it is asked to run and returns an empty list.
 struct CapturingRunner {
@@ -107,6 +115,14 @@ fn run_against_database(tool: &str, script: &str, planned_throws: bool) -> Value
     items[0].clone()
 }
 
+async fn subtasks_script_of(parent: &str) -> String {
+    let runner = CapturingRunner::new();
+    list_subtasks(&runner, parent, 10)
+        .await
+        .expect("list_subtasks runs");
+    runner.last_script()
+}
+
 async fn subtasks_script() -> String {
     let runner = CapturingRunner::new();
     list_subtasks(&runner, "parent", 10)
@@ -143,4 +159,49 @@ async fn both_report_no_planned_date_on_an_unmigrated_database() {
     assert_eq!(subtask["plannedDate"], Value::Null);
     let task = run_against_database("get_inbox", &inbox_script().await, true);
     assert_eq!(task["plannedDate"], Value::Null);
+}
+
+/// `completed` means what the `completed` status filter means: done directly,
+/// through a containing task, or through a completed project. A task left open
+/// in a project that was then completed is done, though its own flag is false.
+#[tokio::test]
+async fn a_task_in_a_completed_project_reports_completed() {
+    let leftover = run_against_database(
+        "list_subtasks",
+        &subtasks_script_of("closed-parent").await,
+        false,
+    );
+    assert_eq!(leftover["id"], "leftover");
+    assert_eq!(leftover["completed"], true);
+}
+
+#[tokio::test]
+async fn an_open_task_in_an_active_project_reports_not_completed() {
+    let task = run_against_database("get_inbox", &inbox_script().await, false);
+    assert_eq!(task["completed"], false);
+}
+
+/// Reopening such a task means reopening its project; `uncomplete_task` says
+/// so instead of claiming the task is not completed.
+#[tokio::test]
+async fn uncompleting_a_task_closed_by_its_project_names_the_project() {
+    let runner = CapturingRunner::new();
+    uncomplete_task(&runner, "leftover")
+        .await
+        .expect("uncomplete_task runs");
+    let script = runner.last_script();
+    common::assert_script_compiles("uncomplete_task", &script);
+    let prelude = format!("var PLANNED_THROWS = false;\n{FAKE_DATABASE}");
+    let output = common::run_jsc(
+        &prelude,
+        &format!(
+            "try {{ (function () {{\n{script}\n}})(); print(\"no error\"); }}\n\
+             catch (error) {{ print(error.message); }}"
+        ),
+    );
+    assert_eq!(
+        output,
+        "Task leftover is completed through its project or a containing task; \
+         reopen that instead: Closed"
+    );
 }

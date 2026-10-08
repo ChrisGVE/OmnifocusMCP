@@ -338,7 +338,7 @@ const DUPLICATED_TASK_RESULT: &str = r#"return {
   addedDate: duplicatedTask.added ? duplicatedTask.added.toISOString() : null,
   changedDate: duplicatedTask.modified ? duplicatedTask.modified.toISOString() : null,
   deferDate: duplicatedTask.deferDate ? duplicatedTask.deferDate.toISOString() : null,
-  completed: duplicatedTask.completed,
+  completed: isTaskCompleted(duplicatedTask),
   completionDate: duplicatedTask.completionDate ? duplicatedTask.completionDate.toISOString() : null,
   plannedDate: plannedDateValue(duplicatedTask),
   projectName: duplicatedTask.containingProject ? duplicatedTask.containingProject.name : null,

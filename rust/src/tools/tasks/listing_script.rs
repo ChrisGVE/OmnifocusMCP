@@ -244,7 +244,7 @@ pub(super) const MAP_LISTED_TASKS: &str = r#"return tasks.map(task => {
     addedDate: task.added ? task.added.toISOString() : null,
     changedDate: task.modified ? task.modified.toISOString() : null,
     deferDate: task.deferDate ? task.deferDate.toISOString() : null,
-    completed: task.completed,
+    completed: isTaskCompleted(task),
     completionDate: task.completionDate ? task.completionDate.toISOString() : null,
     plannedDate: plannedDate ? plannedDate.toISOString() : null,
     projectName: task.containingProject ? task.containingProject.name : null,

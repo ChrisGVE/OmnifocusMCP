@@ -159,7 +159,7 @@ return {
   effectiveDueDate: task.effectiveDueDate ? task.effectiveDueDate.toISOString() : null,
   effectiveDeferDate: task.effectiveDeferDate ? task.effectiveDeferDate.toISOString() : null,
   effectiveFlagged: task.effectiveFlagged,
-  completed: task.completed,
+  completed: isTaskCompleted(task),
   projectName: task.containingProject ? task.containingProject.name : null,
   inInbox: task.inInbox,
   tags: task.tags.map(tag => tag.name),

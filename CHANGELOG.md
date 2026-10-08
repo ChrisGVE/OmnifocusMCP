@@ -26,6 +26,11 @@ issue numbers in them, and every "upstream #N" below, refer to that project's tr
 - `get_project` and `create_project` report `modified` from the project's root
   task; OmniJS projects have no `modified` of their own, so it was always `null`. A project created
   in the same call still reports `null`, as OmniFocus sets the date when it saves.
+- A task's `completed` field now follows the `completed` status filter: true when the task is done
+  directly, through a containing task, or through a completed project. A task left open when its
+  project was completed read `completed: false` in every tool while the filter and the project's
+  counts called it completed. `uncomplete_task` on such a task now names the project or task to
+  reopen instead of failing with `Task is not completed`.
 - `get_inbox` and `list_subtasks` return the same task summary as `list_tasks`. `list_subtasks`
   reported `projectName`, `plannedDate` and `completionDate` as `null`, and `get_inbox`
   `plannedDate`, whatever the task held.

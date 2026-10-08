@@ -133,6 +133,11 @@ these fields: `id`, `name`, `note`, `flagged`, `completed`, `projectName`, `dueD
 `estimatedMinutes`, `hasChildren`, `taskStatus`, `inInbox`, `sequential`. Dates are ISO 8601 in
 UTC, or `null`.
 
+`completed` is true when the task is done directly, through a containing task, or through a
+completed project, the same definition the `completed` status filter uses. A task left open when its
+project was completed is reported `completed: true`, although OmniFocus keeps its own checkbox
+clear. Every tool that returns a task's `completed` uses this definition.
+
 Every task-summary tool reports the task's live `inInbox` and `sequential` values. Some other
 fields are unavailable on narrower summary surfaces:
 
@@ -353,7 +358,10 @@ Reopens a completed task.
 | `task_id` | string | yes | - | |
 
 On a task that is not completed it fails with
-`OmniFocus operation failed: Task is not completed: <id>`. Returns `{id, name, completed}`.
+`OmniFocus operation failed: Task is not completed: <id>`. On a task that is completed only through
+a completed project or containing task it fails with `Task <id> is completed through its project or
+a containing task; reopen that instead: <name>`, naming that project or task. Returns
+`{id, name, completed}`.
 
 ### `set_task_repetition`
 
