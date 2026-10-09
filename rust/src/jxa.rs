@@ -3,8 +3,9 @@
 //! A script is wrapped twice: inside OmniFocus it runs in a function whose
 //! result or exception becomes a JSON `{ok, data}` / `{ok: false, error}`
 //! envelope, and that wrapper is handed to OmniFocus's `evaluateJavascript`
-//! from a JXA script. The JXA script is run by a program, osascript in
-//! production, described by `JxaProcess`. One call runs at a time.
+//! from a JXA script. The JXA script is fed on standard input to a program,
+//! osascript in production, described by `JxaProcess`. One call runs at a
+//! time.
 
 use std::{
     future::Future,
@@ -16,7 +17,12 @@ use std::{
 };
 
 use serde_json::Value;
-use tokio::{process::Command, sync::Mutex, time::timeout};
+use tokio::{
+    io::AsyncWriteExt,
+    process::{ChildStdin, Command},
+    sync::Mutex,
+    time::timeout,
+};
 
 use crate::error::{OmniFocusError, Result};
 
@@ -105,38 +111,54 @@ impl JxaProcess {
 
     /// Runs a JXA script and returns its trimmed stdout.
     ///
+    /// The script is written to the program's standard input (`-` as the
+    /// script name), never passed as an argument: an argument is limited by
+    /// the system's ARG_MAX, so a large batch could not start at all, and is
+    /// visible to every user through `ps`.
+    ///
     /// Waits for any call already running, then gives the program
     /// `time_limit` to finish; past it the program is killed and the call
     /// fails with `Timeout`. A non-zero exit fails with osascript's stderr
     /// read by `friendly_jxa_error`.
     pub async fn run(&self, script: &str) -> Result<String> {
         let _guard = jxa_call_lock().lock().await;
-        let child = Command::new(&self.program)
-            .arg("-l")
-            .arg("JavaScript")
-            .arg("-e")
-            .arg(script)
-            .stdin(Stdio::null())
+        let mut child = Command::new(&self.program)
+            .args(["-l", "JavaScript", "-"])
+            .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .kill_on_drop(true)
             .spawn()?;
+        let stdin = child.stdin.take().ok_or_else(|| {
+            OmniFocusError::Io(std::io::Error::other(
+                "the script runner's standard input was not opened",
+            ))
+        })?;
 
-        let output = match timeout(self.time_limit, child.wait_with_output()).await {
-            Ok(output) => output?,
+        // Fed and read at once: a program that writes before it has read all
+        // of a large script would otherwise wait on us while we wait on it.
+        let finished = async { tokio::join!(feed_script(stdin, script), child.wait_with_output()) };
+        let (fed, output) = match timeout(self.time_limit, finished).await {
+            Ok(results) => results,
             Err(_) => {
                 return Err(OmniFocusError::Timeout {
                     after: self.time_limit,
                 });
             }
         };
+        let output = output?;
 
+        // A program that failed may have stopped reading early, so its own
+        // report says more than the write error it caused.
         if !output.status.success() {
             let stderr_text = String::from_utf8_lossy(&output.stderr).to_string();
             return Err(OmniFocusError::JxaExecution(friendly_jxa_error(
                 &stderr_text,
             )));
         }
+        // It exited 0 without taking the whole script: its answer is not
+        // the script's.
+        fed?;
 
         Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
     }
@@ -153,6 +175,13 @@ impl JxaProcess {
         let envelope = self.run_json(&omnijs_jxa_script(script)).await?;
         unwrap_omnijs_envelope(envelope)
     }
+}
+
+/// Writes the whole script to the program's standard input. `stdin` is
+/// dropped on return, which closes the pipe, so the program sees the end of
+/// the script.
+async fn feed_script(mut stdin: ChildStdin, script: &str) -> std::io::Result<()> {
+    stdin.write_all(script.as_bytes()).await
 }
 
 pub async fn run_jxa(script: &str) -> Result<String> {

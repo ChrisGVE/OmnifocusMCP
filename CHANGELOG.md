@@ -60,6 +60,9 @@ issue numbers in them, and every "upstream #N" below, refer to that project's tr
 - The server runs `/usr/bin/osascript` by absolute path. It used to look `osascript` up on `PATH`,
   so an `osascript` in a directory listed before `/usr/bin` (such as a user-writable one) would
   have received every script.
+- Large calls such as a big `create_tasks_batch` no longer fail with `Argument list too long`. The
+  script now reaches `osascript` on its standard input instead of as one command-line argument,
+  which the system limits to 1 MiB and which any user could read with `ps`.
 - `list_notifications` and `add_notification` report a due-relative notification as
   `kind: "relative"` with its `relativeFireOffset`. The kind was inferred from `initialFireDate`,
   which OmniFocus sets for relative notifications too, so every one read `kind: "absolute"` with

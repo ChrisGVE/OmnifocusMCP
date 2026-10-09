@@ -22,7 +22,7 @@ use std::{
 
 use omnifocus_mcp::{
     error::OmniFocusError,
-    jxa::{JxaProcess, JxaRunner, RealJxaRunner},
+    jxa::{omnijs_jxa_script, JxaProcess, JxaRunner, RealJxaRunner},
 };
 use serde_json::{json, Value};
 
@@ -317,4 +317,98 @@ fn production_process_runs_the_system_osascript_by_absolute_path() {
 fn the_default_runner_uses_the_production_process() {
     assert_eq!(RealJxaRunner::new().process(), &JxaProcess::osascript());
     assert_eq!(RealJxaRunner::default().process(), &JxaProcess::osascript());
+}
+
+// ------------------------------------------------ the script travels on stdin (audit CR-041)
+
+/// Records the arguments (one per line) and standard input it was given,
+/// then answers with a successful envelope.
+const RECORDING_STUB: &str = "printf '%s\\n' \"$@\" > \"$STUB_DIR/argv\"\n\
+     cat > \"$STUB_DIR/stdin\"\n\
+     printf '{\"ok\":true,\"data\":1}'";
+
+#[tokio::test]
+async fn the_script_reaches_the_program_on_stdin_and_not_in_its_arguments() {
+    let stub = stub("stdin-not-argv", RECORDING_STUB);
+    let script = "return 'cr041-marker';";
+
+    let value = run_script(&stub, script).await.expect("the stub succeeds");
+    assert_eq!(value, json!(1));
+
+    let argv = fs::read_to_string(stub.dir.join("argv")).expect("the stub recorded argv");
+    let argv: Vec<&str> = argv.lines().collect();
+    assert_eq!(argv, ["-l", "JavaScript", "-"]);
+
+    let stdin = fs::read_to_string(stub.dir.join("stdin")).expect("the stub recorded stdin");
+    assert_eq!(stdin, omnijs_jxa_script(script));
+    assert!(stdin.contains("cr041-marker"), "{stdin}");
+}
+
+/// A script over the system's argument limit (ARG_MAX, 1 MiB on macOS)
+/// could not be started at all as a command-line argument.
+#[tokio::test]
+async fn a_script_larger_than_the_argument_limit_still_runs() {
+    let stub = stub("over-arg-max", RECORDING_STUB);
+    let script = format!("// {}\nreturn 1;", "x".repeat(2 * 1024 * 1024));
+
+    let value = run_script(&stub, &script)
+        .await
+        .expect("a 2 MiB script runs");
+    assert_eq!(value, json!(1));
+
+    let received = fs::metadata(stub.dir.join("stdin")).expect("the stub recorded stdin");
+    assert_eq!(received.len(), omnijs_jxa_script(&script).len() as u64);
+}
+
+/// A program that writes its output before it has read all of its input
+/// must not wedge the call: the script is fed while the output is read.
+#[tokio::test]
+async fn output_written_before_the_script_is_read_does_not_block_the_call() {
+    let stub = stub(
+        "output-before-input",
+        "head -c 262144 /dev/zero | tr '\\0' ' '\n\
+         printf '{\"ok\":true,\"data\":2}'\n\
+         cat > /dev/null",
+    );
+    let script = format!("// {}\nreturn 2;", "y".repeat(262_144));
+
+    let value = runner(&stub, Duration::from_secs(5))
+        .run_omnijs(&script)
+        .await
+        .expect("the call completes");
+    assert_eq!(value, json!(2));
+}
+
+/// A script bigger than a pipe's buffer, so a program that never reads it
+/// makes the write fail.
+fn script_larger_than_a_pipe() -> String {
+    format!("// {}\nreturn 1;", "z".repeat(1024 * 1024))
+}
+
+#[tokio::test]
+async fn a_program_that_succeeds_without_reading_the_script_is_an_io_error() {
+    let stub = stub("exit-0-unread", "printf '{\"ok\":true,\"data\":1}'\nexit 0");
+    let error = run_script(&stub, &script_larger_than_a_pipe())
+        .await
+        .expect_err("an answer to a script never read is not the script's answer");
+    assert!(
+        matches!(&error, OmniFocusError::Io(io) if io.kind() == std::io::ErrorKind::BrokenPipe),
+        "{error:?}"
+    );
+}
+
+#[tokio::test]
+async fn a_program_that_fails_without_reading_the_script_reports_its_stderr() {
+    let stub = stub("exit-1-unread", "echo 'refused' >&2\nexit 1");
+    let error = run_script(&stub, &script_larger_than_a_pipe())
+        .await
+        .expect_err("exit 1 is a failure");
+    assert!(
+        matches!(&error, OmniFocusError::JxaExecution(message) if message == "refused"),
+        "{error:?}"
+    );
+}
+
+async fn run_script(stub: &Stub, script: &str) -> omnifocus_mcp::error::Result<Value> {
+    runner(stub, GENEROUS_LIMIT).run_omnijs(script).await
 }

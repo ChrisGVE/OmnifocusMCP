@@ -26,8 +26,8 @@ anything. See
 `main.rs` runs the MCP server defined in `server.rs` on stdio. Each tool handler in `server.rs`
 deserializes its parameter struct and calls a function in `src/tools/`. That function validates the
 input in Rust, builds an Omni Automation script (prepending shared snippets from `js_helpers.rs`),
-and runs it through `jxa.rs`, which wraps it in a JXA script for `osascript` and turns the JSON
-reply or error into a result.
+and runs it through `jxa.rs`, which wraps it in a JXA script, feeds that to `osascript` on standard
+input and turns the JSON reply or error into a result.
 
 ## Layout
 
