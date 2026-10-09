@@ -68,7 +68,10 @@ Some MCP clients send every argument as a string. The server accepts both forms:
 - `boolean` parameters accept `true`/`false` and the strings `"true"`/`"false"` (any letter case).
   No other string (`"yes"`, `"1"`) is accepted.
 - `tags` accepts an array of tag ids or exact names (`["Home", "Quick"]`) or one string holding a JSON array
-  (`"[\"Home\",\"Quick\"]"`).
+  (`"[\"Home\",\"Quick\"]"`). An empty or blank string (`""`) is rejected with `invalid_params`
+  (`tags must not be an empty string; pass [] to remove every tag`) on every tool that takes `tags`,
+  so a stray empty value can never clear a task's or project's tags. `[]` (or `"[]"`) is the
+  explicit empty list.
 
 ### Dates
 
@@ -379,7 +382,7 @@ Changes only the fields you pass.
 | `note` | string | no | - | Replaces the whole note (see `append_to_note`). |
 | `dueDate`, `deferDate`, `plannedDate` | date | no | - | `plannedDate` requires an OmniFocus database migrated for planned dates. |
 | `flagged` | boolean | no | - | |
-| `tags` | array of strings | no | - | Replaces all tags. Every id or exact name must resolve before any field changes. |
+| `tags` | array of strings | no | - | Replaces all tags; `[]` removes every tag. Every id or exact name must resolve before any field changes. |
 | `estimatedMinutes` | integer | no | - | |
 
 Omitting a field and passing `null` both leave it unchanged, so this tool cannot clear a date.
@@ -630,7 +633,7 @@ Changes only the fields you pass.
 | `note` | string | no | - | Replaces the whole note. |
 | `dueDate`, `deferDate` | date | no | - | |
 | `flagged` | boolean | no | - | |
-| `tags` | array of strings | no | - | Replaces all tags. Every id or exact name must resolve before any field changes. |
+| `tags` | array of strings | no | - | Replaces all tags; `[]` removes every tag. Every id or exact name must resolve before any field changes. |
 | `sequential` | boolean | no | - | |
 | `completedByChildren` | boolean | no | - | |
 | `reviewInterval` | string | no | - | `"N unit"`, N a whole number of at least 1, unit `day(s)`, `week(s)`, `month(s)` or `year(s)` in any letter case, e.g. `"2 weeks"`. |

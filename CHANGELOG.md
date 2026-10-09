@@ -38,6 +38,12 @@ issue numbers in them, and every "upstream #N" below, refer to that project's tr
   `OmniFocus operation failed: ` prefix that every message outside `Task`/`Project`/`Tag`/`Folder
   not found:` used to get (for example `Parent task not found: <id>`,
   `Task is not completed: <id>`).
+- **Visible to clients:** an empty or blank `tags` string (`"tags": ""`) is rejected with
+  `invalid_params` (`tags must not be an empty string; pass [] to remove every tag`) instead of
+  being read as an empty list. On `update_task` and `update_project` that empty list removed every
+  tag, so an accidental empty value wiped them. `[]` (or the string `"[]"`) still removes every
+  tag. The rule applies to every tool that takes `tags`, the `list_tasks`, `search_tasks` and
+  `get_task_counts` filters included, where `""` used to mean no tag filter.
 
 ### Fixed
 - `list_notifications` and `add_notification` report a due-relative notification as

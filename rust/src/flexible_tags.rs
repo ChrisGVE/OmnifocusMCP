@@ -1,5 +1,7 @@
 //! `tags` tool parameters: some MCP clients send a JSON array, others a single string
-//! containing a JSON array (e.g. `"[\"Quick\",\"Home\"]"`).
+//! containing a JSON array (e.g. `"[\"Quick\",\"Home\"]"`). An empty or
+//! whitespace-only string is neither, and is rejected rather than read as an
+//! empty list: on the update tools an empty list removes every tag.
 
 use std::borrow::Cow;
 use std::fmt;
@@ -45,8 +47,13 @@ impl<'de> Deserialize<'de> for FlexibleTagList {
 
             fn visit_str<E: DeError>(self, v: &str) -> Result<Self::Value, E> {
                 let v = v.trim();
+                // An empty string is what a client sends by accident; read as
+                // "no tags" it made update_task/update_project remove every
+                // tag (audit CR-022). Clearing must be asked for with [].
                 if v.is_empty() {
-                    return Ok(FlexibleTagList(vec![]));
+                    return Err(DeError::custom(
+                        "tags must not be an empty string; pass [] to remove every tag",
+                    ));
                 }
                 serde_json::from_str::<Vec<String>>(v).map(FlexibleTagList).map_err(|e| {
                     DeError::custom(format!(
@@ -82,7 +89,7 @@ enum FlexibleTagListSchemaRepr {
     Array(#[schemars(description = "Tag names (preferred).")] Vec<String>),
     JsonString(
         #[schemars(
-            description = "JSON array of tag names as one string, for clients that encode all tool arguments as strings (e.g. [\"Home\",\"Quick\"])."
+            description = "JSON array of tag names as one string, for clients that encode all tool arguments as strings (e.g. [\"Home\",\"Quick\"]). An empty string is rejected; use [] to clear."
         )]
         String,
     ),
