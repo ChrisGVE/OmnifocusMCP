@@ -63,6 +63,11 @@ issue numbers in them, and every "upstream #N" below, refer to that project's tr
 - Large calls such as a big `create_tasks_batch` no longer fail with `Argument list too long`. The
   script now reaches `osascript` on its standard input instead of as one command-line argument,
   which the system limits to 1 MiB and which any user could read with `ps`.
+- A read no longer fails as a whole when one string in OmniFocus holds half of a surrogate pair
+  (for example a name or note cut inside an emoji). OmniFocus writes such a half as an escape the
+  JSON parser rejected, so the call failed with `JXA command returned malformed JSON`; the half is
+  now read as U+FFFD, the Unicode replacement character, and a complete pair still reads as its
+  character.
 - `list_notifications` and `add_notification` report a due-relative notification as
   `kind: "relative"` with its `relativeFireOffset`. The kind was inferred from `initialFireDate`,
   which OmniFocus sets for relative notifications too, so every one read `kind: "absolute"` with

@@ -77,6 +77,7 @@ rust/
     jxa_test.rs                        # escaping, error messages, reply unwrapping
     jxa_process_test.rs                # the runner's process handling, against a stub program
     jxa_timeout_test.rs                # the time limit as a Duration and how it is named
+    jxa_surrogate_test.rs              # unpaired UTF-16 surrogates in OmniFocus output
     params_test.rs                     # wire contract: unknown keys, string-encoded scalars
     lenient_scalars_test.rs            # lenient scalar types
     date_parsing_test.rs               # every date goes through the shared date helpers

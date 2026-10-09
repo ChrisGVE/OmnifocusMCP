@@ -8,6 +8,7 @@
 //! time.
 
 use std::{
+    borrow::Cow,
     future::Future,
     path::{Path, PathBuf},
     pin::Pin,
@@ -204,13 +205,80 @@ pub async fn run_jxa_json_with_timeout(script: &str, time_limit: Duration) -> Re
 
 /// Parses osascript's trimmed stdout as JSON. Output that is not JSON is
 /// `MalformedOutput`, carrying serde's explanation.
+///
+/// Unpaired surrogate escapes are replaced first (see
+/// `replace_lone_surrogate_escapes`), so one damaged string in OmniFocus does
+/// not fail the whole result.
 pub fn parse_jxa_output(stdout: &str) -> Result<Value> {
     if stdout.is_empty() {
         return Err(OmniFocusError::JxaExecution(
             "JXA command returned empty output.".to_string(),
         ));
     }
-    serde_json::from_str::<Value>(stdout).map_err(OmniFocusError::MalformedOutput)
+    let json_text = replace_lone_surrogate_escapes(stdout);
+    serde_json::from_str::<Value>(&json_text).map_err(OmniFocusError::MalformedOutput)
+}
+
+/// The escape text that stands in for an unpaired surrogate: U+FFFD, the
+/// Unicode replacement character.
+const REPLACEMENT_ESCAPE: &str = "\\ufffd";
+
+/// Replaces every `\uXXXX` escape of an unpaired UTF-16 surrogate in JSON
+/// text with `\ufffd`, leaving everything else as it is.
+///
+/// JavaScript strings may hold half of a surrogate pair on its own (a note
+/// cut inside an emoji), and `JSON.stringify` writes it as an escape such as
+/// `\ud83d`. serde_json rejects that, as JSON text must encode Unicode
+/// scalar values. A high surrogate (`D800`-`DBFF`) immediately followed by a
+/// low one (`DC00`-`DFFF`) is a valid pair and is kept; any other surrogate
+/// escape is replaced. `\\` is skipped as a unit, so the text `\\ud800` (a
+/// backslash, then the letters `ud800`) is not mistaken for an escape.
+pub fn replace_lone_surrogate_escapes(json_text: &str) -> Cow<'_, str> {
+    let bytes = json_text.as_bytes();
+    let mut repaired = String::new();
+    let mut copied_up_to = 0;
+    let mut at = 0;
+    while at < bytes.len() {
+        if bytes[at] != b'\\' {
+            at += 1;
+            continue;
+        }
+        let escape_len = match escaped_code_unit(bytes, at) {
+            Some(0xD800..=0xDBFF)
+                if matches!(escaped_code_unit(bytes, at + 6), Some(0xDC00..=0xDFFF)) =>
+            {
+                at += 12;
+                continue;
+            }
+            Some(0xD800..=0xDFFF) => 6,
+            // Any other escape: skip the backslash and the character it
+            // escapes; the hex digits of a `\u` escape are plain ASCII.
+            _ => {
+                at += 2;
+                continue;
+            }
+        };
+        repaired.push_str(&json_text[copied_up_to..at]);
+        repaired.push_str(REPLACEMENT_ESCAPE);
+        at += escape_len;
+        copied_up_to = at;
+    }
+    if copied_up_to == 0 {
+        return Cow::Borrowed(json_text);
+    }
+    repaired.push_str(&json_text[copied_up_to..]);
+    Cow::Owned(repaired)
+}
+
+/// The code unit of a complete `\uXXXX` escape starting at `at`, if there is
+/// one.
+fn escaped_code_unit(bytes: &[u8], at: usize) -> Option<u16> {
+    let escape = bytes.get(at..at + 6)?;
+    if escape[0] != b'\\' || escape[1] != b'u' {
+        return None;
+    }
+    let hex = std::str::from_utf8(&escape[2..]).ok()?;
+    u16::from_str_radix(hex, 16).ok()
 }
 
 pub async fn run_omnijs(script: &str) -> Result<Value> {

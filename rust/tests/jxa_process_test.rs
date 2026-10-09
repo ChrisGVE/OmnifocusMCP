@@ -379,6 +379,19 @@ async fn output_written_before_the_script_is_read_does_not_block_the_call() {
     assert_eq!(value, json!(2));
 }
 
+// ------------------------------------------------ unpaired surrogates (audit CR-042)
+
+#[tokio::test]
+async fn a_result_holding_an_unpaired_surrogate_still_reads() {
+    let value = outcome_of_stdout(
+        "lone-surrogate",
+        r#"{"ok":true,"data":[{"name":"Plan \ud83d"},{"name":"\ud83d\ude00"}]}"#,
+    )
+    .await
+    .expect("one damaged name must not fail the read");
+    assert_eq!(value, json!([{"name": "Plan \u{FFFD}"}, {"name": "😀"}]));
+}
+
 /// A script bigger than a pipe's buffer, so a program that never reads it
 /// makes the write fail.
 fn script_larger_than_a_pipe() -> String {
