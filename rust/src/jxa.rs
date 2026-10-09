@@ -20,8 +20,10 @@ use tokio::{process::Command, sync::Mutex, time::timeout};
 
 use crate::error::{OmniFocusError, Result};
 
-/// The program that runs JXA scripts in production.
-pub const OSASCRIPT: &str = "osascript";
+/// The program that runs JXA scripts in production, by absolute path: looked
+/// up through PATH, a user-writable directory listed before /usr/bin would
+/// choose the program that receives every script.
+pub const OSASCRIPT: &str = "/usr/bin/osascript";
 /// How long one call may take in production.
 const DEFAULT_TIMEOUT: Duration = Duration::from_secs(30);
 static JXA_CALL_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
@@ -279,6 +281,10 @@ impl RealJxaRunner {
 
     pub fn with_process(process: JxaProcess) -> Self {
         Self { process }
+    }
+
+    pub fn process(&self) -> &JxaProcess {
+        &self.process
     }
 }
 

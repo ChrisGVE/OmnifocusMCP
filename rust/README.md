@@ -45,8 +45,8 @@ rust/
                         #   MCP instructions and adds up one tool router per area file
                         #   (task_read_tools, task_write_tools, notification_tools,
                         #   project_tools, tag_tools, folder_tools, view_tools)
-    jxa.rs              # script runner: JxaProcess (program + time limit; osascript with a
-                        #   30 s limit in production), one call at a time, escape_for_jxa,
+    jxa.rs              # script runner: JxaProcess (program + time limit; /usr/bin/osascript
+                        #   with a 30 s limit in production), one call at a time, escape_for_jxa,
                         #   error messages
     error.rs            # OmniFocusError, the error type of every tool; a tool reports it as
                         #   an isError result, a prompt or resource as a JSON-RPC error

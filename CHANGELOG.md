@@ -57,6 +57,9 @@ issue numbers in them, and every "upstream #N" below, refer to that project's tr
   (`500ms`) instead of as `0s`.
 
 ### Fixed
+- The server runs `/usr/bin/osascript` by absolute path. It used to look `osascript` up on `PATH`,
+  so an `osascript` in a directory listed before `/usr/bin` (such as a user-writable one) would
+  have received every script.
 - `list_notifications` and `add_notification` report a due-relative notification as
   `kind: "relative"` with its `relativeFireOffset`. The kind was inferred from `initialFireDate`,
   which OmniFocus sets for relative notifications too, so every one read `kind: "absolute"` with

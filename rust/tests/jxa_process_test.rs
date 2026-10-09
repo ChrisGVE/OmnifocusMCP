@@ -15,7 +15,7 @@
 use std::{
     fs,
     os::unix::fs::PermissionsExt,
-    path::PathBuf,
+    path::{Path, PathBuf},
     process::Command,
     time::{Duration, Instant},
 };
@@ -299,4 +299,22 @@ async fn successful_envelope_returns_its_data() {
         .await
         .expect("ok: true is a success");
     assert_eq!(value, json!({"count": 3}));
+}
+
+// ------------------------------------------------ which osascript (audit CR-040)
+
+/// osascript is named by its absolute path. Looked up through PATH, a
+/// directory the user can write to and that precedes /usr/bin would decide
+/// which program receives every script.
+#[test]
+fn production_process_runs_the_system_osascript_by_absolute_path() {
+    let process = JxaProcess::osascript();
+    assert_eq!(process.program(), Path::new("/usr/bin/osascript"));
+    assert!(process.program().is_absolute());
+}
+
+#[test]
+fn the_default_runner_uses_the_production_process() {
+    assert_eq!(RealJxaRunner::new().process(), &JxaProcess::osascript());
+    assert_eq!(RealJxaRunner::default().process(), &JxaProcess::osascript());
 }

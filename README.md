@@ -241,7 +241,8 @@ assistant. They ask it to:
 
 ## How it works
 
-Each tool call runs `osascript -l JavaScript` with a short JXA (JavaScript for Automation) script.
+Each tool call runs `/usr/bin/osascript -l JavaScript` (by absolute path, so no other `osascript`
+earlier on `PATH` can stand in for it) with a short JXA (JavaScript for Automation) script.
 That script hands a second script to OmniFocus's `evaluateJavascript`, which runs it inside
 OmniFocus in Omni Automation, OmniFocus's built-in JavaScript API (also called OmniJS, the name the
 tool descriptions use). The two steps are needed because objects such as `flattenedTasks` and
