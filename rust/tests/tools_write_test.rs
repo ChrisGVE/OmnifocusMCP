@@ -1794,9 +1794,6 @@ async fn move_task_script_contains_destination_modes_and_parent_guards() {
     assert!(
         inbox_script.contains(r#"throw new Error("Task move did not preserve task identity.");"#)
     );
-    assert!(
-        inbox_script.contains(r#"if (destinationInfo.mode !== "parent" && task.containingTask) {"#)
-    );
 }
 
 #[tokio::test]
@@ -1998,9 +1995,6 @@ async fn move_task_script_supports_project_and_inbox_destinations() {
     assert!(inbox_script.contains("const projectName = null;"));
     assert!(inbox_script.contains("const parentTaskId = null;"));
     assert!(inbox_script.contains("return { mode: \"inbox\", location: inbox.ending };"));
-    assert!(
-        inbox_script.contains("if (destinationInfo.mode !== \"parent\" && task.containingTask)")
-    );
 }
 
 #[tokio::test]

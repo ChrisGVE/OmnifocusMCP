@@ -25,6 +25,10 @@ issue numbers in them, and every "upstream #N" below, refer to that project's tr
   which OmniFocus sets for relative notifications too, so every one read `kind: "absolute"` with
   `relativeFireOffset: null`. Any other kind, such as OmniFocus's invalid-state `Unknown`, is
   reported as `kind: "unknown"` with neither fire-date field read.
+- `move_task` and `move_tasks_batch` now refuse to move a task under its own child or grandchild
+  (`Cannot move a task under its own descendant.`); only a move under the task itself was refused.
+  Both read the ancestor chain through `containingTask`, which OmniJS does not have, instead of
+  `parent`, which also left the post-move "still nested under a parent" check unable to fire.
 - `get_project` and `list_projects` no longer report a project's own root task as its next task
   (`nextTaskId`/`nextTaskName` named the project itself when no child was next, for example once
   it was completed); such a project reports `null`, and stall detection treats it the same way.

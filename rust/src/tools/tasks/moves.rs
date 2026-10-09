@@ -49,12 +49,14 @@ const destinationInfo = (() => {{
     if (!parentTask) {{
       throw new Error(`Parent task not found: ${{parentTaskId}}`);
     }}
+    // Climb from the destination through `parent`; a top-level task's parent
+    // is its project's root task, which is no task's descendant, so stop there.
     let ancestor = parentTask;
-    while (ancestor) {{
+    while (ancestor && !isProjectRootTask(ancestor)) {{
       if (ancestor.id.primaryKey === taskId) {{
         throw new Error("Cannot move a task under its own descendant.");
       }}
-      ancestor = ancestor.containingTask;
+      ancestor = ancestor.parent;
     }}
     return {{ mode: "parent", location: parentTask.ending }};
   }}
@@ -70,7 +72,8 @@ moveTasks([task], destinationInfo.location);
 if (task.id.primaryKey !== originalTaskId) {{
   throw new Error("Task move did not preserve task identity.");
 }}
-if (destinationInfo.mode !== "parent" && task.containingTask) {{
+const newParent = task.parent;
+if (destinationInfo.mode !== "parent" && newParent && !isProjectRootTask(newParent)) {{
   throw new Error("Task move failed: task is still nested under a parent.");
 }}
 

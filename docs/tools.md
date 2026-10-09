@@ -412,7 +412,7 @@ Moves several tasks to one destination.
 | --- | --- | --- | --- | --- |
 | `task_ids` | array of strings | yes | - | At least one, no duplicates. |
 | `project` | string | no | - | As in `move_task`. |
-| `parent_task_id` | string | no | - | As in `move_task`. Must not be one of `task_ids`. |
+| `parent_task_id` | string | no | - | As in `move_task`. Must not be one of `task_ids` or below one of them. |
 
 Returns `{requested_count, moved_count, failed_count, partial_success, results}`, with one result
 per id.
