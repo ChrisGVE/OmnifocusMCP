@@ -45,7 +45,8 @@ rust/
                         #   MCP instructions and adds up one tool router per area file
                         #   (task_read_tools, task_write_tools, notification_tools,
                         #   project_tools, tag_tools, folder_tools, view_tools)
-    jxa.rs              # osascript runner (30 s timeout, one call at a time), escape_for_jxa,
+    jxa.rs              # script runner: JxaProcess (program + time limit; osascript with a
+                        #   30 s limit in production), one call at a time, escape_for_jxa,
                         #   error messages
     error.rs            # OmniFocusError, the error type of every tool; a tool reports it as
                         #   an isError result, a prompt or resource as a JSON-RPC error
@@ -74,6 +75,8 @@ rust/
   tests/                # none contacts OmniFocus except where marked LIVE
     common/mod.rs                      # runs snippets in the macOS `jsc` shell
     jxa_test.rs                        # escaping, error messages, reply unwrapping
+    jxa_process_test.rs                # the runner's process handling, against a stub program
+    jxa_timeout_test.rs                # the time limit as a Duration and how it is named
     params_test.rs                     # wire contract: unknown keys, string-encoded scalars
     lenient_scalars_test.rs            # lenient scalar types
     date_parsing_test.rs               # every date goes through the shared date helpers

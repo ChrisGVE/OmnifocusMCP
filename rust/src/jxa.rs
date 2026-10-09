@@ -1,10 +1,28 @@
-use std::{future::Future, pin::Pin, sync::OnceLock, time::Duration};
+//! Runs Omni Automation (OmniJS) scripts in OmniFocus.
+//!
+//! A script is wrapped twice: inside OmniFocus it runs in a function whose
+//! result or exception becomes a JSON `{ok, data}` / `{ok: false, error}`
+//! envelope, and that wrapper is handed to OmniFocus's `evaluateJavascript`
+//! from a JXA script. The JXA script is run by a program, osascript in
+//! production, described by `JxaProcess`. One call runs at a time.
+
+use std::{
+    future::Future,
+    path::{Path, PathBuf},
+    pin::Pin,
+    process::Stdio,
+    sync::OnceLock,
+    time::Duration,
+};
 
 use serde_json::Value;
 use tokio::{process::Command, sync::Mutex, time::timeout};
 
 use crate::error::{OmniFocusError, Result};
 
+/// The program that runs JXA scripts in production.
+pub const OSASCRIPT: &str = "osascript";
+/// How long one call may take in production.
 const DEFAULT_TIMEOUT: Duration = Duration::from_secs(30);
 static JXA_CALL_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
 
@@ -51,47 +69,106 @@ pub fn friendly_jxa_error(stderr: &str) -> String {
     stderr.trim().to_string()
 }
 
+/// The program that runs JXA scripts and how long one call may take.
+///
+/// Production uses `JxaProcess::osascript()`. Tests put a stub program in its
+/// place with `JxaProcess::new`, so the process handling can be exercised
+/// without OmniFocus.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct JxaProcess {
+    program: PathBuf,
+    time_limit: Duration,
+}
+
+impl JxaProcess {
+    /// osascript with the 30 s limit.
+    pub fn osascript() -> Self {
+        Self::new(OSASCRIPT, DEFAULT_TIMEOUT)
+    }
+
+    pub fn new(program: impl Into<PathBuf>, time_limit: Duration) -> Self {
+        Self {
+            program: program.into(),
+            time_limit,
+        }
+    }
+
+    pub fn program(&self) -> &Path {
+        &self.program
+    }
+
+    pub fn time_limit(&self) -> Duration {
+        self.time_limit
+    }
+
+    /// Runs a JXA script and returns its trimmed stdout.
+    ///
+    /// Waits for any call already running, then gives the program
+    /// `time_limit` to finish; past it the program is killed and the call
+    /// fails with `Timeout`. A non-zero exit fails with osascript's stderr
+    /// read by `friendly_jxa_error`.
+    pub async fn run(&self, script: &str) -> Result<String> {
+        let _guard = jxa_call_lock().lock().await;
+        let child = Command::new(&self.program)
+            .arg("-l")
+            .arg("JavaScript")
+            .arg("-e")
+            .arg(script)
+            .stdin(Stdio::null())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .kill_on_drop(true)
+            .spawn()?;
+
+        let output = match timeout(self.time_limit, child.wait_with_output()).await {
+            Ok(output) => output?,
+            Err(_) => {
+                return Err(OmniFocusError::Timeout {
+                    after: self.time_limit,
+                });
+            }
+        };
+
+        if !output.status.success() {
+            let stderr_text = String::from_utf8_lossy(&output.stderr).to_string();
+            return Err(OmniFocusError::JxaExecution(friendly_jxa_error(
+                &stderr_text,
+            )));
+        }
+
+        Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
+    }
+
+    /// Runs a JXA script and parses its stdout as JSON.
+    pub async fn run_json(&self, script: &str) -> Result<Value> {
+        let stdout = self.run(script).await?;
+        parse_jxa_output(&stdout)
+    }
+
+    /// Runs an OmniJS script inside OmniFocus and returns its result, or the
+    /// error it raised.
+    pub async fn run_omnijs(&self, script: &str) -> Result<Value> {
+        let envelope = self.run_json(&omnijs_jxa_script(script)).await?;
+        unwrap_omnijs_envelope(envelope)
+    }
+}
+
 pub async fn run_jxa(script: &str) -> Result<String> {
-    run_jxa_with_timeout(script, DEFAULT_TIMEOUT).await
+    JxaProcess::osascript().run(script).await
 }
 
 pub async fn run_jxa_with_timeout(script: &str, time_limit: Duration) -> Result<String> {
-    let _guard = jxa_call_lock().lock().await;
-    let child = Command::new("osascript")
-        .arg("-l")
-        .arg("JavaScript")
-        .arg("-e")
-        .arg(script)
-        .stdin(std::process::Stdio::null())
-        .stdout(std::process::Stdio::piped())
-        .stderr(std::process::Stdio::piped())
-        .kill_on_drop(true)
-        .spawn()?;
-
-    let output = match timeout(time_limit, child.wait_with_output()).await {
-        Ok(output) => output?,
-        Err(_) => {
-            return Err(OmniFocusError::Timeout { after: time_limit });
-        }
-    };
-
-    if !output.status.success() {
-        let stderr_text = String::from_utf8_lossy(&output.stderr).to_string();
-        return Err(OmniFocusError::JxaExecution(friendly_jxa_error(
-            &stderr_text,
-        )));
-    }
-
-    Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
+    JxaProcess::new(OSASCRIPT, time_limit).run(script).await
 }
 
 pub async fn run_jxa_json(script: &str) -> Result<Value> {
-    run_jxa_json_with_timeout(script, DEFAULT_TIMEOUT).await
+    JxaProcess::osascript().run_json(script).await
 }
 
 pub async fn run_jxa_json_with_timeout(script: &str, time_limit: Duration) -> Result<Value> {
-    let stdout = run_jxa_with_timeout(script, time_limit).await?;
-    parse_jxa_output(&stdout)
+    JxaProcess::new(OSASCRIPT, time_limit)
+        .run_json(script)
+        .await
 }
 
 /// Parses osascript's trimmed stdout as JSON. Output that is not JSON is
@@ -106,10 +183,19 @@ pub fn parse_jxa_output(stdout: &str) -> Result<Value> {
 }
 
 pub async fn run_omnijs(script: &str) -> Result<Value> {
-    run_omnijs_with_timeout(script, DEFAULT_TIMEOUT).await
+    JxaProcess::osascript().run_omnijs(script).await
 }
 
 pub async fn run_omnijs_with_timeout(script: &str, time_limit: Duration) -> Result<Value> {
+    JxaProcess::new(OSASCRIPT, time_limit)
+        .run_omnijs(script)
+        .await
+}
+
+/// The JXA script that runs `script` inside OmniFocus: the OmniJS wrapper
+/// that returns the `{ok, data}` / `{ok: false, error}` envelope as a JSON
+/// string, passed to `evaluateJavascript`.
+pub fn omnijs_jxa_script(script: &str) -> String {
     let wrapped_omnijs = format!(
         r#"(function() {{
   try {{
@@ -143,13 +229,10 @@ pub async fn run_omnijs_with_timeout(script: &str, time_limit: Duration) -> Resu
 }})()"#
     );
 
-    let outer_jxa = format!(
+    format!(
         "const app = Application('OmniFocus');\nconst result = app.evaluateJavascript({});\nresult;",
         escape_for_jxa(&wrapped_omnijs)
-    );
-
-    let envelope = run_jxa_json_with_timeout(&outer_jxa, time_limit).await?;
-    unwrap_omnijs_envelope(envelope)
+    )
 }
 
 /// Reads the `{ok, data}` / `{ok: false, error}` envelope our OmniJS wrapper
@@ -182,12 +265,26 @@ pub trait JxaRunner: Send + Sync {
     ) -> Pin<Box<dyn Future<Output = Result<Value>> + Send + 'a>>;
 }
 
-#[derive(Debug, Clone, Default)]
-pub struct RealJxaRunner;
+/// Runs scripts in OmniFocus through a `JxaProcess`: osascript with the 30 s
+/// limit unless built with `with_process`.
+#[derive(Debug, Clone)]
+pub struct RealJxaRunner {
+    process: JxaProcess,
+}
 
 impl RealJxaRunner {
     pub fn new() -> Self {
-        Self
+        Self::with_process(JxaProcess::osascript())
+    }
+
+    pub fn with_process(process: JxaProcess) -> Self {
+        Self { process }
+    }
+}
+
+impl Default for RealJxaRunner {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -196,7 +293,7 @@ impl JxaRunner for RealJxaRunner {
         &'a self,
         script: &'a str,
     ) -> Pin<Box<dyn Future<Output = Result<Value>> + Send + 'a>> {
-        Box::pin(async move { run_omnijs(script).await })
+        Box::pin(self.process.run_omnijs(script))
     }
 }
 
