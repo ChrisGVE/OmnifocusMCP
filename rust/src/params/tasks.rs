@@ -1,10 +1,12 @@
 //! Parameter structs of the task tools (see `crate::params` for why they
 //! carry no doc comments).
 
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
+use schemars::{JsonSchema, Schema};
+use serde::{Deserialize, Deserializer, Serialize};
+use serde_json::Value;
 
 use crate::{
+    error::{OmniFocusError, Result},
     flexible_tags::FlexibleTagList,
     lenient_scalars::{LenientBool, LenientF64, LenientI32},
 };
@@ -299,10 +301,63 @@ pub(crate) struct DeleteTasksBatchParams {
     pub(crate) task_ids: Vec<String>,
 }
 
+// `rule_string` has three wire states, and they must not collapse: a string
+// sets the rule, an explicit `null` clears it, and an absent key is an error.
+// Absent used to clear like `null`, so `{task_id, schedule_type}` silently
+// removed a repetition (audit CR-023). The outer `Option` records presence
+// (`serde(default)` makes absent `None`), the inner one `null`. The schema
+// lists the key as required (`require_rule_string`) and, because
+// `skip_serializing_if` suppresses it, advertises no `default: null`.
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
+#[schemars(transform = require_rule_string)]
 pub(crate) struct SetTaskRepetitionParams {
     pub(crate) task_id: String,
-    pub(crate) rule_string: Option<String>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "present_nullable_string"
+    )]
+    #[schemars(
+        with = "Option<String>",
+        description = "required; null clears. an iCalendar recurrence rule such as FREQ=WEEKLY;INTERVAL=1 sets the repetition; null removes it. omitting the key is an error."
+    )]
+    pub(crate) rule_string: Option<Option<String>>,
     pub(crate) schedule_type: Option<String>,
+}
+
+impl SetTaskRepetitionParams {
+    /// The rule to set (`Some`) or `None` to clear; an absent `rule_string`
+    /// is a validation error naming the field, so it never clears by default.
+    pub(crate) fn rule_string(&self) -> Result<Option<&str>> {
+        match &self.rule_string {
+            Some(rule) => Ok(rule.as_deref()),
+            None => Err(OmniFocusError::Validation(
+                "rule_string is required: pass a repetition rule to set, or null to clear the repetition."
+                    .to_string(),
+            )),
+        }
+    }
+}
+
+/// Deserializes a present `rule_string`: `null` becomes `Some(None)`, a string
+/// `Some(Some(_))`. Only called when the key is present.
+fn present_nullable_string<'de, D>(
+    deserializer: D,
+) -> std::result::Result<Option<Option<String>>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    Option::<String>::deserialize(deserializer).map(Some)
+}
+
+/// Adds `rule_string` to the schema's `required` list.
+fn require_rule_string(schema: &mut Schema) {
+    let required = schema
+        .ensure_object()
+        .entry("required")
+        .or_insert_with(|| Value::Array(Vec::new()));
+    if let Value::Array(names) = required {
+        names.push(Value::String("rule_string".to_string()));
+    }
 }

@@ -127,8 +127,8 @@ A tool call fails in one of two ways, as the MCP specification separates them:
 
 | Kind | Reported as | Example message |
 | --- | --- | --- |
-| Unknown tool, undeclared or missing key, wrong JSON type | JSON-RPC `invalid_params` | `tool not found`; for arguments, a `failed to deserialize parameters:` message naming the field |
-| Invalid parameter value (checked before OmniFocus is contacted) | `isError` result | `status must be one of: available, due_soon, overdue, on_hold, completed, all. received: "remaining".` |
+| Unknown tool, undeclared or missing key (except `set_task_repetition`'s `rule_string`, below), wrong JSON type | JSON-RPC `invalid_params` | `tool not found`; for arguments, a `failed to deserialize parameters:` message naming the field |
+| Invalid parameter value, or a missing `rule_string` on `set_task_repetition` (checked before OmniFocus is contacted) | `isError` result | `status must be one of: available, due_soon, overdue, on_hold, completed, all. received: "remaining".` |
 | Invalid date (checked inside OmniFocus) | `isError` result | `dueDate must be YYYY-MM-DD or an ISO 8601 date-time; received "2026-02-30"` |
 | Object not found | `isError` result | `Task not found: <id>`, `Project not found: <value>`, `Folder not found: <value>`, `Tag not found: <value>` |
 | Other error raised inside OmniFocus | `isError` result | The script's own message, unchanged, e.g. `Parent task not found: <id>` |
@@ -419,7 +419,7 @@ Sets or removes a task's repetition.
 | Key | Type | Required | Default | Notes |
 | --- | --- | --- | --- | --- |
 | `task_id` | string | yes | - | |
-| `rule_string` | string | no | - | An iCalendar recurrence rule such as `FREQ=WEEKLY;INTERVAL=1`. Omit it or pass `null` to remove the repetition. |
+| `rule_string` | string or `null` | yes | - | Required; `null` clears. An iCalendar recurrence rule such as `FREQ=WEEKLY;INTERVAL=1` sets the repetition; `null` removes it. Omitting the key fails with an `isError` result (not `invalid_params`, so the model sees it), `rule_string is required: pass a repetition rule to set, or null to clear the repetition.` and changes nothing, so a call that only names a `schedule_type` cannot remove a repetition by accident. |
 | `schedule_type` | string | no | `regularly` | `regularly`, `from_completion`, or `none`. |
 
 Returns `{id, name, repetitionRule}`.

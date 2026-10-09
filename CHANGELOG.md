@@ -44,6 +44,12 @@ issue numbers in them, and every "upstream #N" below, refer to that project's tr
   tag, so an accidental empty value wiped them. `[]` (or the string `"[]"`) still removes every
   tag. The rule applies to every tool that takes `tags`, the `list_tasks`, `search_tasks` and
   `get_task_counts` filters included, where `""` used to mean no tag filter.
+- **Visible to clients:** `set_task_repetition` requires `rule_string`. A string sets the
+  repetition and `null` clears it, as before; omitting the key used to clear it too, so
+  `{task_id, schedule_type: "from_completion"}` silently removed the repetition. It now fails with
+  an `isError` result, `rule_string is required: pass a repetition rule to set, or null to clear
+  the repetition.`, and changes nothing. The schema lists `rule_string` as required (type string
+  or null).
 
 ### Fixed
 - `list_notifications` and `add_notification` report a due-relative notification as

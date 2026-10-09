@@ -11,6 +11,7 @@ use rmcp::{
     handler::server::wrapper::Parameters, model::CallToolResult, tool, tool_router,
     ErrorData as McpError,
 };
+use serde_json::Value;
 
 use crate::{
     flexible_tags::tags_as_opt_vec,
@@ -181,7 +182,7 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
     }
 
     #[tool(
-        description = "set or clear a task repetition rule by id. pass rule_string plus schedule_type (regularly/from_completion/none), or null rule_string to clear.",
+        description = "set or clear a task repetition rule by id. rule_string is required: pass a rule string plus schedule_type (regularly/from_completion/none, default regularly) to set the repetition; a null rule_string clears it. omitting rule_string is an error and changes nothing.",
         annotations(
             read_only_hint = false,
             destructive_hint = true,
@@ -193,10 +194,14 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
         &self,
         Parameters(params): Parameters<SetTaskRepetitionParams>,
     ) -> std::result::Result<CallToolResult, McpError> {
+        let rule_string = match params.rule_string() {
+            Ok(rule_string) => rule_string,
+            Err(error) => return tool_result::<Value>(Err(error)),
+        };
         let result = set_task_repetition(
             self.runner.as_ref(),
             &params.task_id,
-            params.rule_string.as_deref(),
+            rule_string,
             params.schedule_type.as_deref().unwrap_or("regularly"),
         )
         .await;
