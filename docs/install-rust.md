@@ -175,10 +175,15 @@ Since 2.0.0 a `project` or `folder` value that matches nothing is an error inste
 result. The value must be an id or the exact name. Use `search_projects` or `list_folders` to find
 it.
 
-### "JXA command timed out after 30s"
+### "OmniFocus did not answer within 30s"
 
-The full message is `JXA command timed out after 30s.` One call took longer than 30 seconds, the
-fixed limit. Narrow the query: filter by project, tag or date range, or lower `limit`.
+The full message is `OmniFocus did not answer within 30s, so the outcome is unknown: a change this
+call makes may still be applied. Read the object back before retrying.` One call took longer than
+30 seconds, the fixed limit. The server stops waiting at that point, but OmniFocus has already
+received the script and may still finish it, so a write can take effect after the error. Read the
+object back (for example with `get_task` or `get_project`) before retrying a write; retrying
+blindly can apply the change twice, such as a second copy of a created task. If a read is what
+timed out, narrow the query: filter by project, tag or date range, or lower `limit`.
 
 ### macOS refuses to run a downloaded binary
 

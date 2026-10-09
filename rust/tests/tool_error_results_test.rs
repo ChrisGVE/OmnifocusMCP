@@ -251,6 +251,9 @@ async fn omnifocus_not_running_is_a_tool_error_with_the_message() {
     );
 }
 
+const TIMEOUT_MESSAGE: &str = "OmniFocus did not answer within 30s, so the outcome is \
+    unknown: a change this call makes may still be applied. Read the object back before retrying.";
+
 #[tokio::test]
 async fn timeout_is_a_tool_error_with_the_message() {
     let response = call_tool(
@@ -263,10 +266,7 @@ async fn timeout_is_a_tool_error_with_the_message() {
         json!({}),
     )
     .await;
-    assert_eq!(
-        tool_error_text(&response),
-        "JXA command timed out after 30s."
-    );
+    assert_eq!(tool_error_text(&response), TIMEOUT_MESSAGE);
 }
 
 #[tokio::test]
@@ -314,7 +314,7 @@ async fn failing_prompt_stays_a_protocol_error() {
     )
     .await;
     let error = protocol_error(&response);
-    assert_eq!(error["message"], "JXA command timed out after 30s.");
+    assert_eq!(error["message"], TIMEOUT_MESSAGE);
 }
 
 #[tokio::test]
@@ -330,5 +330,5 @@ async fn failing_resource_stays_a_protocol_error() {
     )
     .await;
     let error = protocol_error(&response);
-    assert_eq!(error["message"], "JXA command timed out after 30s.");
+    assert_eq!(error["message"], TIMEOUT_MESSAGE);
 }

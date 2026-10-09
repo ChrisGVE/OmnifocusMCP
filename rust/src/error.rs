@@ -27,7 +27,15 @@ pub enum OmniFocusError {
     Validation(String),
     #[error("I/O error while running JXA: {0}")]
     Io(#[from] std::io::Error),
-    #[error("JXA command timed out after {}.", describe_duration(*.after))]
+    /// OmniFocus did not answer within the time limit. osascript is killed
+    /// then, but the script has already reached OmniFocus, which may still
+    /// carry it out, so the message tells the caller to check before
+    /// retrying a change instead of implying that nothing happened.
+    #[error(
+        "OmniFocus did not answer within {}, so the outcome is unknown: a change this call \
+         makes may still be applied. Read the object back before retrying.",
+        describe_duration(*.after)
+    )]
     Timeout { after: Duration },
 }
 

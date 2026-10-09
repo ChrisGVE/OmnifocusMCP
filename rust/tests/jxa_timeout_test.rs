@@ -82,3 +82,35 @@ fn timeout_error_keeps_its_duration() {
         "{error:?}"
     );
 }
+
+// ------------------------------------------------ what a timeout means (audit CR-013)
+//
+// When the limit passes, osascript is killed, but the Apple Event carrying
+// the script has already reached OmniFocus, which may still finish it. The
+// message must not read as "nothing happened": a client that retries a
+// write on the strength of it can apply the change twice.
+
+const THIRTY_SECOND_TIMEOUT_MESSAGE: &str = "OmniFocus did not answer within 30s, so the \
+outcome is unknown: a change this call makes may still be applied. Read the object back \
+before retrying.";
+
+#[test]
+fn timeout_says_the_outcome_is_unknown_and_to_read_back_before_retrying() {
+    let error = OmniFocusError::Timeout {
+        after: Duration::from_secs(30),
+    };
+    assert_eq!(error.to_string(), THIRTY_SECOND_TIMEOUT_MESSAGE);
+}
+
+#[test]
+fn timeout_names_the_limit_that_passed() {
+    let error = OmniFocusError::Timeout {
+        after: Duration::from_millis(1500),
+    };
+    assert!(
+        error
+            .to_string()
+            .starts_with("OmniFocus did not answer within 1.5s, "),
+        "{error}"
+    );
+}

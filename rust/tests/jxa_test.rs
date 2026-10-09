@@ -21,6 +21,9 @@ fn escape_for_jxa_handles_special_strings() {
     assert_eq!(escape_for_jxa("a\0b"), r#""a\u0000b""#);
 }
 
+const TIMEOUT_MESSAGE: &str = "OmniFocus did not answer within 30s, so the outcome is \
+    unknown: a change this call makes may still be applied. Read the object back before retrying.";
+
 #[test]
 fn omnifocus_error_display_messages_match_expected() {
     let jxa = OmniFocusError::JxaExecution("boom".to_string());
@@ -35,7 +38,7 @@ fn omnifocus_error_display_messages_match_expected() {
     let timeout = OmniFocusError::Timeout {
         after: std::time::Duration::from_secs(30),
     };
-    assert_eq!(timeout.to_string(), "JXA command timed out after 30s.");
+    assert_eq!(timeout.to_string(), TIMEOUT_MESSAGE);
 
     let io = OmniFocusError::Io(std::io::Error::other("denied"));
     assert_eq!(io.to_string(), "I/O error while running JXA: denied");

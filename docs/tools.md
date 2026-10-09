@@ -134,7 +134,7 @@ A tool call fails in one of two ways, as the MCP specification separates them:
 | Other error raised inside OmniFocus | `isError` result | The script's own message, unchanged, e.g. `Parent task not found: <id>` |
 | OmniFocus not running | `isError` result | `JXA execution failed: OmniFocus is not running. Please open OmniFocus and try again.` |
 | Automation permission missing | `isError` result | `JXA execution failed: macOS blocked Automation access to OmniFocus. Grant permission in System Settings > Privacy & Security > Automation.` |
-| Call took longer than 30 seconds | `isError` result | `JXA command timed out after 30s.` |
+| Call took longer than 30 seconds | `isError` result | `OmniFocus did not answer within 30s, so the outcome is unknown: a change this call makes may still be applied. Read the object back before retrying.` |
 
 Resources and prompts have no `isError` result in MCP, so when one of them fails the response is a
 JSON-RPC error with the same message: `invalid_params` for an invalid parameter value,

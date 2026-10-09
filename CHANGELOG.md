@@ -55,6 +55,11 @@ issue numbers in them, and every "upstream #N" below, refer to that project's tr
   seconds (`f64`), which panicked when negative, NaN or too large. `OmniFocusError::Timeout`
   carries it as `after: Duration`, and a limit under one second is reported in milliseconds
   (`500ms`) instead of as `0s`.
+- A call that runs past the 30-second limit now fails with `OmniFocus did not answer within 30s, so
+  the outcome is unknown: a change this call makes may still be applied. Read the object back before
+  retrying.` instead of `JXA command timed out after 30s.` The server stops waiting, but OmniFocus
+  has already received the script and may still carry it out, so retrying a write without checking
+  could apply it twice.
 
 ### Fixed
 - The server runs `/usr/bin/osascript` by absolute path. It used to look `osascript` up on `PATH`,
