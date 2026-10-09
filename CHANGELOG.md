@@ -26,6 +26,14 @@ issue numbers in them, and every "upstream #N" below, refer to that project's tr
   [Tool annotations](docs/tools.md#tool-annotations).
 
 ### Changed
+- **Visible to clients:** a tool that fails while running now returns a normal tool result with
+  `isError: true` and the error message as its text, instead of a JSON-RPC error. This covers
+  invalid parameter values, objects not found, errors raised inside OmniFocus, OmniFocus not
+  running, Automation permission missing and timeouts, as the MCP specification asks, so clients
+  pass the message on to the model. An unknown tool and arguments that do not fit the schema
+  (undeclared or missing keys, wrong JSON types) are still rejected with `invalid_params`.
+  Resources and prompts keep reporting failures as JSON-RPC errors. A client that detected tool
+  failures only through the JSON-RPC `error` member must now also check `isError`.
 - An error raised inside OmniFocus is reported with its own message, without the
   `OmniFocus operation failed: ` prefix that every message outside `Task`/`Project`/`Tag`/`Folder
   not found:` used to get (for example `Parent task not found: <id>`,

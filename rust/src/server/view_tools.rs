@@ -12,7 +12,7 @@ use crate::{
     tools::{forecast::get_forecast, perspectives::list_perspectives},
 };
 
-use super::{as_call_tool_result, to_mcp_error, OmniFocusServer};
+use super::{tool_result, OmniFocusServer};
 
 #[tool_router(router = view_tools, vis = "pub(super)")]
 impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
@@ -33,9 +33,8 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
             self.runner.as_ref(),
             params.limit.map(i32::from).unwrap_or(100),
         )
-        .await
-        .map_err(to_mcp_error)?;
-        as_call_tool_result(&result)
+        .await;
+        tool_result(result)
     }
 
     #[tool(
@@ -55,8 +54,7 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
             self.runner.as_ref(),
             params.limit.map(i32::from).unwrap_or(100),
         )
-        .await
-        .map_err(to_mcp_error)?;
-        as_call_tool_result(&result)
+        .await;
+        tool_result(result)
     }
 }

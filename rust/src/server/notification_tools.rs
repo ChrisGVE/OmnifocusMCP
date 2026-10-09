@@ -12,7 +12,7 @@ use crate::{
     tools::tasks::{add_notification, list_notifications, remove_notification},
 };
 
-use super::{as_call_tool_result, to_mcp_error, OmniFocusServer};
+use super::{tool_result, OmniFocusServer};
 
 #[tool_router(router = notification_tools, vis = "pub(super)")]
 impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
@@ -29,10 +29,8 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
         &self,
         Parameters(params): Parameters<TaskIdParams>,
     ) -> std::result::Result<CallToolResult, McpError> {
-        let result = list_notifications(self.runner.as_ref(), &params.task_id)
-            .await
-            .map_err(to_mcp_error)?;
-        as_call_tool_result(&result)
+        let result = list_notifications(self.runner.as_ref(), &params.task_id).await;
+        tool_result(result)
     }
 
     #[tool(
@@ -54,9 +52,8 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
             params.absolute_date.as_deref(),
             params.relative_offset.map(f64::from),
         )
-        .await
-        .map_err(to_mcp_error)?;
-        as_call_tool_result(&result)
+        .await;
+        tool_result(result)
     }
 
     #[tool(
@@ -77,8 +74,7 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
             &params.task_id,
             &params.notification_id,
         )
-        .await
-        .map_err(to_mcp_error)?;
-        as_call_tool_result(&result)
+        .await;
+        tool_result(result)
     }
 }

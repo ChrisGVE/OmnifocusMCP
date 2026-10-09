@@ -84,6 +84,9 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
     }
 }
 
+/// A prompt's or resource's failure as a JSON-RPC error. The MCP
+/// specification gives prompts and resources no `isError` result, so these
+/// stay protocol errors; tools use `tool_result` instead.
 fn to_mcp_error(error: OmniFocusError) -> McpError {
     match error {
         OmniFocusError::Validation(message) => McpError::invalid_params(message, None),
@@ -91,10 +94,29 @@ fn to_mcp_error(error: OmniFocusError) -> McpError {
     }
 }
 
-fn as_call_tool_result<T: Serialize>(value: &T) -> std::result::Result<CallToolResult, McpError> {
-    let text = serde_json::to_string(value)
-        .map_err(|error| McpError::internal_error(error.to_string(), None))?;
-    Ok(CallToolResult::success(vec![Content::text(text)]))
+/// A tool's outcome as an MCP tool result: the value as JSON text, or the
+/// error's message with `isError: true`.
+///
+/// MCP (2025-11-25, Tools / Error Handling) reports anything that goes wrong
+/// while a tool runs — an invalid argument value, an object not found,
+/// OmniFocus not running, Automation refused, a timeout, a script error — as
+/// a tool execution error, so the client can hand it to the model. Protocol
+/// errors are left to rmcp, which raises them itself before a handler runs:
+/// an unknown tool, or arguments that do not deserialize (an unknown key, a
+/// missing required key, a value of the wrong type).
+fn tool_result<T: Serialize>(
+    outcome: crate::error::Result<T>,
+) -> std::result::Result<CallToolResult, McpError> {
+    match outcome {
+        Ok(value) => {
+            let text = serde_json::to_string(&value)
+                .map_err(|error| McpError::internal_error(error.to_string(), None))?;
+            Ok(CallToolResult::success(vec![Content::text(text)]))
+        }
+        Err(error) => Ok(CallToolResult::error(vec![Content::text(
+            error.to_string(),
+        )])),
+    }
 }
 
 #[prompt_router]

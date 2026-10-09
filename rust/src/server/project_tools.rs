@@ -25,7 +25,7 @@ use crate::{
     },
 };
 
-use super::{as_call_tool_result, to_mcp_error, OmniFocusServer};
+use super::{tool_result, OmniFocusServer};
 
 #[tool_router(router = project_tools, vis = "pub(super)")]
 impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
@@ -53,9 +53,8 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
             params.sort_order.as_deref().unwrap_or("asc"),
             params.limit.map(i32::from).unwrap_or(100),
         )
-        .await
-        .map_err(to_mcp_error)?;
-        as_call_tool_result(&result)
+        .await;
+        tool_result(result)
     }
 
     #[tool(
@@ -71,10 +70,8 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
         &self,
         Parameters(params): Parameters<GetProjectCountsParams>,
     ) -> std::result::Result<CallToolResult, McpError> {
-        let result = get_project_counts(self.runner.as_ref(), params.folder.as_deref())
-            .await
-            .map_err(to_mcp_error)?;
-        as_call_tool_result(&result)
+        let result = get_project_counts(self.runner.as_ref(), params.folder.as_deref()).await;
+        tool_result(result)
     }
 
     #[tool(
@@ -95,9 +92,8 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
             &params.query,
             params.limit.map(i32::from).unwrap_or(100),
         )
-        .await
-        .map_err(to_mcp_error)?;
-        as_call_tool_result(&result)
+        .await;
+        tool_result(result)
     }
 
     #[tool(
@@ -113,10 +109,8 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
         &self,
         Parameters(params): Parameters<ProjectIdOrNameParams>,
     ) -> std::result::Result<CallToolResult, McpError> {
-        let result = get_project(self.runner.as_ref(), &params.project_id_or_name)
-            .await
-            .map_err(to_mcp_error)?;
-        as_call_tool_result(&result)
+        let result = get_project(self.runner.as_ref(), &params.project_id_or_name).await;
+        tool_result(result)
     }
 
     #[tool(
@@ -141,9 +135,8 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
             params.defer_date.as_deref(),
             params.sequential.map(bool::from),
         )
-        .await
-        .map_err(to_mcp_error)?;
-        as_call_tool_result(&result)
+        .await;
+        tool_result(result)
     }
 
     #[tool(
@@ -159,10 +152,8 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
         &self,
         Parameters(params): Parameters<ProjectIdOrNameParams>,
     ) -> std::result::Result<CallToolResult, McpError> {
-        let result = complete_project(self.runner.as_ref(), &params.project_id_or_name)
-            .await
-            .map_err(to_mcp_error)?;
-        as_call_tool_result(&result)
+        let result = complete_project(self.runner.as_ref(), &params.project_id_or_name).await;
+        tool_result(result)
     }
 
     #[tool(
@@ -178,10 +169,8 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
         &self,
         Parameters(params): Parameters<ProjectIdOrNameParams>,
     ) -> std::result::Result<CallToolResult, McpError> {
-        let result = uncomplete_project(self.runner.as_ref(), &params.project_id_or_name)
-            .await
-            .map_err(to_mcp_error)?;
-        as_call_tool_result(&result)
+        let result = uncomplete_project(self.runner.as_ref(), &params.project_id_or_name).await;
+        tool_result(result)
     }
 
     #[tool(
@@ -197,10 +186,8 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
         &self,
         Parameters(params): Parameters<ProjectIdOrNameParams>,
     ) -> std::result::Result<CallToolResult, McpError> {
-        let result = delete_project(self.runner.as_ref(), &params.project_id_or_name)
-            .await
-            .map_err(to_mcp_error)?;
-        as_call_tool_result(&result)
+        let result = delete_project(self.runner.as_ref(), &params.project_id_or_name).await;
+        tool_result(result)
     }
 
     #[tool(
@@ -216,10 +203,8 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
         &self,
         Parameters(params): Parameters<DeleteProjectsBatchParams>,
     ) -> std::result::Result<CallToolResult, McpError> {
-        let result = delete_projects_batch(self.runner.as_ref(), params.project_ids_or_names)
-            .await
-            .map_err(to_mcp_error)?;
-        as_call_tool_result(&result)
+        let result = delete_projects_batch(self.runner.as_ref(), params.project_ids_or_names).await;
+        tool_result(result)
     }
 
     #[tool(
@@ -240,9 +225,8 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
             &params.project_id_or_name,
             params.folder.as_deref(),
         )
-        .await
-        .map_err(to_mcp_error)?;
-        as_call_tool_result(&result)
+        .await;
+        tool_result(result)
     }
 
     #[tool(
@@ -271,9 +255,8 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
             params.completed_by_children.map(bool::from),
             params.review_interval.as_deref(),
         )
-        .await
-        .map_err(to_mcp_error)?;
-        as_call_tool_result(&result)
+        .await;
+        tool_result(result)
     }
 
     #[tool(
@@ -294,8 +277,7 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
             &params.project_id_or_name,
             &params.status,
         )
-        .await
-        .map_err(to_mcp_error)?;
-        as_call_tool_result(&result)
+        .await;
+        tool_result(result)
     }
 }

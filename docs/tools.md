@@ -84,7 +84,7 @@ Date parameters take a bare date (`YYYY-MM-DD`) or an ISO 8601 date-time.
 | `2026-10-10T09:30:00` (no offset) | 09:30 local time |
 
 An impossible or unparseable date fails before anything is created or changed. Dates are checked
-inside OmniFocus, so the error is an `internal_error` with the message
+inside OmniFocus, and the call fails (see [Errors](#errors)) with the message
 `<field> must be YYYY-MM-DD or an ISO 8601 date-time; received "<value>"`.
 In `create_tasks_batch` the field is named with its position, for example `tasks[2].dueDate`.
 
@@ -113,15 +113,29 @@ Where a tool takes `limit`, the default is 100 and the value must be at least 1
 
 ### Errors
 
-| Kind | JSON-RPC error | Example message |
+A tool call fails in one of two ways, as the MCP specification separates them:
+
+- **The request is rejected** with a JSON-RPC error, code `-32602` (`invalid_params`), before the
+  tool runs: the tool name is unknown, or the arguments do not fit the tool's schema (an
+  undeclared key, a missing required key, a value of the wrong JSON type).
+- **The tool runs and fails.** The response is a normal tool result with `isError: true` whose
+  single text item is the message. Clients pass these on to the model, so it can see what went
+  wrong and correct the call.
+
+| Kind | Reported as | Example message |
 | --- | --- | --- |
-| Invalid parameter (checked before OmniFocus is contacted) | `invalid_params` | `status must be one of: available, due_soon, overdue, on_hold, completed, all. received: "remaining".` |
-| Invalid date (checked inside OmniFocus) | `internal_error` | `dueDate must be YYYY-MM-DD or an ISO 8601 date-time; received "2026-02-30"` |
-| Object not found | `internal_error` | `Task not found: <id>`, `Project not found: <value>`, `Folder not found: <value>`, `Tag not found: <value>` |
-| Other error raised inside OmniFocus | `internal_error` | The script's own message, unchanged, e.g. `Parent task not found: <id>` |
-| OmniFocus not running | `internal_error` | `JXA execution failed: OmniFocus is not running. Please open OmniFocus and try again.` |
-| Automation permission missing | `internal_error` | `JXA execution failed: macOS blocked Automation access to OmniFocus. Grant permission in System Settings > Privacy & Security > Automation.` |
-| Call took longer than 30 seconds | `internal_error` | `JXA command timed out after 30s.` |
+| Unknown tool, undeclared or missing key, wrong JSON type | JSON-RPC `invalid_params` | `tool not found`; for arguments, a `failed to deserialize parameters:` message naming the field |
+| Invalid parameter value (checked before OmniFocus is contacted) | `isError` result | `status must be one of: available, due_soon, overdue, on_hold, completed, all. received: "remaining".` |
+| Invalid date (checked inside OmniFocus) | `isError` result | `dueDate must be YYYY-MM-DD or an ISO 8601 date-time; received "2026-02-30"` |
+| Object not found | `isError` result | `Task not found: <id>`, `Project not found: <value>`, `Folder not found: <value>`, `Tag not found: <value>` |
+| Other error raised inside OmniFocus | `isError` result | The script's own message, unchanged, e.g. `Parent task not found: <id>` |
+| OmniFocus not running | `isError` result | `JXA execution failed: OmniFocus is not running. Please open OmniFocus and try again.` |
+| Automation permission missing | `isError` result | `JXA execution failed: macOS blocked Automation access to OmniFocus. Grant permission in System Settings > Privacy & Security > Automation.` |
+| Call took longer than 30 seconds | `isError` result | `JXA command timed out after 30s.` |
+
+Resources and prompts have no `isError` result in MCP, so when one of them fails the response is a
+JSON-RPC error with the same message: `invalid_params` for an invalid parameter value,
+`internal_error` for anything else.
 
 The server runs one OmniFocus script at a time. Concurrent calls wait for each other.
 

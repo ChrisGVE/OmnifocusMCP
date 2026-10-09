@@ -45,8 +45,8 @@ rust/
                         #   project_tools, tag_tools, folder_tools, view_tools)
     jxa.rs              # osascript runner (30 s timeout, one call at a time), escape_for_jxa,
                         #   error messages
-    error.rs            # OmniFocusError, the error type of every tool; the server reports
-                        #   Validation as invalid_params and every other kind as internal_error
+    error.rs            # OmniFocusError, the error type of every tool; a tool reports it as
+                        #   an isError result, a prompt or resource as a JSON-RPC error
     types.rs            # result structs (task summaries, counts)
     js_helpers.rs       # shared Omni Automation snippets: dates, planned dates, project and
                         #   folder status, task status, review intervals, id-or-name resolution

@@ -22,7 +22,7 @@ use crate::{
     },
 };
 
-use super::{as_call_tool_result, to_mcp_error, OmniFocusServer};
+use super::{tool_result, OmniFocusServer};
 
 #[tool_router(router = folder_tools, vis = "pub(super)")]
 impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
@@ -43,9 +43,8 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
             self.runner.as_ref(),
             params.limit.map(i32::from).unwrap_or(100),
         )
-        .await
-        .map_err(to_mcp_error)?;
-        as_call_tool_result(&result)
+        .await;
+        tool_result(result)
     }
 
     #[tool(
@@ -61,10 +60,9 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
         &self,
         Parameters(params): Parameters<CreateFolderParams>,
     ) -> std::result::Result<CallToolResult, McpError> {
-        let result = create_folder(self.runner.as_ref(), &params.name, params.parent.as_deref())
-            .await
-            .map_err(to_mcp_error)?;
-        as_call_tool_result(&result)
+        let result =
+            create_folder(self.runner.as_ref(), &params.name, params.parent.as_deref()).await;
+        tool_result(result)
     }
 
     #[tool(
@@ -80,10 +78,8 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
         &self,
         Parameters(params): Parameters<FolderNameOrIdParams>,
     ) -> std::result::Result<CallToolResult, McpError> {
-        let result = get_folder(self.runner.as_ref(), &params.folder_name_or_id)
-            .await
-            .map_err(to_mcp_error)?;
-        as_call_tool_result(&result)
+        let result = get_folder(self.runner.as_ref(), &params.folder_name_or_id).await;
+        tool_result(result)
     }
 
     #[tool(
@@ -105,9 +101,8 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
             params.name.as_deref(),
             params.status.as_deref(),
         )
-        .await
-        .map_err(to_mcp_error)?;
-        as_call_tool_result(&result)
+        .await;
+        tool_result(result)
     }
 
     #[tool(
@@ -123,10 +118,8 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
         &self,
         Parameters(params): Parameters<FolderNameOrIdParams>,
     ) -> std::result::Result<CallToolResult, McpError> {
-        let result = delete_folder_tool(self.runner.as_ref(), &params.folder_name_or_id)
-            .await
-            .map_err(to_mcp_error)?;
-        as_call_tool_result(&result)
+        let result = delete_folder_tool(self.runner.as_ref(), &params.folder_name_or_id).await;
+        tool_result(result)
     }
 
     #[tool(
@@ -142,9 +135,8 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
         &self,
         Parameters(params): Parameters<DeleteFoldersBatchParams>,
     ) -> std::result::Result<CallToolResult, McpError> {
-        let result = delete_folders_batch_tool(self.runner.as_ref(), params.folder_ids_or_names)
-            .await
-            .map_err(to_mcp_error)?;
-        as_call_tool_result(&result)
+        let result =
+            delete_folders_batch_tool(self.runner.as_ref(), params.folder_ids_or_names).await;
+        tool_result(result)
     }
 }
