@@ -90,14 +90,9 @@ pub async fn get_folder<R: JxaRunner>(runner: &R, folder_name_or_id: &str) -> Re
     let script = format!(
         r#"{JS_PROJECT_STATUS}
 {JS_FOLDER_STATUS}
+{JS_RESOLVERS}
 const folderFilter = {folder_filter};
-
-const folder = document.flattenedFolders.find(item => {{
-  return item.id.primaryKey === folderFilter || item.name === folderFilter;
-}});
-if (!folder) {{
-  throw new Error(`Folder not found: ${{folderFilter}}`);
-}}
+const folder = resolveFolder(folderFilter);
 
 return {{
   id: folder.id.primaryKey,
@@ -164,16 +159,11 @@ pub async fn update_folder<R: JxaRunner>(
         .unwrap_or_else(|| "null".to_string());
     let script = format!(
         r#"{JS_FOLDER_STATUS}
+{JS_RESOLVERS}
 const folderFilter = {escaped_folder_filter};
 const newName = {escaped_name};
 const statusValue = {escaped_status};
-
-const folder = document.flattenedFolders.find(item => {{
-  return item.id.primaryKey === folderFilter || item.name === folderFilter;
-}});
-if (!folder) {{
-  throw new Error(`Folder not found: ${{folderFilter}}`);
-}}
+const folder = resolveFolder(folderFilter);
 
 if (newName !== null) {{
   folder.name = newName;
@@ -210,14 +200,9 @@ pub async fn delete_folder<R: JxaRunner>(runner: &R, folder_name_or_id: &str) ->
 
     let escaped_folder_filter = escape_for_jxa(folder_filter);
     let script = format!(
-        r#"const folderFilter = {escaped_folder_filter};
-
-const folder = document.flattenedFolders.find(item => {{
-  return item.id.primaryKey === folderFilter || item.name === folderFilter;
-}});
-if (!folder) {{
-  throw new Error(`Folder not found: ${{folderFilter}}`);
-}}
+        r#"{JS_RESOLVERS}
+const folderFilter = {escaped_folder_filter};
+const folder = resolveFolder(folderFilter);
 
 const folderId = folder.id.primaryKey;
 const folderName = folder.name;

@@ -32,7 +32,10 @@ use serde_json::{json, Value};
 /// migrated for planned dates, where reading `plannedDate` throws.
 const FAKE_DATABASE: &str = r#"function FakeEnum(name) { this.name = name; }
 FakeEnum.prototype.toString = function () { return "[object Task.Status: " + this.name + "]"; };
-var Task = { Status: { Available: new FakeEnum("Available"), Completed: new FakeEnum("Completed") } };
+var Task = { Status: { Available: new FakeEnum("Available"), Completed: new FakeEnum("Completed") },
+  byIdentifier: function (id) {
+    return document.flattenedTasks.find(item => item.id.primaryKey === id) || null;
+  } };
 var Project = { Status: { Active: new FakeEnum("Active"), Done: new FakeEnum("Done") } };
 var PLANNED = new Date(Date.UTC(2026, 9, 9, 7, 0));
 var DONE = new Date(Date.UTC(2026, 9, 1, 12, 0));

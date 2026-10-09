@@ -21,7 +21,7 @@ impl JxaRunner for PromptRunner {
     ) -> Pin<Box<dyn Future<Output = omnifocus_mcp::error::Result<Value>> + Send + 'a>> {
         Box::pin(async move {
             if script.contains("const projectFilter =")
-                && script.contains("document.flattenedProjects.find")
+                && script.contains("const project = resolveProject(projectFilter);")
             {
                 return Ok(json!({
                     "id": "project-1",
@@ -162,7 +162,7 @@ impl JxaRunner for MissingProjectRunner {
     ) -> Pin<Box<dyn Future<Output = omnifocus_mcp::error::Result<Value>> + Send + 'a>> {
         Box::pin(async move {
             if script.contains("const projectFilter =")
-                && script.contains("document.flattenedProjects.find")
+                && script.contains("const project = resolveProject(projectFilter);")
             {
                 return Err(OmniFocusError::OmniFocus(
                     "Project not found: new-idea".to_string(),

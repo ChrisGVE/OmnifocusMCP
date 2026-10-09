@@ -121,12 +121,7 @@ pub async fn move_project<R: JxaRunner>(
         r#"{JS_RESOLVERS}
 const projectFilter = {project_filter};
 const folderName = {folder_name};
-const project = document.flattenedProjects.find(item => {{
-  return item.id.primaryKey === projectFilter || item.name === projectFilter;
-}});
-if (!project) {{
-  throw new Error(`Project not found: ${{projectFilter}}`);
-}}
+const project = resolveProject(projectFilter);
 
 const destination = (() => {{
   if (folderName === null) return library.ending;
@@ -166,14 +161,10 @@ pub async fn set_project_status<R: JxaRunner>(
     let project_filter = escape_for_jxa(project_id_or_name.trim());
     let status_value = escape_for_jxa(status);
     let script = format!(
-        r#"const projectFilter = {project_filter};
+        r#"{JS_RESOLVERS}
+const projectFilter = {project_filter};
 const statusValue = {status_value};
-const project = document.flattenedProjects.find(item => {{
-  return item.id.primaryKey === projectFilter || item.name === projectFilter;
-}});
-if (!project) {{
-  throw new Error(`Project not found: ${{projectFilter}}`);
-}}
+const project = resolveProject(projectFilter);
 
 let targetStatus;
 if (statusValue === "active") {{
@@ -237,12 +228,7 @@ pub async fn update_project<R: JxaRunner>(
 {JS_RESOLVERS}
 const projectFilter = {project_filter};
 const updates = {updates_value};
-const project = document.flattenedProjects.find(item => {{
-  return item.id.primaryKey === projectFilter || item.name === projectFilter;
-}});
-if (!project) {{
-  throw new Error(`Project not found: ${{projectFilter}}`);
-}}
+const project = resolveProject(projectFilter);
 
 const has = (key) => Object.prototype.hasOwnProperty.call(updates, key);
 const parsedDueDate = has("dueDate") ? parseWriteDate(updates.dueDate, "dueDate", "DefaultDueTime", "17:00") : null;

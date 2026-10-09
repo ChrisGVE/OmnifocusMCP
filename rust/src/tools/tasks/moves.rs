@@ -35,20 +35,14 @@ pub async fn move_task<R: JxaRunner>(
 const taskId = {task_id_value};
 const projectName = {project_value};
 const parentTaskId = {parent_task_id_value};
-const task = document.flattenedTasks.find(item => item.id.primaryKey === taskId && !isProjectRootTask(item));
-if (!task) {{
-  throw new Error(`Task not found: ${{taskId}}`);
-}}
+const task = resolveTask(taskId);
 
 const destinationInfo = (() => {{
   if (parentTaskId !== null && parentTaskId !== "") {{
     if (parentTaskId === taskId) {{
       throw new Error("Cannot move a task under itself.");
     }}
-    const parentTask = document.flattenedTasks.find(item => item.id.primaryKey === parentTaskId && !isProjectRootTask(item));
-    if (!parentTask) {{
-      throw new Error(`Parent task not found: ${{parentTaskId}}`);
-    }}
+    const parentTask = resolveTask(parentTaskId, "Parent task");
     // Climb from the destination through `parent`; a top-level task's parent
     // is its project's root task, which is no task's descendant, so stop there.
     let ancestor = parentTask;

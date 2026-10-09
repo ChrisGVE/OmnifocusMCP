@@ -301,10 +301,7 @@ for (const task of document.flattenedTasks) {
 
 const destinationInfo = (() => {
   if (parentTaskId !== null && parentTaskId !== "") {
-    const parentTask = taskById.get(parentTaskId) || document.flattenedTasks.find(item => item.id.primaryKey === parentTaskId && !isProjectRootTask(item));
-    if (!parentTask) {
-      throw new Error(`Parent task not found: ${parentTaskId}`);
-    }
+    const parentTask = resolveTask(parentTaskId, "Parent task");
     // Climb from the destination through `parent`; a top-level task's parent
     // is its project's root task, which is no task's descendant, so stop there.
     let ancestor = parentTask;

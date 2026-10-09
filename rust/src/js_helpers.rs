@@ -346,31 +346,67 @@ function updatedReviewInterval(project, requested) {
 }
 "#;
 
-/// Folder, project and tag resolution for tool parameters (upstream #11).
+/// Folder, project, tag and task resolution for tool parameters (upstream
+/// #11, audit CR-019). Every tool looks objects up through these; none keeps
+/// its own copy.
 ///
 /// A `folder`, `project` or tag-valued parameter may be an id or an exact
 /// name. The id is tried first, through the documented `byIdentifier`
-/// function for its kind, then the first exact name match. When neither
+/// function for its kind, then exact names, in database order. When neither
 /// matches, the call fails with `"<Kind> not found: <value>"` — a supplied
 /// value that matches nothing must say so, not quietly do nothing.
 ///
-/// Defined functions: `resolveFolder(value)`, `resolveProject(value)`,
-/// `resolveTag(value)`. Each expects a non-null value; callers handle an
-/// absent parameter themselves.
-pub const JS_RESOLVERS: &str = r#"function resolveFolder(value) {
-  const folder = Folder.byIdentifier(value) || document.flattenedFolders.byName(value);
-  if (!folder) throw new Error("Folder not found: " + value);
-  return folder;
+/// Defined functions:
+/// - `matchFolders(value)`, `matchProjects(value)`, `matchTags(value)`:
+///   every object the value can name — the one with that id, or else all
+///   objects with that exact name (possibly none). For callers that report
+///   a miss themselves instead of failing, such as the batch deletes.
+/// - `resolveFolder(value)`, `resolveProject(value)`, `resolveTag(value)`:
+///   the object the value names, or a thrown "not found".
+/// - `resolveTask(id, label)`: the task with that id, through the
+///   documented `Task.byIdentifier`. Tasks are looked up by id only. A
+///   project's root task shares its project's id and is listed among the
+///   tasks, but it is the project, not an action, so it is reported as not
+///   found. The error is `"<label> not found: <id>"`, `label` defaulting to
+///   `"Task"` (`"Parent task"` for a destination). Needs `isProjectRootTask`
+///   (`JS_TASK_STATUS`) prepended too.
+///
+/// Each function expects a non-null value; callers handle an absent
+/// parameter themselves. Internal helpers are prefixed `ofResolver`.
+pub const JS_RESOLVERS: &str = r#"function matchFolders(value) {
+  const byId = Folder.byIdentifier(value);
+  if (byId) return [byId];
+  return document.flattenedFolders.filter(folder => folder.name === value);
+}
+function matchProjects(value) {
+  const byId = Project.byIdentifier(value);
+  if (byId) return [byId];
+  return document.flattenedProjects.filter(project => project.name === value);
+}
+function matchTags(value) {
+  const byId = Tag.byIdentifier(value);
+  if (byId) return [byId];
+  return document.flattenedTags.filter(tag => tag.name === value);
+}
+function ofResolverSingle(kind, value, matches) {
+  if (matches.length === 0) throw new Error(kind + " not found: " + value);
+  return matches[0];
+}
+function resolveFolder(value) {
+  return ofResolverSingle("Folder", value, matchFolders(value));
 }
 function resolveProject(value) {
-  const project = Project.byIdentifier(value) || document.flattenedProjects.byName(value);
-  if (!project) throw new Error("Project not found: " + value);
-  return project;
+  return ofResolverSingle("Project", value, matchProjects(value));
 }
 function resolveTag(value) {
-  const tag = Tag.byIdentifier(value) || document.flattenedTags.byName(value);
-  if (!tag) throw new Error("Tag not found: " + value);
-  return tag;
+  return ofResolverSingle("Tag", value, matchTags(value));
+}
+function resolveTask(id, label) {
+  const task = Task.byIdentifier(id);
+  if (!task || isProjectRootTask(task)) {
+    throw new Error((label || "Task") + " not found: " + id);
+  }
+  return task;
 }
 "#;
 

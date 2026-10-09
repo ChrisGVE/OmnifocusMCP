@@ -108,8 +108,10 @@ function fakeEnum(kind, names) {
   return members;
 }
 var Task = { Status: fakeEnum("Task.Status",
-  ["Available", "Blocked", "Completed", "Dropped", "DueSoon", "Next", "Overdue"]) };
-var Project = { Status: fakeEnum("Project.Status", ["Active", "Done", "Dropped", "OnHold"]) };
+  ["Available", "Blocked", "Completed", "Dropped", "DueSoon", "Next", "Overdue"]),
+  byIdentifier: function (id) { return allTasks.find(t => t.id.primaryKey === id) || null; } };
+var Project = { Status: fakeEnum("Project.Status", ["Active", "Done", "Dropped", "OnHold"]),
+  byIdentifier: function (id) { return allProjects.find(p => p.id.primaryKey === id) || null; } };
 var Tag = { Status: fakeEnum("Tag.Status", ["Active", "OnHold", "Dropped"]) };
 
 var DAY = 24 * 60 * 60 * 1000;
@@ -265,7 +267,8 @@ async fn get_task_lookup_rejects_project_root_tasks() {
         .expect("get_task captures its script");
     let script = runner.last_script();
     assert_uses_shared_task_status("get_task", &script);
-    assert!(script.contains("item.id.primaryKey === taskId && !isProjectRootTask(item)"));
+    // resolveTask (JS_RESOLVERS) refuses a project's root task.
+    assert!(script.contains("const task = resolveTask(taskId);"));
 }
 
 async fn list_tasks_ids(status: &str, due: Due) -> Vec<String> {

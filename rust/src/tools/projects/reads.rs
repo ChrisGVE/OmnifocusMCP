@@ -110,13 +110,9 @@ pub async fn get_project<R: JxaRunner>(runner: &R, project_id_or_name: &str) -> 
         r#"{JS_PROJECT_STATUS}
 {JS_TASK_STATUS}
 {JS_REVIEW_INTERVAL}
+{JS_RESOLVERS}
 const projectFilter = {project_filter};
-const project = document.flattenedProjects.find(item => {{
-  return item.id.primaryKey === projectFilter || item.name === projectFilter;
-}});
-if (!project) {{
-  throw new Error(`Project not found: ${{projectFilter}}`);
-}}
+const project = resolveProject(projectFilter);
 
 const allProjectTasks = document.flattenedTasks.filter(task => {{
   return !isProjectRootTask(task)

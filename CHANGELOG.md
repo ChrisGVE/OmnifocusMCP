@@ -147,6 +147,14 @@ issue numbers in them, and every "upstream #N" below, refer to that project's tr
   message, because the shutdown check matched words in rmcp's error text. The exit status now
   follows the kind of error: the client closing its input (before or after the handshake) exits 0;
   a handshake violation or a crashed service task is logged to stderr and exits non-zero.
+- A project or folder given by id is now always the object with that id. `get_project`,
+  `complete_project`, `uncomplete_project`, `delete_project`, `delete_projects_batch`,
+  `set_project_status`, `update_project`, `move_project`, `get_folder`, `update_folder` and
+  `delete_folder` took the first object in OmniFocus order whose id *or* name matched, so an object
+  named like another object's id could be acted on instead. Every project, folder and task lookup
+  now goes through the shared resolvers (audit CR-019); task lookups use OmniFocus's documented
+  `Task.byIdentifier` and keep their messages (`Task not found: <id>`,
+  `Parent task not found: <id>`).
 
 ## [2.0.0] - 2026-10-07
 

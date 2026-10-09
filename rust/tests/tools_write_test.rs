@@ -1605,7 +1605,7 @@ async fn create_subtask_script_contains_parent_lookup_and_insert_position() {
         .last()
         .cloned()
         .expect("one script should be captured");
-    assert!(captured.contains("const parentTask = document.flattenedTasks.find"));
+    assert!(captured.contains(r#"const parentTask = resolveTask(parentTaskId, "Parent task");"#));
     assert!(captured.contains("const task = new Task(taskName, parentTask.ending);"));
 }
 
@@ -2274,7 +2274,7 @@ async fn get_folder_script_returns_direct_children() {
         .cloned()
         .expect("one script should be captured");
     assert!(captured.contains("const folderFilter = \"folder-1\";"));
-    assert!(captured.contains("Folder not found"));
+    assert!(captured.contains("const folder = resolveFolder(folderFilter);"));
     assert!(captured.contains("projects: folder.projects.map"));
     assert!(captured.contains("subfolders: folder.folders.map"));
 }

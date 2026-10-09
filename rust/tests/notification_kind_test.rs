@@ -46,7 +46,10 @@ var Task = {
     Absolute: new FakeEnum("Absolute"),
     DueRelative: new FakeEnum("DueRelative"),
     Unknown: new FakeEnum("Unknown")
-  } }
+  } },
+  byIdentifier: function (id) {
+    return document.flattenedTasks.find(item => item.id.primaryKey === id) || null;
+  }
 };
 var Project = { Status: { Active: new FakeEnum("Active") } };
 var FIRE = new Date(Date.UTC(2026, 9, 9, 7, 0));

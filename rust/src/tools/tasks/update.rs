@@ -62,10 +62,7 @@ pub async fn update_task<R: JxaRunner>(
 {JS_RESOLVERS}
 const taskId = {task_id_value};
 const updates = {updates_value};
-const task = document.flattenedTasks.find(item => item.id.primaryKey === taskId && !isProjectRootTask(item));
-if (!task) {{
-  throw new Error(`Task not found: ${{taskId}}`);
-}}
+const task = resolveTask(taskId);
 
 {APPLY_TASK_UPDATES}
 
@@ -120,7 +117,8 @@ fn task_updates(
 
 /// Parses the given dates and resolves the given tags before changing
 /// anything, then applies each given field; `tags` replaces the task's tags.
-const APPLY_TASK_UPDATES: &str = r#"const has = (key) => Object.prototype.hasOwnProperty.call(updates, key);
+const APPLY_TASK_UPDATES: &str = r#"{JS_RESOLVERS}
+const has = (key) => Object.prototype.hasOwnProperty.call(updates, key);
 const supportsPlannedDate = detectPlannedDateSupport(document.flattenedTasks);
 const parsedDueDate = has("dueDate") ? parseWriteDate(updates.dueDate, "dueDate", "DefaultDueTime", "17:00") : null;
 const parsedDeferDate = has("deferDate") ? parseWriteDate(updates.deferDate, "deferDate", "DefaultStartTime", "00:00") : null;
@@ -202,13 +200,11 @@ pub async fn set_task_repetition<R: JxaRunner>(
     let script = format!(
         r#"{JS_PROJECT_STATUS}
 {JS_TASK_STATUS}
+{JS_RESOLVERS}
 const taskId = {task_id_value};
 const ruleString = {rule_string_value};
 const scheduleTypeInput = {schedule_type_value};
-const task = document.flattenedTasks.find(item => item.id.primaryKey === taskId && !isProjectRootTask(item));
-if (!task) {{
-  throw new Error(`Task not found: ${{taskId}}`);
-}}
+const task = resolveTask(taskId);
 
 if (ruleString === null) {{
   task.repetitionRule = null;

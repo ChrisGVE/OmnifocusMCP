@@ -52,9 +52,12 @@ without the variable proves nothing about OmniFocus.
 - Every parameter struct carries `#[serde(deny_unknown_fields)]`. Integer, number and boolean
   fields use `LenientI32`, `LenientF64` and `LenientBool` (`rust/src/lenient_scalars.rs`); tag
   lists use `FlexibleTagList` (`rust/src/flexible_tags.rs`).
-- Date parsing, project status, review intervals and folder/project lookup use the shared
+- Date parsing, project status, review intervals and object lookup use the shared
   Omni Automation snippets in `rust/src/js_helpers.rs` (`JS_DATE_HELPERS`, `JS_PROJECT_STATUS`,
-  `JS_REVIEW_INTERVAL`, `JS_RESOLVERS`). Prepend the snippet; do not write another copy.
+  `JS_REVIEW_INTERVAL`, `JS_RESOLVERS`). Look projects, folders and tags up with `resolveProject`,
+  `resolveFolder` and `resolveTag` (or `matchProjects`, `matchFolders`, `matchTags` when a miss
+  is reported per entry rather than thrown), and tasks with `resolveTask`. Prepend the snippet;
+  do not write another copy.
 - Every bug fix starts with a failing unit test that reproduces it.
 - A change to a tool's parameters or behaviour updates [`docs/tools.md`](docs/tools.md) and
   [`CHANGELOG.md`](CHANGELOG.md) in the same pull request.

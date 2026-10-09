@@ -156,10 +156,7 @@ const taskName = {task_name};
 const parentTaskId = {parent_task_id_value};
 {field_declarations}
 
-const parentTask = document.flattenedTasks.find(item => item.id.primaryKey === parentTaskId && !isProjectRootTask(item));
-if (!parentTask) {{
-  throw new Error(`Parent task not found: ${{parentTaskId}}`);
-}}
+const parentTask = resolveTask(parentTaskId, "Parent task");
 const resolvedTags = tagNames === null ? [] : tagNames.map(tagName => resolveTag(tagName));
 
 if (parsedPlannedDate !== null && !supportsPlannedDate) {{
@@ -277,12 +274,10 @@ pub async fn duplicate_task<R: JxaRunner>(
     let script = format!(
         r#"{JS_PROJECT_STATUS}
 {JS_TASK_STATUS}
+{JS_RESOLVERS}
 const taskId = {task_id_filter};
 const includeChildren = {include_children_value};
-const task = document.flattenedTasks.find(item => item.id.primaryKey === taskId && !isProjectRootTask(item));
-if (!task) {{
-  throw new Error(`Task not found: ${{taskId}}`);
-}}
+const task = resolveTask(taskId);
 const insertionLocation = task.containingProject ? task.containingProject.ending : inbox.ending;
 
 const taskStatusValue = (taskItem) => {{

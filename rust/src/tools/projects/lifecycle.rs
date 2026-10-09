@@ -5,7 +5,7 @@ use serde_json::Value;
 
 use crate::{
     error::{to_json_string, OmniFocusError, Result},
-    js_helpers::{JS_PROJECT_STATUS, JS_TASK_STATUS},
+    js_helpers::{JS_PROJECT_STATUS, JS_RESOLVERS, JS_TASK_STATUS},
     jxa::{escape_for_jxa, JxaRunner},
     tools::batch_delete::{normalize_ids_or_names, BATCH_DELETE_SUMMARY},
 };
@@ -19,13 +19,9 @@ pub async fn complete_project<R: JxaRunner>(runner: &R, project_id_or_name: &str
 
     let project_filter = escape_for_jxa(project_id_or_name.trim());
     let script = format!(
-        r#"const projectFilter = {project_filter};
-const project = document.flattenedProjects.find(item => {{
-  return item.id.primaryKey === projectFilter || item.name === projectFilter;
-}});
-if (!project) {{
-  throw new Error(`Project not found: ${{projectFilter}}`);
-}}
+        r#"{JS_RESOLVERS}
+const projectFilter = {project_filter};
+const project = resolveProject(projectFilter);
 
 project.markComplete();
 
@@ -51,13 +47,9 @@ pub async fn uncomplete_project<R: JxaRunner>(
 
     let project_filter = escape_for_jxa(project_id_or_name.trim());
     let script = format!(
-        r#"const projectFilter = {project_filter};
-const project = document.flattenedProjects.find(item => {{
-  return item.id.primaryKey === projectFilter || item.name === projectFilter;
-}});
-if (!project) {{
-  throw new Error(`Project not found: ${{projectFilter}}`);
-}}
+        r#"{JS_RESOLVERS}
+const projectFilter = {project_filter};
+const project = resolveProject(projectFilter);
 if (!project.completed) {{
   throw new Error(`Project is not completed: ${{projectFilter}}`);
 }}
@@ -85,13 +77,9 @@ pub async fn delete_project<R: JxaRunner>(runner: &R, project_id_or_name: &str) 
     let script = format!(
         r#"{JS_PROJECT_STATUS}
 {JS_TASK_STATUS}
+{JS_RESOLVERS}
 const projectFilter = {project_filter};
-const project = document.flattenedProjects.find(item => {{
-  return item.id.primaryKey === projectFilter || item.name === projectFilter;
-}});
-if (!project) {{
-  throw new Error(`Project not found: ${{projectFilter}}`);
-}}
+const project = resolveProject(projectFilter);
 
 const projectId = project.id.primaryKey;
 const projectName = project.name;
@@ -122,25 +110,13 @@ pub async fn delete_projects_batch<R: JxaRunner>(
 
     let project_ids_or_names_value = to_json_string(&normalized_project_ids_or_names)?;
     let script = format!(
-        r#"const projectIdsOrNames = {project_ids_or_names_value};
-const projects = document.flattenedProjects
-  .map(item => {{
-    try {{
-      return {{
-        id: item.id.primaryKey,
-        name: item.name,
-        ref: item
-      }};
-    }} catch (e) {{
-      return null;
-    }}
-  }})
-  .filter(item => item !== null);
-const results = projectIdsOrNames.map(idOrName => {{
-  const project = projects.find(item => {{
-    return item.id === idOrName || item.name === idOrName;
-  }});
-  if (project === undefined) {{
+        r#"{JS_RESOLVERS}
+const projectIdsOrNames = {project_ids_or_names_value};
+// Every entry is resolved before anything is deleted, so each one names
+// what it named when the call was made.
+const requests = projectIdsOrNames.map(idOrName => ({{ idOrName, matches: matchProjects(idOrName) }}));
+const results = requests.map(({{ idOrName, matches }}) => {{
+  if (matches.length === 0) {{
     return {{
       id_or_name: idOrName,
       id: null,
@@ -150,10 +126,11 @@ const results = projectIdsOrNames.map(idOrName => {{
     }};
   }}
 
-  const resolvedId = project.id;
+  const project = matches[0];
+  const resolvedId = project.id.primaryKey;
   const resolvedName = project.name;
   try {{
-    deleteObject(project.ref);
+    deleteObject(project);
     return {{
       id_or_name: idOrName,
       id: resolvedId,

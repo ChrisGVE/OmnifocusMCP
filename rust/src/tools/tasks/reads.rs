@@ -7,7 +7,7 @@ use serde_json::Value;
 
 use crate::{
     error::{OmniFocusError, Result},
-    js_helpers::{JS_PLANNED_DATE, JS_PROJECT_STATUS, JS_TASK_STATUS},
+    js_helpers::{JS_PLANNED_DATE, JS_PROJECT_STATUS, JS_RESOLVERS, JS_TASK_STATUS},
     jxa::{escape_for_jxa, JxaRunner},
     types::TaskResult,
 };
@@ -52,12 +52,10 @@ pub async fn get_task<R: JxaRunner>(runner: &R, task_id: &str) -> Result<Value> 
         r#"{JS_PROJECT_STATUS}
 {JS_TASK_STATUS}
 {JS_PLANNED_DATE}
+{JS_RESOLVERS}
 {READ_PLANNED_DATES}
 const taskId = {task_id_filter};
-const task = document.flattenedTasks.find(item => item.id.primaryKey === taskId && !isProjectRootTask(item));
-if (!task) {{
-  throw new Error(`Task not found: ${{taskId}}`);
-}}
+const task = resolveTask(taskId);
 
 const children = task.children.map(child => {{
   return {{
@@ -152,12 +150,10 @@ pub async fn list_subtasks<R: JxaRunner>(
         r#"{JS_PROJECT_STATUS}
 {JS_TASK_STATUS}
 {JS_PLANNED_DATE}
+{JS_RESOLVERS}
 {READ_PLANNED_DATES}
 const taskId = {task_id_filter};
-const task = document.flattenedTasks.find(item => item.id.primaryKey === taskId && !isProjectRootTask(item));
-if (!task) {{
-  throw new Error(`Task not found: ${{taskId}}`);
-}}
+const task = resolveTask(taskId);
 
 const tasks = task.children.slice(0, {limit});
 {MAP_LISTED_TASKS}"#

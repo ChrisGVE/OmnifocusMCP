@@ -7,7 +7,7 @@ use serde_json::Value;
 
 use crate::{
     error::{OmniFocusError, Result},
-    js_helpers::{JS_PROJECT_STATUS, JS_TASK_STATUS},
+    js_helpers::{JS_PROJECT_STATUS, JS_RESOLVERS, JS_TASK_STATUS},
     jxa::{escape_for_jxa, JxaRunner},
 };
 
@@ -21,11 +21,9 @@ pub async fn complete_task<R: JxaRunner>(runner: &R, task_id: &str) -> Result<Va
     let script = format!(
         r#"{JS_PROJECT_STATUS}
 {JS_TASK_STATUS}
+{JS_RESOLVERS}
 const taskId = {task_id_value};
-const task = document.flattenedTasks.find(item => item.id.primaryKey === taskId && !isProjectRootTask(item));
-if (!task) {{
-  throw new Error(`Task not found: ${{taskId}}`);
-}}
+const task = resolveTask(taskId);
 
 task.markComplete();
 
@@ -48,11 +46,9 @@ pub async fn delete_task<R: JxaRunner>(runner: &R, task_id: &str) -> Result<Valu
     let script = format!(
         r#"{JS_PROJECT_STATUS}
 {JS_TASK_STATUS}
+{JS_RESOLVERS}
 const taskId = {task_id_value};
-const task = document.flattenedTasks.find(item => item.id.primaryKey === taskId && !isProjectRootTask(item));
-if (!task) {{
-  throw new Error(`Task not found: ${{taskId}}`);
-}}
+const task = resolveTask(taskId);
 
 const taskName = task.name;
 const childCount = task.children.length;

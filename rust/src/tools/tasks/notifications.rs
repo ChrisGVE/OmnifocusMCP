@@ -5,7 +5,9 @@ use serde_json::Value;
 
 use crate::{
     error::{OmniFocusError, Result},
-    js_helpers::{JS_DATE_HELPERS, JS_NOTIFICATION_SUMMARY, JS_PROJECT_STATUS, JS_TASK_STATUS},
+    js_helpers::{
+        JS_DATE_HELPERS, JS_NOTIFICATION_SUMMARY, JS_PROJECT_STATUS, JS_RESOLVERS, JS_TASK_STATUS,
+    },
     jxa::{escape_for_jxa, JxaRunner},
 };
 
@@ -21,11 +23,9 @@ pub async fn list_notifications<R: JxaRunner>(runner: &R, task_id: &str) -> Resu
         r#"{JS_PROJECT_STATUS}
 {JS_TASK_STATUS}
 {JS_NOTIFICATION_SUMMARY}
+{JS_RESOLVERS}
 const taskId = {task_id_filter};
-const task = document.flattenedTasks.find(item => item.id.primaryKey === taskId && !isProjectRootTask(item));
-if (!task) {{
-  throw new Error(`Task not found: ${{taskId}}`);
-}}
+const task = resolveTask(taskId);
 return task.notifications.map(summarizeNotification);"#
     );
 
@@ -69,13 +69,11 @@ pub async fn add_notification<R: JxaRunner>(
 {JS_PROJECT_STATUS}
 {JS_TASK_STATUS}
 {JS_NOTIFICATION_SUMMARY}
+{JS_RESOLVERS}
 const taskId = {task_id_filter};
 const absoluteDate = {absolute_date_value};
 const relativeOffset = {relative_offset_value};
-const task = document.flattenedTasks.find(item => item.id.primaryKey === taskId && !isProjectRootTask(item));
-if (!task) {{
-  throw new Error(`Task not found: ${{taskId}}`);
-}}
+const task = resolveTask(taskId);
 let notification = null;
 if (absoluteDate !== null) {{
   const parsedAbsoluteDate = parseLocalDate(absoluteDate, "absoluteDate");
@@ -116,12 +114,10 @@ pub async fn remove_notification<R: JxaRunner>(
     let script = format!(
         r#"{JS_PROJECT_STATUS}
 {JS_TASK_STATUS}
+{JS_RESOLVERS}
 const taskId = {task_id_filter};
 const notificationId = {notification_id_filter};
-const task = document.flattenedTasks.find(item => item.id.primaryKey === taskId && !isProjectRootTask(item));
-if (!task) {{
-  throw new Error(`Task not found: ${{taskId}}`);
-}}
+const task = resolveTask(taskId);
 const notification = task.notifications.find(item => item.id.primaryKey === notificationId);
 if (!notification) {{
   throw new Error(`Notification not found: ${{notificationId}}`);

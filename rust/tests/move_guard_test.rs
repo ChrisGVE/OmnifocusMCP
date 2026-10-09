@@ -36,7 +36,9 @@ use serde_json::{json, Value};
 /// `moveTasks` records what it moved in `MOVED` and re-parents each task the
 /// way OmniFocus would; with `MOVE_LEAVES_NESTED` it moves nothing, standing in
 /// for a move OmniFocus did not carry out.
-const FAKE_TREE: &str = r#"var Task = { Status: {} };
+const FAKE_TREE: &str = r#"var Task = { Status: {}, byIdentifier: function (id) {
+  return document.flattenedTasks.find(function (t) { return t.id.primaryKey === id; }) || null;
+} };
 var Tag = { Status: {}, byIdentifier: function () { return null; } };
 var work = { id: { primaryKey: "p1" }, name: "Work" };
 work.ending = { kind: "project", project: work };
