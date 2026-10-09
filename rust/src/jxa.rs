@@ -114,6 +114,18 @@ pub async fn run_omnijs(script: &str) -> Result<Value> {
 }
 
 pub async fn run_omnijs_with_timeout(script: &str, timeout_seconds: f64) -> Result<Value> {
+    let outer_jxa = omnijs_osascript_program(script);
+    let envelope = run_jxa_json_with_timeout(&outer_jxa, timeout_seconds).await?;
+    unwrap_omnijs_envelope(envelope)
+}
+
+/// The JXA program `run_omnijs` hands to `osascript`: it passes `script`,
+/// wrapped so that its result or error comes back as the `{ok, data}` /
+/// `{ok: false, error}` envelope, to OmniFocus's `evaluateJavascript`.
+///
+/// Public so tests can compile and run a tool script inside exactly this
+/// wrapper without OmniFocus (`tests/all_tools_jsc_test.rs`).
+pub fn omnijs_osascript_program(script: &str) -> String {
     let wrapped_omnijs = format!(
         r#"(function() {{
   try {{
@@ -147,13 +159,10 @@ pub async fn run_omnijs_with_timeout(script: &str, timeout_seconds: f64) -> Resu
 }})()"#
     );
 
-    let outer_jxa = format!(
+    format!(
         "const app = Application('OmniFocus');\nconst result = app.evaluateJavascript({});\nresult;",
         escape_for_jxa(&wrapped_omnijs)
-    );
-
-    let envelope = run_jxa_json_with_timeout(&outer_jxa, timeout_seconds).await?;
-    unwrap_omnijs_envelope(envelope)
+    )
 }
 
 /// Reads the `{ok, data}` / `{ok: false, error}` envelope our OmniJS wrapper
