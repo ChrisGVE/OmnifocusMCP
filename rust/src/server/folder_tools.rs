@@ -48,7 +48,7 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
     }
 
     #[tool(
-        description = "create a folder with optional parent folder (id or exact name) and return created id/name/parent.",
+        description = "create a folder with optional parent folder (id or exact name). returns the created folder's id, name, and parentName (the parent folder's name, null at the top level).",
         annotations(
             read_only_hint = false,
             destructive_hint = false,

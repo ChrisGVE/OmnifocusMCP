@@ -819,7 +819,8 @@ Creates one folder.
 | `name` | string | yes | - | Not empty. |
 | `parent` | string | no | top level | Folder id or exact name. |
 
-Returns `{id, name}`.
+Returns `{id, name, parentName}`. `parentName` is the parent folder's name, as in `get_folder` and
+`list_folders`, even when `parent` was given as an id; it is `null` for a top-level folder.
 
 ### `update_folder`
 

@@ -72,7 +72,8 @@ const folder = (() => {{
 
 return {{
   id: folder.id.primaryKey,
-  name: folder.name
+  name: folder.name,
+  parentName: folder.parent ? folder.parent.name : null
 }};"#
     );
     runner.run_omnijs(&script).await

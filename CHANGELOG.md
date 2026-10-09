@@ -77,6 +77,9 @@ issue numbers in them, and every "upstream #N" below, refer to that project's tr
   `plannedDate`, whatever the task held.
 - `create_project` and `create_tag` return the same object shape as `get_project` and a `list_tags`
   tag respectively, instead of only an id.
+- **Visible to clients:** `create_folder` returns `{id, name, parentName}`, as its description
+  promised, instead of `{id, name}`. `parentName` is the parent folder's name (as `get_folder` and
+  `list_folders` report it, even when `parent` was given as an id) or `null` at the top level.
 - Removed the duplicate `uncomplete_task` and `append_to_note` from `rust/src/tools/tasks.rs`; the
   server and the `smoke_test` example now use the single copies in `rust/src/tools/utility.rs`.
 - Tag-valued writes now resolve each supplied id or exact name before changing anything and fail
