@@ -21,6 +21,53 @@ when environment variables enable them; without them they report success without
 anything. See
 [Tests against a live OmniFocus database](../CONTRIBUTING.md#tests-against-a-live-omnifocus-database).
 
+## Testing
+
+`tests/all_tools_jsc_test.rs` runs every registered tool end to end without OmniFocus. Each row
+calls one tool through the real MCP server, in memory, so parameter handling and defaults are the
+ones a client gets. The tool's script then runs through `tests/support/omnijs_harness.rs`:
+wrapped by `jxa::omnijs_osascript_program` exactly as in production, and executed by
+JavaScriptCore (`jsc`) in two realms. One stands in for osascript's JXA, where `Application` is a
+function of the harness, so nothing can reach OmniFocus. The other stands in for OmniFocus's OmniJS
+context and holds a strict fake (`tests/fixtures/omnijs/fake/`, one file per kind of object)
+filled with a fixed database (`tests/fixtures/omnijs/scenario.js`).
+
+Every object of the fake rejects a member that OmniFocus's API reference does not document for its
+class, and the harness records the violation even when the script catches the error. A row passes
+when its scripts compiled, ran, used only documented members, and the tool returned a result with
+the expected keys. The table runs once in UTC and once in Europe/Zurich, with the fake's clock fixed
+at 2026-10-09 10:00 UTC. Other checks in the file:
+
+- `rows()` must hold exactly one row per registered tool, so a new tool fails the test until it has
+  one. `variants()` adds calls that take other branches of the same scripts.
+- Every tool, called with an argument it does not declare, must be rejected before any script runs.
+- The harness itself is tested: a caught violation, a script that does not compile, and the time
+  zone a script ran in are all reported.
+
+A row whose tool fails because of a defect nobody has fixed yet expects `KnownDefect` with the
+violation, and fails once the defect is fixed. When the test reports that "the fake does not
+model" a member, the member is documented but the fake lacks it: add it to the file of
+`tests/fixtures/omnijs/fake/` for that kind of object, following the reference.
+
+`tests/common/mod.rs` runs snippets in `jsc` for the smaller JavaScriptCore tests: `run_jsc` in
+UTC, `run_jsc_in_time_zone` in a given IANA time zone.
+
+### The interface fixture
+
+`tests/fixtures/omnijs/interface.js` lists the documented members of each OmniJS class, the
+statics of each constructor and the values of each enum. It is generated from the
+`*-Interfaces.strings` files in OmniFocus's application bundle, the reference OmniFocus builds its
+Automation API documentation from. The generator reads files only and never starts OmniFocus.
+After an OmniFocus update, regenerate it from this directory:
+
+```bash
+python3 tests/fixtures/omnijs/generate_interface.py > tests/fixtures/omnijs/interface.js
+```
+
+The reference names classes by their Objective-C names (`OFMContext` is `Tag`) and does not
+record inheritance, so the generator spells out both mappings. Its docstring says where the
+inheritance was read from.
+
 ## How a call flows
 
 `main.rs` runs the MCP server defined in `server.rs` on stdio. Each tool handler in `server.rs`
@@ -72,7 +119,16 @@ rust/
       batch_delete.rs   # id/name validation and summary shared by the batch deletes
       js_values.rs      # Rust values as JavaScript literals
   tests/                # none contacts OmniFocus except where marked LIVE
-    common/mod.rs                      # runs snippets in the macOS `jsc` shell
+    common/mod.rs                      # runs snippets in the macOS `jsc` shell, in UTC or a
+                                       #   given time zone
+    support/mcp_session.rs             # drives the real server over in-memory MCP
+    support/omnijs_harness.rs          # runs tool scripts in the production wrapper against
+                                       #   the strict OmniJS fake (see Testing)
+    support/tool_rows.rs               # one call per registered tool, for the harness
+    support/tool_variants.rs           # calls taking other branches of the same scripts
+    fixtures/omnijs/                   # the strict fake, its scenario database, and the
+                                       #   documented interface with its generator
+    all_tools_jsc_test.rs              # every tool end to end on the strict fake (see Testing)
     jxa_test.rs                        # escaping, error messages, reply unwrapping
     params_test.rs                     # wire contract: unknown keys, string-encoded scalars
     lenient_scalars_test.rs            # lenient scalar types
