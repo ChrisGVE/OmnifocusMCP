@@ -1558,7 +1558,7 @@ async fn get_task_counts_script_includes_filters_and_counts() {
         .expect("script capture lock should succeed")
         .clone();
     assert!(script.contains(r#"const projectFilter = "Errands";"#));
-    assert!(script.contains(r#"const tagNames = ["Home"];"#));
+    assert!(script.contains(r#"const tagFilterValues = ["Home"];"#));
     assert!(script.contains("const flaggedFilter = true;"));
     assert!(script.contains("const counts = {"));
     assert!(script.contains("counts.overdue += 1;"));
@@ -2505,9 +2505,11 @@ async fn list_tasks_multi_tag_filter_script_contains_expected_logic() {
         .lock()
         .expect("script capture lock should succeed")
         .clone();
-    assert!(script_single.contains(r#"const tagNames = ["Home"];"#));
+    assert!(script_single.contains(r#"const tagFilterValues = ["Home"];"#));
     assert!(script_single.contains(r#"const tagFilterMode = "any";"#));
-    assert!(script_single.contains("task.tags.some(t => tagNames.includes(t.name))"));
+    assert!(
+        script_single.contains("return filterTagIds.some(tagId => taskTagIds.includes(tagId));")
+    );
 
     let listed_any = list_tasks(
         &runner,
@@ -2532,8 +2534,8 @@ async fn list_tasks_multi_tag_filter_script_contains_expected_logic() {
         .lock()
         .expect("script capture lock should succeed")
         .clone();
-    assert!(script_any.contains(r#"const tagNames = ["Home","Deep"];"#));
-    assert!(script_any.contains("task.tags.some(t => tagNames.includes(t.name))"));
+    assert!(script_any.contains(r#"const tagFilterValues = ["Home","Deep"];"#));
+    assert!(script_any.contains("return filterTagIds.some(tagId => taskTagIds.includes(tagId));"));
 
     let listed_all = list_tasks(
         &runner,
@@ -2559,7 +2561,7 @@ async fn list_tasks_multi_tag_filter_script_contains_expected_logic() {
         .expect("script capture lock should succeed")
         .clone();
     assert!(script_all.contains(r#"const tagFilterMode = "all";"#));
-    assert!(script_all.contains("tagNames.every(tn => task.tags.some(t => t.name === tn))"));
+    assert!(script_all.contains("if (tagFilterMode === \"all\") return filterTagIds.every(tagId => taskTagIds.includes(tagId));"));
 
     let listed_merged = list_tasks(
         &runner,
@@ -2584,7 +2586,7 @@ async fn list_tasks_multi_tag_filter_script_contains_expected_logic() {
         .lock()
         .expect("script capture lock should succeed")
         .clone();
-    assert!(script_merged.contains(r#"const tagNames = ["Home","Errands"];"#));
+    assert!(script_merged.contains(r#"const tagFilterValues = ["Home","Errands"];"#));
 
     let listed_empty = list_tasks(
         &runner,
@@ -2609,7 +2611,7 @@ async fn list_tasks_multi_tag_filter_script_contains_expected_logic() {
         .lock()
         .expect("script capture lock should succeed")
         .clone();
-    assert!(script_empty.contains("const tagNames = null;"));
+    assert!(script_empty.contains("const tagFilterValues = null;"));
 }
 
 #[tokio::test]
@@ -3246,9 +3248,9 @@ async fn list_tasks_tags_filter_modes_and_merging_are_in_script() {
         .lock()
         .expect("script capture lock should succeed")
         .clone();
-    assert!(script.contains("const tagNames = [\"Home\",\"Errands\"];"));
+    assert!(script.contains("const tagFilterValues = [\"Home\",\"Errands\"];"));
     assert!(script.contains("const tagFilterMode = \"all\";"));
-    assert!(script.contains("tagNames.every(tn => task.tags.some(t => t.name === tn))"));
+    assert!(script.contains("if (tagFilterMode === \"all\") return filterTagIds.every(tagId => taskTagIds.includes(tagId));"));
 }
 
 #[tokio::test]
@@ -3283,7 +3285,7 @@ async fn list_tasks_empty_tags_array_is_ignored() {
         .lock()
         .expect("script capture lock should succeed")
         .clone();
-    assert!(script.contains("const tagNames = null;"));
+    assert!(script.contains("const tagFilterValues = null;"));
 }
 
 #[tokio::test]

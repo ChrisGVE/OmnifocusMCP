@@ -150,15 +150,7 @@ for (const task of document.flattenedTasks) {
     const containing = task.containingProject;
     if (!containing || containing.id.primaryKey !== filterProject.id.primaryKey) continue;
   }
-  if (tagNames !== null && tagNames.length > 0) {
-    let tagMatches = false;
-    if (tagFilterMode === "all") {
-      tagMatches = tagNames.every(tn => task.tags.some(t => t.name === tn));
-    } else {
-      tagMatches = task.tags.some(t => tagNames.includes(t.name));
-    }
-    if (!tagMatches) continue;
-  }
+  if (!taskMatchesTagFilter(task)) continue;
   if (flaggedFilter !== null && task.flagged !== flaggedFilter) continue;
   if (dueBefore !== null && !(task.dueDate !== null && task.dueDate < dueBefore)) continue;
   if (dueAfter !== null && !(task.dueDate !== null && task.dueDate > dueAfter)) continue;

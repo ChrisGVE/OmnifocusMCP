@@ -86,10 +86,10 @@ impl<'de> Deserialize<'de> for FlexibleTagList {
 #[serde(untagged)]
 #[allow(dead_code)]
 enum FlexibleTagListSchemaRepr {
-    Array(#[schemars(description = "Tag names (preferred).")] Vec<String>),
+    Array(#[schemars(description = "Tag ids or exact names (preferred).")] Vec<String>),
     JsonString(
         #[schemars(
-            description = "JSON array of tag names as one string, for clients that encode all tool arguments as strings (e.g. [\"Home\",\"Quick\"]). An empty string is rejected; use [] to clear."
+            description = "JSON array of tag ids or exact names as one string, for clients that encode all tool arguments as strings (e.g. [\"Home\",\"Quick\"]). An empty string is rejected; use [] to clear."
         )]
         String,
     ),

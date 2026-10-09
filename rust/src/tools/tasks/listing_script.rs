@@ -116,15 +116,7 @@ const FILTER_PREDICATE: &str = r#"    if (filterProject !== null) {
       if (!containing || containing.id.primaryKey !== filterProject.id.primaryKey) return false;
     }
 
-    if (tagNames !== null && tagNames.length > 0) {
-      let tagMatches = false;
-      if (tagFilterMode === "all") {
-        tagMatches = tagNames.every(tn => task.tags.some(t => t.name === tn));
-      } else {
-        tagMatches = task.tags.some(t => tagNames.includes(t.name));
-      }
-      if (!tagMatches) return false;
-    }
+    if (!taskMatchesTagFilter(task)) return false;
 
     if (flaggedFilter !== null && task.flagged !== flaggedFilter) return false;
 

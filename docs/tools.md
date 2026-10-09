@@ -219,8 +219,8 @@ and rich task results from `duplicate_task` and `update_task` also include the l
 | Key | Type | Required | Default | Notes |
 | --- | --- | --- | --- | --- |
 | `project` | string | no | - | Project id or exact name. Only tasks in that project. |
-| `tag` | string | no | - | One tag name. |
-| `tags` | array of strings | no | - | Tag names. Merged with `tag`. |
+| `tag` | string | no | - | One tag id or exact name. |
+| `tags` | array of strings | no | - | Tag ids or exact names. Merged with `tag`. |
 | `tagFilterMode` | string | no | `any` | `any`: the task has at least one of the tags. `all`: it has every one. Aliases `or` and `and`, any letter case. |
 | `flagged` | boolean | no | - | `true`: flagged tasks only. `false`: unflagged tasks only. Omit for both. |
 | `dueBefore`, `dueAfter` | date | no | - | Due date range. |
@@ -231,7 +231,10 @@ and rich task results from `duplicate_task` and `update_task` also include the l
 | `plannedBefore`, `plannedAfter` | date | no | - | Planned date range. If the database does not support planned dates, a supplied bound fails instead of being ignored. |
 | `maxEstimatedMinutes` | integer | no | - | At least 0. Tasks with an estimate of at most this many minutes. Tasks without an estimate are excluded. |
 
-Tags are matched by name.
+Each `tag` and `tags` value is resolved like any other [id-or-name value](#id-or-name-values): a
+value that matches no tag, or a name several tags share, fails the call
+(`Tag not found: <value>`, `Ambiguous tag name …`) instead of matching nothing. Tasks are then
+matched by the tags those values resolve to.
 
 `list_tasks` and `search_tasks` also take:
 

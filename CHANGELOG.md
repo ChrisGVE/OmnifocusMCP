@@ -43,6 +43,11 @@ issue numbers in them, and every "upstream #N" below, refer to that project's tr
   silently reached whichever object came first. The batch deletes report the ambiguous entry in
   its result with the same message, delete nothing for it and go on with the others. Ids are
   unaffected: pass the id to pick one of the same-named objects (audit CR-003).
+- **Visible to clients:** the `tag` and `tags` filters of `list_tasks`, `search_tasks` and
+  `get_task_counts` accept tag ids as well as exact names, and a value that matches no tag fails
+  with `Tag not found: <value>` (or is refused as ambiguous). They compared tag names with the raw
+  values, so a tag id matched nothing and a misspelt tag silently returned `[]` or a count of 0,
+  contrary to the documented id-or-name rule (audit CR-009).
 - An error raised inside OmniFocus is reported with its own message, without the
   `OmniFocus operation failed: ` prefix that every message outside `Task`/`Project`/`Tag`/`Folder
   not found:` used to get (for example `Parent task not found: <id>`,

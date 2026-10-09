@@ -77,7 +77,7 @@ impl TaskFilters<'_> {
     pub fn literals(&self, tag_filter_mode: &str) -> Result<FilterLiterals> {
         Ok(FilterLiterals {
             project_filter: js_trimmed_string_or_null(self.project),
-            tag_names_filter: self.tag_names_literal()?,
+            tag_filter_values: self.tag_filter_values_literal()?,
             tag_filter_mode_filter: escape_for_jxa(tag_filter_mode),
             flagged_filter: js_bool_or_null(self.flagged),
             due_before_filter: js_string_or_null(self.due_before),
@@ -96,21 +96,22 @@ impl TaskFilters<'_> {
         })
     }
 
-    /// `tag` followed by the `tags` entries, trimmed and without repeats, as
-    /// a JSON array; `null` when there are none.
-    fn tag_names_literal(&self) -> Result<String> {
-        let mut merged_tag_names: Vec<String> = Vec::new();
+    /// `tag` followed by the `tags` entries (each a tag id or exact name),
+    /// trimmed and without repeats, as a JSON array; `null` when there are
+    /// none.
+    fn tag_filter_values_literal(&self) -> Result<String> {
+        let mut merged_values: Vec<String> = Vec::new();
         let given_tags = self.tags.iter().flatten().map(String::as_str);
-        for tag_name in self.tag.into_iter().chain(given_tags) {
-            let normalized_tag = tag_name.trim().to_string();
-            if !normalized_tag.is_empty() && !merged_tag_names.contains(&normalized_tag) {
-                merged_tag_names.push(normalized_tag);
+        for value in self.tag.into_iter().chain(given_tags) {
+            let normalized_value = value.trim().to_string();
+            if !normalized_value.is_empty() && !merged_values.contains(&normalized_value) {
+                merged_values.push(normalized_value);
             }
         }
-        if merged_tag_names.is_empty() {
+        if merged_values.is_empty() {
             Ok("null".to_string())
         } else {
-            to_json_string(&merged_tag_names)
+            to_json_string(&merged_values)
         }
     }
 }
@@ -118,7 +119,7 @@ impl TaskFilters<'_> {
 /// Task filters rendered as JavaScript literals, ready to splice in.
 pub(super) struct FilterLiterals {
     project_filter: String,
-    tag_names_filter: String,
+    tag_filter_values: String,
     tag_filter_mode_filter: String,
     flagged_filter: String,
     due_before_filter: String,
@@ -137,12 +138,15 @@ pub(super) struct FilterLiterals {
 }
 
 impl FilterLiterals {
-    /// Declares the project, tag and flagged filters. The project is
-    /// resolved here, so an unknown project fails the script up front.
+    /// Declares the project, tag and flagged filters, and
+    /// `taskMatchesTagFilter(task)`, the tag test the filter code applies.
+    /// The project and every tag value (an id or exact name) are resolved
+    /// here, so an unknown or ambiguous one fails the script up front; tasks
+    /// are then matched by tag id, never by name.
     pub fn selection_lines(&self) -> String {
         let FilterLiterals {
             project_filter,
-            tag_names_filter,
+            tag_filter_values,
             tag_filter_mode_filter,
             flagged_filter,
             ..
@@ -150,8 +154,15 @@ impl FilterLiterals {
         format!(
             r#"const projectFilter = {project_filter};
 const filterProject = projectFilter === null ? null : resolveProject(projectFilter);
-const tagNames = {tag_names_filter};
+const tagFilterValues = {tag_filter_values};
 const tagFilterMode = {tag_filter_mode_filter};
+const filterTagIds = tagFilterValues === null ? null : tagFilterValues.map(value => resolveTag(value).id.primaryKey);
+const taskMatchesTagFilter = (task) => {{
+  if (filterTagIds === null) return true;
+  const taskTagIds = task.tags.map(tag => tag.id.primaryKey);
+  if (tagFilterMode === "all") return filterTagIds.every(tagId => taskTagIds.includes(tagId));
+  return filterTagIds.some(tagId => taskTagIds.includes(tagId));
+}};
 const flaggedFilter = {flagged_filter};"#
         )
     }
