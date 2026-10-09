@@ -19,6 +19,8 @@ use crate::{
     },
 };
 
+use super::inputs::validate_non_negative_minutes;
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CreateTaskInput {
     pub name: String,
@@ -179,7 +181,8 @@ return {{
     runner.run_omnijs(&script).await
 }
 
-/// The optional fields of a new task or subtask, as JavaScript literals.
+/// The optional fields of a new task or subtask, as JavaScript literals;
+/// building them rejects a negative `estimatedMinutes` before any script.
 struct NewTaskFields {
     note_value: String,
     due_date_value: String,
@@ -200,6 +203,7 @@ impl NewTaskFields {
         tags: Option<Vec<String>>,
         estimated_minutes: Option<i32>,
     ) -> Result<Self> {
+        validate_non_negative_minutes("estimatedMinutes", estimated_minutes)?;
         let tags_value = match tags {
             Some(values) => to_json_string(&values)?,
             None => "null".to_string(),

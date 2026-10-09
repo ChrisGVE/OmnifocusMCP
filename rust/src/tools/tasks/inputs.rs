@@ -5,7 +5,8 @@
 //! spelling to its canonical value or return the tool's validation error.
 //! The `validate_*` checks are shared by `list`, `search` and `counts`; each
 //! of those calls them in its own fixed order, which decides the error a call
-//! with several bad arguments reports.
+//! with several bad arguments reports. `validate_non_negative_minutes` also
+//! guards `estimatedMinutes` on the task writes (`create`, `update`, `batch`).
 
 use serde_json::Value;
 
@@ -74,11 +75,19 @@ pub(super) fn validate_limit(limit: i32) -> Result<()> {
 
 /// Rejects a negative `maxEstimatedMinutes`.
 pub(super) fn validate_max_estimated_minutes(max_estimated_minutes: Option<i32>) -> Result<()> {
-    if let Some(max_minutes) = max_estimated_minutes {
-        if max_minutes < 0 {
-            return Err(OmniFocusError::Validation(
-                "maxEstimatedMinutes must be greater than or equal to 0.".to_string(),
-            ));
+    validate_non_negative_minutes("maxEstimatedMinutes", max_estimated_minutes)
+}
+
+/// Rejects a negative minutes value, naming it by `field` in the error
+/// (`maxEstimatedMinutes`, `estimatedMinutes`, `tasks[2].estimatedMinutes`).
+/// Shared by the read filter and the task writes, so both refuse the same
+/// values with the same message.
+pub(super) fn validate_non_negative_minutes(field: &str, minutes: Option<i32>) -> Result<()> {
+    if let Some(value) = minutes {
+        if value < 0 {
+            return Err(OmniFocusError::Validation(format!(
+                "{field} must be greater than or equal to 0."
+            )));
         }
     }
     Ok(())

@@ -18,7 +18,9 @@ use crate::{
     tools::js_values::{js_string_or_null, js_trimmed_string_or_null},
 };
 
-use super::{create::CreateTaskInput, moves::validate_destination};
+use super::{
+    create::CreateTaskInput, inputs::validate_non_negative_minutes, moves::validate_destination,
+};
 
 pub async fn create_tasks_batch<R: JxaRunner>(
     runner: &R,
@@ -29,7 +31,7 @@ pub async fn create_tasks_batch<R: JxaRunner>(
             "tasks must contain at least one task definition.".to_string(),
         ));
     }
-    for task in &tasks {
+    for (index, task) in tasks.iter().enumerate() {
         if task.name.trim().is_empty() {
             return Err(OmniFocusError::Validation(
                 "each task must include a non-empty name.".to_string(),
@@ -42,6 +44,10 @@ pub async fn create_tasks_batch<R: JxaRunner>(
                 ));
             }
         }
+        validate_non_negative_minutes(
+            &format!("tasks[{index}].estimatedMinutes"),
+            task.estimated_minutes,
+        )?;
     }
 
     let normalized: Vec<CreateTaskInput> = tasks

@@ -11,6 +11,8 @@ use crate::{
     jxa::{escape_for_jxa, JxaRunner},
 };
 
+use super::inputs::validate_non_negative_minutes;
+
 #[allow(clippy::too_many_arguments)]
 pub async fn update_task<R: JxaRunner>(
     runner: &R,
@@ -36,6 +38,7 @@ pub async fn update_task<R: JxaRunner>(
             ));
         }
     }
+    validate_non_negative_minutes("estimatedMinutes", estimated_minutes)?;
 
     let updates = task_updates(
         name,

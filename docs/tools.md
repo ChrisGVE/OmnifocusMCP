@@ -339,7 +339,7 @@ Creates one task.
 | `dueDate`, `deferDate`, `plannedDate` | date | no | - | `plannedDate` requires an OmniFocus database migrated for planned dates; on an older database a supplied value fails before anything changes. |
 | `flagged` | boolean | no | - | |
 | `tags` | array of strings | no | - | Ids or exact names of existing tags. An unknown value fails before the task is created. |
-| `estimatedMinutes` | integer | no | - | |
+| `estimatedMinutes` | integer | no | - | At least 0; a negative value fails before OmniFocus is contacted (`estimatedMinutes must be greater than or equal to 0.`). |
 
 Returns `{id, name, plannedDate}`.
 
@@ -351,9 +351,9 @@ Creates several tasks in one OmniFocus call.
 | --- | --- | --- | --- | --- |
 | `tasks` | array of objects | yes | - | At least one. Each object takes the keys of `create_task`, with `name` required. |
 
-Every project, tag and date in the batch is checked before the first task is created, so one bad
-entry creates nothing. The error identifies the entry, for example `tasks[2].project` or
-`tasks[2].tags[0]`. Returns an array of `{id, name, plannedDate}`.
+Every project, tag, date and `estimatedMinutes` in the batch is checked before the first task is
+created, so one bad entry creates nothing. The error identifies the entry, for example
+`tasks[2].project`, `tasks[2].tags[0]` or `tasks[2].estimatedMinutes`. Returns an array of `{id, name, plannedDate}`.
 
 ### `create_subtask`
 
@@ -367,7 +367,7 @@ Creates a task under an existing task.
 | `dueDate`, `deferDate`, `plannedDate` | date | no | - | `plannedDate` requires an OmniFocus database migrated for planned dates. |
 | `flagged` | boolean | no | - | |
 | `tags` | array of strings | no | - | As in `create_task`. |
-| `estimatedMinutes` | integer | no | - | |
+| `estimatedMinutes` | integer | no | - | At least 0; a negative value fails before OmniFocus is contacted (`estimatedMinutes must be greater than or equal to 0.`). |
 
 Returns `{id, name, parentTaskId, parentTaskName, plannedDate}`.
 
@@ -383,7 +383,7 @@ Changes only the fields you pass.
 | `dueDate`, `deferDate`, `plannedDate` | date | no | - | `plannedDate` requires an OmniFocus database migrated for planned dates. |
 | `flagged` | boolean | no | - | |
 | `tags` | array of strings | no | - | Replaces all tags; `[]` removes every tag. Every id or exact name must resolve before any field changes. |
-| `estimatedMinutes` | integer | no | - | |
+| `estimatedMinutes` | integer | no | - | At least 0; a negative value fails before OmniFocus is contacted (`estimatedMinutes must be greater than or equal to 0.`). |
 
 Omitting a field and passing `null` both leave it unchanged, so this tool cannot clear a date.
 Returns the updated task, including effective dates and `plannedDate`.
