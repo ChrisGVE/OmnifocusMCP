@@ -255,10 +255,12 @@ async fn project_filter_by_id_tells_same_named_projects_apart() {
     let by_id = run_against_fake_database(&get_task_counts_script(Some("p6")).await);
     let by_id: Value = serde_json::from_str(&by_id).expect("counts by id");
     assert_eq!(by_id["total"], 2);
-    // An exact name selects the first project with that name.
+    // A name two projects share is refused; only the id tells them apart.
     let by_name = run_against_fake_database(&get_task_counts_script(Some("Errands")).await);
-    let by_name: Value = serde_json::from_str(&by_name).expect("counts by name");
-    assert_eq!(by_name["total"], 1);
+    assert_eq!(
+        by_name,
+        r#"ERROR: Ambiguous project name "Errands": 2 matches (p5, p6); pass an id."#
+    );
 }
 
 #[tokio::test]

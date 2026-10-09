@@ -113,16 +113,17 @@ pub async fn delete_projects_batch<R: JxaRunner>(
         r#"{JS_RESOLVERS}
 const projectIdsOrNames = {project_ids_or_names_value};
 // Every entry is resolved before anything is deleted, so each one names
-// what it named when the call was made.
+// what it named when the call was made. A name several projects share is
+// refused for that entry; nothing is deleted for it.
 const requests = projectIdsOrNames.map(idOrName => ({{ idOrName, matches: matchProjects(idOrName) }}));
 const results = requests.map(({{ idOrName, matches }}) => {{
-  if (matches.length === 0) {{
+  if (matches.length !== 1) {{
     return {{
       id_or_name: idOrName,
       id: null,
       name: null,
       deleted: false,
-      error: "not found"
+      error: matches.length === 0 ? "not found" : ambiguousNameMessage("project", idOrName, matches)
     }};
   }}
 

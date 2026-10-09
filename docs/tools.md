@@ -100,12 +100,18 @@ matches tasks due before local midnight at the start of 10 October. Bounds on `a
 These parameters accept an OmniFocus id or an exact name: `project`, `folder`, and tag references
 wherever they appear; `create_folder`'s and `create_tag`'s `parent`; and the keys
 `project_id_or_name`, `project_ids_or_names`, `folder_name_or_id`, `folder_ids_or_names`,
-`tag_name_or_id` and `tag_ids_or_names`. If several objects share a name, the first match in
-OmniFocus order is used; pass the id to choose.
+`tag_name_or_id` and `tag_ids_or_names`. A value is tried as an id first, then as an exact name.
+
+Names are not unique in OmniFocus, so a name that several objects of the same kind share is
+refused, in reads and writes alike:
+`Ambiguous project name "Errands": 2 matches (<id>, <id>); pass an id.` (`folder` and `tag` the
+same way). The message lists the ids to choose from. An id always names exactly one object.
 
 A value that matches nothing is an error (`Project not found: <value>`,
 `Folder not found: <value>`, `Tag not found: <value>`), never an empty result. The batch deletes
-are the exception: they report such an entry in their results and go on with the others.
+are the exception: they report an entry that matches nothing (`"not found"`) or names several
+objects (the `Ambiguous …` message) in its result, delete nothing for it, and go on with the
+others.
 
 `append_to_note`'s `object_id` takes an id only.
 
@@ -168,9 +174,10 @@ more. These are not:
 - `complete_task` and `complete_project`: completing a repeating item advances it to its next
   occurrence, so a second call completes that occurrence too.
 - `create_*`, `duplicate_task`, `add_notification`, `append_to_note`: each call adds again.
-- `update_project`, `update_tag`, `update_folder` and the project, tag and folder deletes: they
-  accept a name, and when two objects share that name, a repeated rename or delete reaches the
-  second one.
+- `update_project`, `update_tag`, `update_folder` and the project, tag and folder deletes keep a
+  conservative `false`. They were marked when a name shared by two objects reached the first and a
+  repeated call then reached the second; a shared name is now refused
+  ([Id-or-name values](#id-or-name-values)), so repeating one of these calls changes nothing more.
 
 ### Task summaries
 

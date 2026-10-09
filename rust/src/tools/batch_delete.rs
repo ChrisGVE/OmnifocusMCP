@@ -16,6 +16,8 @@ use crate::{
 
 /// A kind of object that nests in a tree and is deleted in batches.
 pub(crate) struct TreeKind {
+    /// The kind's name in an ambiguous-name refusal.
+    noun: &'static str,
     /// The `JS_RESOLVERS` function listing every object a value names.
     matcher: &'static str,
     /// The live, database-wide list of objects of this kind.
@@ -23,11 +25,13 @@ pub(crate) struct TreeKind {
 }
 
 pub(crate) const TAG_TREE: TreeKind = TreeKind {
+    noun: "tag",
     matcher: "matchTags",
     collection: "document.flattenedTags",
 };
 
 pub(crate) const FOLDER_TREE: TreeKind = TreeKind {
+    noun: "folder",
     matcher: "matchFolders",
     collection: "document.flattenedFolders",
 };
@@ -37,12 +41,15 @@ pub(crate) const FOLDER_TREE: TreeKind = TreeKind {
 ///
 /// Every entry is resolved before anything is deleted, so each one names
 /// what it named when the call was made. An entry that matches nothing is
-/// reported as `"not found"` and the others go ahead. The resolved objects
+/// reported as `"not found"`, and a name that several objects share with the
+/// `ambiguousNameMessage` refusal (nothing is deleted for it); the others go
+/// ahead. The resolved objects
 /// are deleted deepest first, so a child is never removed with its parent
 /// before its own turn; one already gone (removed with a parent, or named
 /// twice) counts as deleted.
 pub(crate) fn tree_batch_delete_script(kind: &TreeKind, ids_or_names_json: &str) -> String {
     let TreeKind {
+        noun,
         matcher,
         collection,
     } = kind;
@@ -66,8 +73,9 @@ const results = new Array(idsOrNames.length);
 const resolved = [];
 idsOrNames.forEach((idOrName, index) => {{
   const matches = {matcher}(idOrName);
-  if (matches.length === 0) {{
-    results[index] = {{ id_or_name: idOrName, id: null, name: null, deleted: false, error: "not found" }};
+  if (matches.length !== 1) {{
+    const error = matches.length === 0 ? "not found" : ambiguousNameMessage("{noun}", idOrName, matches);
+    results[index] = {{ id_or_name: idOrName, id: null, name: null, deleted: false, error }};
     return;
   }}
   const object = matches[0];

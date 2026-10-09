@@ -34,6 +34,15 @@ issue numbers in them, and every "upstream #N" below, refer to that project's tr
   (undeclared or missing keys, wrong JSON types) are still rejected with `invalid_params`.
   Resources and prompts keep reporting failures as JSON-RPC errors. A client that detected tool
   failures only through the JSON-RPC `error` member must now also check `isError`.
+- **Visible to clients:** a project, folder or tag name that several objects share is refused
+  instead of acting on the first one OmniFocus lists:
+  `Ambiguous project name "Errands": 2 matches (<id>, <id>); pass an id.` (`folder` and `tag` the
+  same way). This covers every id-or-name parameter, in reads (`get_project`, `get_folder`, the
+  `project` and `folder` filters, the `project_planning` prompt) as in writes. Before, a
+  `delete_project`, `complete_project`, `set_project_status`, `update_*` or delete by such a name
+  silently reached whichever object came first. The batch deletes report the ambiguous entry in
+  its result with the same message, delete nothing for it and go on with the others. Ids are
+  unaffected: pass the id to pick one of the same-named objects (audit CR-003).
 - An error raised inside OmniFocus is reported with its own message, without the
   `OmniFocus operation failed: ` prefix that every message outside `Task`/`Project`/`Tag`/`Folder
   not found:` used to get (for example `Parent task not found: <id>`,

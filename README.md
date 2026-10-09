@@ -190,8 +190,8 @@ A date-time with `Z` or an offset (`2026-10-10T09:30:00+02:00`) is used as given
 such as `2026-02-30` fails the call before anything changes.
 
 A `project` or `folder` value may be an id or an exact name; a value that matches nothing is an
-error (`Project not found: <value>`). If several projects or folders share the name, the first one
-OmniFocus lists is used.
+error (`Project not found: <value>`). A name that several projects or folders share is refused,
+and the error lists their ids so you can pass one instead.
 
 The exact rules, and every tool's parameters, are in [`docs/tools.md`](docs/tools.md#conventions).
 
@@ -219,8 +219,9 @@ assistant. They ask it to:
 
 ## Known limitations
 
-- **Duplicate names resolve to the first match.** A name shared by several projects, folders or
-  tags selects the first one OmniFocus lists. Use the id to pick a specific one.
+- **A shared name must be given as an id.** A name used by several projects, folders or tags is
+  refused (`Ambiguous project name "Errands": 2 matches (…); pass an id.`), and the message lists
+  the ids to choose from.
 - **Dates cannot be cleared.** `update_task` and `update_project` treat `null` like an omitted
   field.
 - **Review intervals can only be changed, not added.** `update_project` sets `reviewInterval` only

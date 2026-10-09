@@ -347,22 +347,31 @@ function updatedReviewInterval(project, requested) {
 "#;
 
 /// Folder, project, tag and task resolution for tool parameters (upstream
-/// #11, audit CR-019). Every tool looks objects up through these; none keeps
-/// its own copy.
+/// #11, audits CR-019 and CR-003). Every tool looks objects up through
+/// these; none keeps its own copy.
 ///
 /// A `folder`, `project` or tag-valued parameter may be an id or an exact
 /// name. The id is tried first, through the documented `byIdentifier`
-/// function for its kind, then exact names, in database order. When neither
-/// matches, the call fails with `"<Kind> not found: <value>"` — a supplied
-/// value that matches nothing must say so, not quietly do nothing.
+/// function for its kind, then exact names. When neither matches, the call
+/// fails with `"<Kind> not found: <value>"` — a supplied value that matches
+/// nothing must say so, not quietly do nothing. Names are not unique in
+/// OmniFocus, so a name that several objects share is refused with
+/// `Ambiguous <kind> name "<value>": <N> matches (<id>, <id>, …); pass an
+/// id.` rather than acting on whichever comes first; reads refuse it too, as
+/// a filter on the wrong project is the same wrong answer. An id names one
+/// object, always.
 ///
 /// Defined functions:
 /// - `matchFolders(value)`, `matchProjects(value)`, `matchTags(value)`:
 ///   every object the value can name — the one with that id, or else all
-///   objects with that exact name (possibly none). For callers that report
-///   a miss themselves instead of failing, such as the batch deletes.
+///   objects with that exact name (possibly none, possibly several). For
+///   callers that report a miss per entry instead of failing, such as the
+///   batch deletes.
+/// - `ambiguousNameMessage(noun, value, matches)`: the refusal text above
+///   (`noun` is `"project"`, `"folder"` or `"tag"`), for those callers to
+///   report.
 /// - `resolveFolder(value)`, `resolveProject(value)`, `resolveTag(value)`:
-///   the object the value names, or a thrown "not found".
+///   the one object the value names; a miss or an ambiguous name throws.
 /// - `resolveTask(id, label)`: the task with that id, through the
 ///   documented `Task.byIdentifier`. Tasks are looked up by id only. A
 ///   project's root task shares its project's id and is listed among the
@@ -388,18 +397,24 @@ function matchTags(value) {
   if (byId) return [byId];
   return document.flattenedTags.filter(tag => tag.name === value);
 }
-function ofResolverSingle(kind, value, matches) {
+function ambiguousNameMessage(noun, value, matches) {
+  const ids = matches.map(match => match.id.primaryKey).join(", ");
+  return "Ambiguous " + noun + " name " + JSON.stringify(value) + ": "
+    + matches.length + " matches (" + ids + "); pass an id.";
+}
+function ofResolverSingle(kind, noun, value, matches) {
   if (matches.length === 0) throw new Error(kind + " not found: " + value);
+  if (matches.length > 1) throw new Error(ambiguousNameMessage(noun, value, matches));
   return matches[0];
 }
 function resolveFolder(value) {
-  return ofResolverSingle("Folder", value, matchFolders(value));
+  return ofResolverSingle("Folder", "folder", value, matchFolders(value));
 }
 function resolveProject(value) {
-  return ofResolverSingle("Project", value, matchProjects(value));
+  return ofResolverSingle("Project", "project", value, matchProjects(value));
 }
 function resolveTag(value) {
-  return ofResolverSingle("Tag", value, matchTags(value));
+  return ofResolverSingle("Tag", "tag", value, matchTags(value));
 }
 function resolveTask(id, label) {
   const task = Task.byIdentifier(id);
