@@ -3,11 +3,102 @@
 //! `projects::delete_projects_batch`, `tags::delete_tags_batch` and
 //! `folders::delete_folders_batch` validate their list of ids or names the
 //! same way and end their scripts with the same summary, so both live here.
+//! Tags and folders form trees, so their two scripts are one: see
+//! `tree_batch_delete_script`.
 //! (`tasks::delete_tasks_batch` takes ids only and reports differently.)
 
 use std::collections::HashSet;
 
-use crate::error::{OmniFocusError, Result};
+use crate::{
+    error::{OmniFocusError, Result},
+    js_helpers::JS_RESOLVERS,
+};
+
+/// A kind of object that nests in a tree and is deleted in batches.
+pub(crate) struct TreeKind {
+    /// The `JS_RESOLVERS` function listing every object a value names.
+    matcher: &'static str,
+    /// The live, database-wide list of objects of this kind.
+    collection: &'static str,
+}
+
+pub(crate) const TAG_TREE: TreeKind = TreeKind {
+    matcher: "matchTags",
+    collection: "document.flattenedTags",
+};
+
+pub(crate) const FOLDER_TREE: TreeKind = TreeKind {
+    matcher: "matchFolders",
+    collection: "document.flattenedFolders",
+};
+
+/// The script that deletes the tags or folders `ids_or_names_json` (a JSON
+/// array of already normalised ids or names) names.
+///
+/// Every entry is resolved before anything is deleted, so each one names
+/// what it named when the call was made. An entry that matches nothing is
+/// reported as `"not found"` and the others go ahead. The resolved objects
+/// are deleted deepest first, so a child is never removed with its parent
+/// before its own turn; one already gone (removed with a parent, or named
+/// twice) counts as deleted.
+pub(crate) fn tree_batch_delete_script(kind: &TreeKind, ids_or_names_json: &str) -> String {
+    let TreeKind {
+        matcher,
+        collection,
+    } = kind;
+    format!(
+        r#"{JS_RESOLVERS}
+const idsOrNames = {ids_or_names_json};
+const findLiveById = (id) => {collection}.find(object => {{
+  try {{
+    return object.id.primaryKey === id;
+  }} catch (e) {{
+    return false;
+  }}
+}});
+const treeDepth = (object) => {{
+  let depth = 0;
+  for (let parent = object.parent; parent; parent = parent.parent) depth += 1;
+  return depth;
+}};
+
+const results = new Array(idsOrNames.length);
+const resolved = [];
+idsOrNames.forEach((idOrName, index) => {{
+  const matches = {matcher}(idOrName);
+  if (matches.length === 0) {{
+    results[index] = {{ id_or_name: idOrName, id: null, name: null, deleted: false, error: "not found" }};
+    return;
+  }}
+  const object = matches[0];
+  resolved.push({{ idOrName, index, id: object.id.primaryKey, name: object.name, depth: treeDepth(object) }});
+}});
+
+resolved
+  .sort((left, right) => right.depth - left.depth || left.index - right.index)
+  .forEach(request => {{
+    const deletedResult = {{ id_or_name: request.idOrName, id: request.id, name: request.name, deleted: true, error: null }};
+    const liveObject = findLiveById(request.id);
+    if (!liveObject) {{
+      results[request.index] = deletedResult;
+      return;
+    }}
+    try {{
+      deleteObject(liveObject);
+      results[request.index] = deletedResult;
+    }} catch (e) {{
+      if (!findLiveById(request.id)) {{
+        results[request.index] = deletedResult;
+        return;
+      }}
+      const errorMessage = e && e.message ? String(e.message) : String(e);
+      results[request.index] = {{ ...deletedResult, deleted: false, error: errorMessage }};
+    }}
+  }});
+
+{BATCH_DELETE_SUMMARY}"#
+    )
+}
 
 /// Trims each id or name and rejects an empty list, an empty entry or a
 /// repeated entry. `kind` ("project", "tag" or "folder") names the argument

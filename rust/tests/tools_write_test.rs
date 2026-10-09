@@ -1277,9 +1277,10 @@ async fn delete_tags_batch_hierarchy_cascade_effective_success_plan_a() {
         .last()
         .cloned()
         .expect("one script should be captured");
-    assert!(captured.contains("parentId: item.parent ? item.parent.id.primaryKey : null"));
+    assert!(captured
+        .contains("for (let parent = object.parent; parent; parent = parent.parent) depth += 1;"));
     assert!(captured.contains("right.depth - left.depth || left.index - right.index"));
-    assert!(captured.contains("if (!existsTagById(resolvedId)) {"));
+    assert!(captured.contains("if (!findLiveById(request.id)) {"));
     assert!(captured.contains("partial_success: deletedCount > 0 && failedCount > 0"));
 }
 
@@ -1325,8 +1326,8 @@ async fn delete_tags_batch_script_uses_hierarchy_order_and_live_lookup() {
         .expect("captured script");
     assert!(captured
         .contains("sort((left, right) => right.depth - left.depth || left.index - right.index)"));
-    assert!(captured.contains("const getLiveTagById = (tagId) => {"));
-    assert!(captured.contains("deleteObject(liveTag);"));
+    assert!(captured.contains("const findLiveById = (id) => document.flattenedTags.find("));
+    assert!(captured.contains("deleteObject(liveObject);"));
 }
 
 #[tokio::test]
@@ -1414,9 +1415,10 @@ async fn delete_folders_batch_hierarchy_cascade_effective_success_plan_a() {
         .last()
         .cloned()
         .expect("one script should be captured");
-    assert!(captured.contains("parentId: item.parent ? item.parent.id.primaryKey : null"));
+    assert!(captured
+        .contains("for (let parent = object.parent; parent; parent = parent.parent) depth += 1;"));
     assert!(captured.contains("right.depth - left.depth || left.index - right.index"));
-    assert!(captured.contains("if (!existsFolderById(resolvedId)) {"));
+    assert!(captured.contains("if (!findLiveById(request.id)) {"));
     assert!(captured.contains("partial_success: deletedCount > 0 && failedCount > 0"));
 }
 
@@ -1469,8 +1471,8 @@ async fn delete_folders_batch_script_uses_hierarchy_order_and_live_lookup() {
         .expect("captured script");
     assert!(captured
         .contains("sort((left, right) => right.depth - left.depth || left.index - right.index)"));
-    assert!(captured.contains("const getLiveFolderById = (folderId) => {"));
-    assert!(captured.contains("deleteObject(liveFolder);"));
+    assert!(captured.contains("const findLiveById = (id) => document.flattenedFolders.find("));
+    assert!(captured.contains("deleteObject(liveObject);"));
 }
 
 #[tokio::test]
