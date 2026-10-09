@@ -17,7 +17,13 @@ use super::{as_call_tool_result, to_mcp_error, OmniFocusServer};
 #[tool_router(router = notification_tools, vis = "pub(super)")]
 impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
     #[tool(
-        description = "list active notifications for a task by id. returns notification id, kind, absolute/relative schedule fields, next fire date, and snooze state."
+        description = "list active notifications for a task by id. returns notification id, kind, absolute/relative schedule fields, next fire date, and snooze state.",
+        annotations(
+            read_only_hint = true,
+            destructive_hint = false,
+            idempotent_hint = true,
+            open_world_hint = false
+        )
     )]
     async fn list_notifications(
         &self,
@@ -30,7 +36,13 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
     }
 
     #[tool(
-        description = "add one notification to a task by id. provide exactly one of absoluteDate or relativeOffset. absoluteDate takes YYYY-MM-DD (local midnight) or an ISO 8601 date-time. relativeOffset requires a task with an effective due date. returns created notification summary."
+        description = "add one notification to a task by id. provide exactly one of absoluteDate or relativeOffset. absoluteDate takes YYYY-MM-DD (local midnight) or an ISO 8601 date-time. relativeOffset requires a task with an effective due date. returns created notification summary.",
+        annotations(
+            read_only_hint = false,
+            destructive_hint = false,
+            idempotent_hint = false,
+            open_world_hint = false
+        )
     )]
     async fn add_notification(
         &self,
@@ -47,7 +59,15 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
         as_call_tool_result(&result)
     }
 
-    #[tool(description = "remove one notification from a task by task_id and notification_id.")]
+    #[tool(
+        description = "remove one notification from a task by task_id and notification_id.",
+        annotations(
+            read_only_hint = false,
+            destructive_hint = true,
+            idempotent_hint = true,
+            open_world_hint = false
+        )
+    )]
     async fn remove_notification(
         &self,
         Parameters(params): Parameters<RemoveNotificationParams>,

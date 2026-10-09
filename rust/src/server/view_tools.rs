@@ -17,7 +17,13 @@ use super::{as_call_tool_result, to_mcp_error, OmniFocusServer};
 #[tool_router(router = view_tools, vis = "pub(super)")]
 impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
     #[tool(
-        description = "get forecast sections for overdue, due today, flagged, deferred, and due-this-week tasks."
+        description = "get forecast sections for overdue, due today, flagged, deferred, and due-this-week tasks.",
+        annotations(
+            read_only_hint = true,
+            destructive_hint = false,
+            idempotent_hint = true,
+            open_world_hint = false
+        )
     )]
     async fn get_forecast(
         &self,
@@ -33,7 +39,13 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
     }
 
     #[tool(
-        description = "list available perspectives including built-in and custom perspectives, deduplicated by id. supports limit."
+        description = "list available perspectives including built-in and custom perspectives, deduplicated by id. supports limit.",
+        annotations(
+            read_only_hint = true,
+            destructive_hint = false,
+            idempotent_hint = true,
+            open_world_hint = false
+        )
     )]
     async fn list_perspectives(
         &self,

@@ -35,7 +35,13 @@ use super::{as_call_tool_result, to_mcp_error, OmniFocusServer};
 #[tool_router(router = task_write_tools, vis = "pub(super)")]
 impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
     #[tool(
-        description = "duplicate a task with all its properties. if the task has subtasks, they are cloned too by default."
+        description = "duplicate a task with all its properties. if the task has subtasks, they are cloned too by default.",
+        annotations(
+            read_only_hint = false,
+            destructive_hint = false,
+            idempotent_hint = false,
+            open_world_hint = false
+        )
     )]
     async fn duplicate_task(
         &self,
@@ -52,7 +58,13 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
     }
 
     #[tool(
-        description = "create one task in inbox or a project (id or exact name). accepts name plus optional note, dates, flagged, tags, and estimated minutes. dates take YYYY-MM-DD or an ISO 8601 date-time; a bare date gets your omnifocus default time for that field. returns the created task (id, name, plannedDate)."
+        description = "create one task in inbox or a project (id or exact name). accepts name plus optional note, dates, flagged, tags, and estimated minutes. dates take YYYY-MM-DD or an ISO 8601 date-time; a bare date gets your omnifocus default time for that field. returns the created task (id, name, plannedDate).",
+        annotations(
+            read_only_hint = false,
+            destructive_hint = false,
+            idempotent_hint = false,
+            open_world_hint = false
+        )
     )]
     async fn create_task(
         &self,
@@ -76,7 +88,13 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
     }
 
     #[tool(
-        description = "create multiple tasks in a single omnijs call. each item accepts the same fields as create_task; returns the created tasks (id, name, plannedDate)."
+        description = "create multiple tasks in a single omnijs call. each item accepts the same fields as create_task; returns the created tasks (id, name, plannedDate).",
+        annotations(
+            read_only_hint = false,
+            destructive_hint = false,
+            idempotent_hint = false,
+            open_world_hint = false
+        )
     )]
     async fn create_tasks_batch(
         &self,
@@ -104,7 +122,13 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
     }
 
     #[tool(
-        description = "create a subtask under an existing parent task id. supports optional note, dates, flagged, tags, and estimatedMinutes. dates take YYYY-MM-DD or an ISO 8601 date-time; a bare date gets your omnifocus default time for that field. returns the created task plus parent references."
+        description = "create a subtask under an existing parent task id. supports optional note, dates, flagged, tags, and estimatedMinutes. dates take YYYY-MM-DD or an ISO 8601 date-time; a bare date gets your omnifocus default time for that field. returns the created task plus parent references.",
+        annotations(
+            read_only_hint = false,
+            destructive_hint = false,
+            idempotent_hint = false,
+            open_world_hint = false
+        )
     )]
     async fn create_subtask(
         &self,
@@ -128,7 +152,13 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
     }
 
     #[tool(
-        description = "mark a task complete by id. use this for done/completed task lifecycle updates."
+        description = "mark a task complete by id. use this for done/completed task lifecycle updates.",
+        annotations(
+            read_only_hint = false,
+            destructive_hint = false,
+            idempotent_hint = false,
+            open_world_hint = false
+        )
     )]
     async fn complete_task(
         &self,
@@ -141,7 +171,13 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
     }
 
     #[tool(
-        description = "mark a completed task incomplete by id (reopen task). fails if the task is not currently completed."
+        description = "mark a completed task incomplete by id (reopen task). fails if the task is not currently completed.",
+        annotations(
+            read_only_hint = false,
+            destructive_hint = false,
+            idempotent_hint = true,
+            open_world_hint = false
+        )
     )]
     async fn uncomplete_task(
         &self,
@@ -154,7 +190,13 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
     }
 
     #[tool(
-        description = "set or clear a task repetition rule by id. pass rule_string plus schedule_type (regularly/from_completion/none), or null rule_string to clear."
+        description = "set or clear a task repetition rule by id. pass rule_string plus schedule_type (regularly/from_completion/none), or null rule_string to clear.",
+        annotations(
+            read_only_hint = false,
+            destructive_hint = false,
+            idempotent_hint = true,
+            open_world_hint = false
+        )
     )]
     async fn set_task_repetition(
         &self,
@@ -172,7 +214,13 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
     }
 
     #[tool(
-        description = "update an existing task by id, modifying only provided fields. supports name, note, due/defer/planned dates, flagged, tags replacement, and estimatedMinutes. dates take YYYY-MM-DD or an ISO 8601 date-time; a bare date gets your omnifocus default time for that field."
+        description = "update an existing task by id, modifying only provided fields. supports name, note, due/defer/planned dates, flagged, tags replacement, and estimatedMinutes. dates take YYYY-MM-DD or an ISO 8601 date-time; a bare date gets your omnifocus default time for that field.",
+        annotations(
+            read_only_hint = false,
+            destructive_hint = false,
+            idempotent_hint = true,
+            open_world_hint = false
+        )
     )]
     async fn update_task(
         &self,
@@ -196,7 +244,13 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
     }
 
     #[tool(
-        description = "delete a task by id. destructive operation: use update_task or move_task for edits/reorganization, and never delete then recreate as a substitute for updating. ask for explicit user confirmation before proceeding."
+        description = "delete a task by id. destructive operation: use update_task or move_task for edits/reorganization, and never delete then recreate as a substitute for updating. ask for explicit user confirmation before proceeding.",
+        annotations(
+            read_only_hint = false,
+            destructive_hint = true,
+            idempotent_hint = true,
+            open_world_hint = false
+        )
     )]
     async fn delete_task(
         &self,
@@ -209,7 +263,13 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
     }
 
     #[tool(
-        description = "delete multiple tasks by id in a single omnijs call. destructive operation: never use batch delete as a shortcut for edits or reorganization. use update_task/move_task instead when preserving history matters. before calling this tool, always show the user the list of tasks to be deleted and ask for explicit confirmation. do not proceed without user approval."
+        description = "delete multiple tasks by id in a single omnijs call. destructive operation: never use batch delete as a shortcut for edits or reorganization. use update_task/move_task instead when preserving history matters. before calling this tool, always show the user the list of tasks to be deleted and ask for explicit confirmation. do not proceed without user approval.",
+        annotations(
+            read_only_hint = false,
+            destructive_hint = true,
+            idempotent_hint = true,
+            open_world_hint = false
+        )
     )]
     async fn delete_tasks_batch(
         &self,
@@ -222,7 +282,13 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
     }
 
     #[tool(
-        description = "move a task without deleting or recreating it. destination modes: (a) provide project to move to a project, (b) provide parent_task_id to move under an existing parent task, or (c) omit both to move to inbox. move_task preserves the original task object and id by default, and delete is never required for reorganization."
+        description = "move a task without deleting or recreating it. destination modes: (a) provide project to move to a project, (b) provide parent_task_id to move under an existing parent task, or (c) omit both to move to inbox. move_task preserves the original task object and id by default, and delete is never required for reorganization.",
+        annotations(
+            read_only_hint = false,
+            destructive_hint = false,
+            idempotent_hint = true,
+            open_world_hint = false
+        )
     )]
     async fn move_task(
         &self,
@@ -240,7 +306,13 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
     }
 
     #[tool(
-        description = "move multiple tasks without deleting or recreating them. destination modes: (a) provide project to move tasks to a project, (b) provide parent_task_id to move tasks under an existing parent task, or (c) omit both to move tasks to inbox. runs as one omnijs call per invocation and returns per-task move results. destructive delete confirmation remains a separate workflow."
+        description = "move multiple tasks without deleting or recreating them. destination modes: (a) provide project to move tasks to a project, (b) provide parent_task_id to move tasks under an existing parent task, or (c) omit both to move tasks to inbox. runs as one omnijs call per invocation and returns per-task move results. destructive delete confirmation remains a separate workflow.",
+        annotations(
+            read_only_hint = false,
+            destructive_hint = false,
+            idempotent_hint = true,
+            open_world_hint = false
+        )
     )]
     async fn move_tasks_batch(
         &self,
@@ -258,7 +330,13 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
     }
 
     #[tool(
-        description = "append text to a task or project note by object id without replacing existing note content. returns id/name/type and resulting note length."
+        description = "append text to a task or project note by object id without replacing existing note content. returns id/name/type and resulting note length.",
+        annotations(
+            read_only_hint = false,
+            destructive_hint = false,
+            idempotent_hint = false,
+            open_world_hint = false
+        )
     )]
     async fn append_to_note(
         &self,

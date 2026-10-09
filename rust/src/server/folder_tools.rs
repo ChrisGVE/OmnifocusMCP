@@ -27,7 +27,13 @@ use super::{as_call_tool_result, to_mcp_error, OmniFocusServer};
 #[tool_router(router = folder_tools, vis = "pub(super)")]
 impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
     #[tool(
-        description = "list folders with hierarchy context and project counts. returns id, name, parentName, and projectCount. supports limit."
+        description = "list folders with hierarchy context and project counts. returns id, name, parentName, and projectCount. supports limit.",
+        annotations(
+            read_only_hint = true,
+            destructive_hint = false,
+            idempotent_hint = true,
+            open_world_hint = false
+        )
     )]
     async fn list_folders(
         &self,
@@ -43,7 +49,13 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
     }
 
     #[tool(
-        description = "create a folder with optional parent folder (id or exact name) and return created id/name/parent."
+        description = "create a folder with optional parent folder (id or exact name) and return created id/name/parent.",
+        annotations(
+            read_only_hint = false,
+            destructive_hint = false,
+            idempotent_hint = false,
+            open_world_hint = false
+        )
     )]
     async fn create_folder(
         &self,
@@ -56,7 +68,13 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
     }
 
     #[tool(
-        description = "get full details for one folder by id or name, including direct child projects and direct subfolders."
+        description = "get full details for one folder by id or name, including direct child projects and direct subfolders.",
+        annotations(
+            read_only_hint = true,
+            destructive_hint = false,
+            idempotent_hint = true,
+            open_world_hint = false
+        )
     )]
     async fn get_folder(
         &self,
@@ -68,7 +86,15 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
         as_call_tool_result(&result)
     }
 
-    #[tool(description = "update a folder by id or name, modifying provided name and/or status.")]
+    #[tool(
+        description = "update a folder by id or name, modifying provided name and/or status.",
+        annotations(
+            read_only_hint = false,
+            destructive_hint = false,
+            idempotent_hint = false,
+            open_world_hint = false
+        )
+    )]
     async fn update_folder(
         &self,
         Parameters(params): Parameters<UpdateFolderParams>,
@@ -85,7 +111,13 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
     }
 
     #[tool(
-        description = "delete a folder by id or name. warning: this permanently removes the folder. do not use delete+recreate for folder edits or renames; use update_folder instead. contained projects may be moved to top level by omnifocus, so confirm with the user before proceeding."
+        description = "delete a folder by id or name. warning: this permanently removes the folder. do not use delete+recreate for folder edits or renames; use update_folder instead. contained projects may be moved to top level by omnifocus, so confirm with the user before proceeding.",
+        annotations(
+            read_only_hint = false,
+            destructive_hint = true,
+            idempotent_hint = false,
+            open_world_hint = false
+        )
     )]
     async fn delete_folder(
         &self,
@@ -98,7 +130,13 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
     }
 
     #[tool(
-        description = "delete multiple folders by id or exact name in a single omnijs call. destructive operation: this permanently removes folders and may move contained projects depending on omnifocus behavior. use update_folder for non-destructive edits. before calling, always show the user which folders are targeted and ask for explicit confirmation."
+        description = "delete multiple folders by id or exact name in a single omnijs call. destructive operation: this permanently removes folders and may move contained projects depending on omnifocus behavior. use update_folder for non-destructive edits. before calling, always show the user which folders are targeted and ask for explicit confirmation.",
+        annotations(
+            read_only_hint = false,
+            destructive_hint = true,
+            idempotent_hint = false,
+            open_world_hint = false
+        )
     )]
     async fn delete_folders_batch(
         &self,

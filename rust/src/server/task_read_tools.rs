@@ -27,7 +27,13 @@ use super::{as_call_tool_result, to_mcp_error, OmniFocusServer};
 #[tool_router(router = task_read_tools, vis = "pub(super)")]
 impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
     #[tool(
-        description = "get inbox tasks from omnifocus. returns unprocessed inbox tasks with id, name, note, flagged, due/defer/completion dates, tags, estimated minutes, and taskStatus. supports limit."
+        description = "get inbox tasks from omnifocus. returns unprocessed inbox tasks with id, name, note, flagged, due/defer/completion dates, tags, estimated minutes, and taskStatus. supports limit.",
+        annotations(
+            read_only_hint = true,
+            destructive_hint = false,
+            idempotent_hint = true,
+            open_world_hint = false
+        )
     )]
     async fn get_inbox(
         &self,
@@ -43,7 +49,13 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
     }
 
     #[tool(
-        description = "list tasks with optional project/tag filters, status, date ranges, and sorting. canonical status values are available, due_soon, overdue, on_hold, completed, and all. date filters take YYYY-MM-DD (local midnight) or an ISO 8601 date-time; changed maps to task.modified. accepted aliases (case-insensitive): sortOrder ascending/descending, status due soon or due-soon and on hold or on-hold, and tagFilterMode and/or. sortBy accepts dueDate, deferDate, name, completionDate, estimatedMinutes, project, flagged, addedDate, changedDate, plannedDate, and aliases added/modified/planned. returns task summaries."
+        description = "list tasks with optional project/tag filters, status, date ranges, and sorting. canonical status values are available, due_soon, overdue, on_hold, completed, and all. date filters take YYYY-MM-DD (local midnight) or an ISO 8601 date-time; changed maps to task.modified. accepted aliases (case-insensitive): sortOrder ascending/descending, status due soon or due-soon and on hold or on-hold, and tagFilterMode and/or. sortBy accepts dueDate, deferDate, name, completionDate, estimatedMinutes, project, flagged, addedDate, changedDate, plannedDate, and aliases added/modified/planned. returns task summaries.",
+        annotations(
+            read_only_hint = true,
+            destructive_hint = false,
+            idempotent_hint = true,
+            open_world_hint = false
+        )
     )]
     async fn list_tasks(
         &self,
@@ -104,7 +116,13 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
     }
 
     #[tool(
-        description = "get aggregate task counts for any filter combination without listing individual tasks. date filters take YYYY-MM-DD (local midnight) or an ISO 8601 date-time; changed means the task's last modified timestamp. tagFilterMode accepts canonical any/all and aliases and/or (case-insensitive). much faster than list_tasks for answering 'how many' questions."
+        description = "get aggregate task counts for any filter combination without listing individual tasks. date filters take YYYY-MM-DD (local midnight) or an ISO 8601 date-time; changed means the task's last modified timestamp. tagFilterMode accepts canonical any/all and aliases and/or (case-insensitive). much faster than list_tasks for answering 'how many' questions.",
+        annotations(
+            read_only_hint = true,
+            destructive_hint = false,
+            idempotent_hint = true,
+            open_world_hint = false
+        )
     )]
     async fn get_task_counts(
         &self,
@@ -137,7 +155,13 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
     }
 
     #[tool(
-        description = "get full details for one task by id. returns list_tasks fields plus children, parentName, sequential, repetitionRule, effective dates, and task status fields."
+        description = "get full details for one task by id. returns list_tasks fields plus children, parentName, sequential, repetitionRule, effective dates, and task status fields.",
+        annotations(
+            read_only_hint = true,
+            destructive_hint = false,
+            idempotent_hint = true,
+            open_world_hint = false
+        )
     )]
     async fn get_task(
         &self,
@@ -150,7 +174,13 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
     }
 
     #[tool(
-        description = "list direct subtasks for a parent task id. returns summary fields for direct children only, limited by limit."
+        description = "list direct subtasks for a parent task id. returns summary fields for direct children only, limited by limit.",
+        annotations(
+            read_only_hint = true,
+            destructive_hint = false,
+            idempotent_hint = true,
+            open_world_hint = false
+        )
     )]
     async fn list_subtasks(
         &self,
@@ -167,7 +197,13 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
     }
 
     #[tool(
-        description = "search tasks by case-insensitive name/note text with optional filters and sorting. canonical status values are available, due_soon, overdue, on_hold, completed, and all. date filters take YYYY-MM-DD (local midnight) or an ISO 8601 date-time; changed maps to task.modified. accepted aliases (case-insensitive): sortOrder ascending/descending, status due soon or due-soon and on hold or on-hold, and tagFilterMode and/or. sortBy accepts dueDate, deferDate, name, completionDate, estimatedMinutes, project, flagged, addedDate, changedDate, plannedDate, and aliases added/modified/planned. returns task summaries."
+        description = "search tasks by case-insensitive name/note text with optional filters and sorting. canonical status values are available, due_soon, overdue, on_hold, completed, and all. date filters take YYYY-MM-DD (local midnight) or an ISO 8601 date-time; changed maps to task.modified. accepted aliases (case-insensitive): sortOrder ascending/descending, status due soon or due-soon and on hold or on-hold, and tagFilterMode and/or. sortBy accepts dueDate, deferDate, name, completionDate, estimatedMinutes, project, flagged, addedDate, changedDate, plannedDate, and aliases added/modified/planned. returns task summaries.",
+        annotations(
+            read_only_hint = true,
+            destructive_hint = false,
+            idempotent_hint = true,
+            open_world_hint = false
+        )
     )]
     async fn search_tasks(
         &self,

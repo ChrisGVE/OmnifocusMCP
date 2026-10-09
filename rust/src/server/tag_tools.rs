@@ -23,7 +23,13 @@ use super::{as_call_tool_result, to_mcp_error, OmniFocusServer};
 #[tool_router(router = tag_tools, vis = "pub(super)")]
 impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
     #[tool(
-        description = "search tags by name text using omnifocus matching. returns lightweight tag summaries (id, name, parent)."
+        description = "search tags by name text using omnifocus matching. returns lightweight tag summaries (id, name, parent).",
+        annotations(
+            read_only_hint = true,
+            destructive_hint = false,
+            idempotent_hint = true,
+            open_world_hint = false
+        )
     )]
     async fn search_tags(
         &self,
@@ -40,7 +46,13 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
     }
 
     #[tool(
-        description = "list tags with optional statusFilter and sorting; returns id/name/parent plus availableTaskCount and totalTaskCount."
+        description = "list tags with optional statusFilter and sorting; returns id/name/parent plus availableTaskCount and totalTaskCount.",
+        annotations(
+            read_only_hint = true,
+            destructive_hint = false,
+            idempotent_hint = true,
+            open_world_hint = false
+        )
     )]
     async fn list_tags(
         &self,
@@ -59,7 +71,13 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
     }
 
     #[tool(
-        description = "create a tag with optional parent tag name; returns the created tag (id, name, parent, availableTaskCount, totalTaskCount, status)."
+        description = "create a tag with optional parent tag name; returns the created tag (id, name, parent, availableTaskCount, totalTaskCount, status).",
+        annotations(
+            read_only_hint = false,
+            destructive_hint = false,
+            idempotent_hint = false,
+            open_world_hint = false
+        )
     )]
     async fn create_tag(
         &self,
@@ -71,7 +89,15 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
         as_call_tool_result(&result)
     }
 
-    #[tool(description = "update a tag by id or name, modifying provided name and/or status.")]
+    #[tool(
+        description = "update a tag by id or name, modifying provided name and/or status.",
+        annotations(
+            read_only_hint = false,
+            destructive_hint = false,
+            idempotent_hint = false,
+            open_world_hint = false
+        )
+    )]
     async fn update_tag(
         &self,
         Parameters(params): Parameters<UpdateTagParams>,
@@ -88,7 +114,13 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
     }
 
     #[tool(
-        description = "delete a tag by id or name. destructive operation: this removes the tag and unassigns it from linked tasks. use update_tag for non-destructive edits. before calling, ask the user for explicit confirmation."
+        description = "delete a tag by id or name. destructive operation: this removes the tag and unassigns it from linked tasks. use update_tag for non-destructive edits. before calling, ask the user for explicit confirmation.",
+        annotations(
+            read_only_hint = false,
+            destructive_hint = true,
+            idempotent_hint = false,
+            open_world_hint = false
+        )
     )]
     async fn delete_tag(
         &self,
@@ -101,7 +133,13 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
     }
 
     #[tool(
-        description = "delete multiple tags by id or exact name in a single omnijs call. destructive operation: this removes tags and unassigns them from linked tasks. use update_tag for non-destructive edits. before calling, always show the user which tags are targeted and ask for explicit confirmation."
+        description = "delete multiple tags by id or exact name in a single omnijs call. destructive operation: this removes tags and unassigns them from linked tasks. use update_tag for non-destructive edits. before calling, always show the user which tags are targeted and ask for explicit confirmation.",
+        annotations(
+            read_only_hint = false,
+            destructive_hint = true,
+            idempotent_hint = false,
+            open_world_hint = false
+        )
     )]
     async fn delete_tags_batch(
         &self,

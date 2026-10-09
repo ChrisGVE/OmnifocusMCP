@@ -18,6 +18,11 @@ issue numbers in them, and every "upstream #N" below, refer to that project's tr
   fails with `plannedDate requires an OmniFocus database migrated to support planned dates` before
   anything changes; when the parameter is absent the property is never written. The tasks these
   tools return now include `plannedDate` (ISO string or `null`).
+- Every tool declares MCP annotations (`readOnlyHint`, `destructiveHint`, `idempotentHint`,
+  `openWorldHint`) in `tools/list`. Without them a client had to treat every tool, `list_tasks`
+  included, as destructive; now only the delete tools and `remove_notification` are marked
+  destructive, the 17 read tools are marked read-only, and none is open-world. The full table is in
+  [Tool annotations](docs/tools.md#tool-annotations).
 
 ### Fixed
 - `list_notifications` and `add_notification` report a due-relative notification as

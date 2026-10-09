@@ -30,7 +30,13 @@ use super::{as_call_tool_result, to_mcp_error, OmniFocusServer};
 #[tool_router(router = project_tools, vis = "pub(super)")]
 impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
     #[tool(
-        description = "list projects with status and folder filters. status semantics: completed means finished work (done), dropped means intentionally abandoned/not-doing, on_hold means paused, active means current. completedBefore/completedAfter take YYYY-MM-DD (local midnight) or an ISO 8601 date-time."
+        description = "list projects with status and folder filters. status semantics: completed means finished work (done), dropped means intentionally abandoned/not-doing, on_hold means paused, active means current. completedBefore/completedAfter take YYYY-MM-DD (local midnight) or an ISO 8601 date-time.",
+        annotations(
+            read_only_hint = true,
+            destructive_hint = false,
+            idempotent_hint = true,
+            open_world_hint = false
+        )
     )]
     async fn list_projects(
         &self,
@@ -53,7 +59,13 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
     }
 
     #[tool(
-        description = "get aggregate project counts by status without listing individual projects."
+        description = "get aggregate project counts by status without listing individual projects.",
+        annotations(
+            read_only_hint = true,
+            destructive_hint = false,
+            idempotent_hint = true,
+            open_world_hint = false
+        )
     )]
     async fn get_project_counts(
         &self,
@@ -66,7 +78,13 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
     }
 
     #[tool(
-        description = "search projects by name text using omnifocus matching. returns lightweight project summaries (id, name, status, folderName)."
+        description = "search projects by name text using omnifocus matching. returns lightweight project summaries (id, name, status, folderName).",
+        annotations(
+            read_only_hint = true,
+            destructive_hint = false,
+            idempotent_hint = true,
+            open_world_hint = false
+        )
     )]
     async fn search_projects(
         &self,
@@ -83,7 +101,13 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
     }
 
     #[tool(
-        description = "get full details for one project by id or exact name, including counts, status, dates, next-task hints, and root task summaries."
+        description = "get full details for one project by id or exact name, including counts, status, dates, next-task hints, and root task summaries.",
+        annotations(
+            read_only_hint = true,
+            destructive_hint = false,
+            idempotent_hint = true,
+            open_world_hint = false
+        )
     )]
     async fn get_project(
         &self,
@@ -96,7 +120,13 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
     }
 
     #[tool(
-        description = "create a project with optional folder (id or exact name), note, due/defer dates, and sequential mode. dates take YYYY-MM-DD or an ISO 8601 date-time; a bare date gets your omnifocus default time for that field. returns the created project with the same fields as get_project."
+        description = "create a project with optional folder (id or exact name), note, due/defer dates, and sequential mode. dates take YYYY-MM-DD or an ISO 8601 date-time; a bare date gets your omnifocus default time for that field. returns the created project with the same fields as get_project.",
+        annotations(
+            read_only_hint = false,
+            destructive_hint = false,
+            idempotent_hint = false,
+            open_world_hint = false
+        )
     )]
     async fn create_project(
         &self,
@@ -117,7 +147,13 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
     }
 
     #[tool(
-        description = "mark a project complete by id or name. use this for finished/closed projects (done/completed), not set_project_status(\"dropped\")."
+        description = "mark a project complete by id or name. use this for finished/closed projects (done/completed), not set_project_status(\"dropped\").",
+        annotations(
+            read_only_hint = false,
+            destructive_hint = false,
+            idempotent_hint = false,
+            open_world_hint = false
+        )
     )]
     async fn complete_project(
         &self,
@@ -130,7 +166,13 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
     }
 
     #[tool(
-        description = "mark a completed project incomplete by id or name (reopen done work back to active)."
+        description = "mark a completed project incomplete by id or name (reopen done work back to active).",
+        annotations(
+            read_only_hint = false,
+            destructive_hint = false,
+            idempotent_hint = true,
+            open_world_hint = false
+        )
     )]
     async fn uncomplete_project(
         &self,
@@ -143,7 +185,13 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
     }
 
     #[tool(
-        description = "delete a project by id or name. IMPORTANT: this permanently removes the project and all its tasks from the database. never use delete+recreate to apply project changes; use update_project/move_project/set_project_status instead. before calling, show the user the project name and task count, and ask for explicit confirmation."
+        description = "delete a project by id or name. IMPORTANT: this permanently removes the project and all its tasks from the database. never use delete+recreate to apply project changes; use update_project/move_project/set_project_status instead. before calling, show the user the project name and task count, and ask for explicit confirmation.",
+        annotations(
+            read_only_hint = false,
+            destructive_hint = true,
+            idempotent_hint = false,
+            open_world_hint = false
+        )
     )]
     async fn delete_project(
         &self,
@@ -156,7 +204,13 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
     }
 
     #[tool(
-        description = "delete multiple projects by id or exact name in a single omnijs call. destructive operation: this permanently removes each matched project and its tasks. use update_project, move_project, or set_project_status for non-destructive changes. before calling, always show the user which projects are targeted and ask for explicit confirmation."
+        description = "delete multiple projects by id or exact name in a single omnijs call. destructive operation: this permanently removes each matched project and its tasks. use update_project, move_project, or set_project_status for non-destructive changes. before calling, always show the user which projects are targeted and ask for explicit confirmation.",
+        annotations(
+            read_only_hint = false,
+            destructive_hint = true,
+            idempotent_hint = false,
+            open_world_hint = false
+        )
     )]
     async fn delete_projects_batch(
         &self,
@@ -169,7 +223,13 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
     }
 
     #[tool(
-        description = "move a project by id or name to a folder or top level (null folder). use this for organization changes without deleting/recreating."
+        description = "move a project by id or name to a folder or top level (null folder). use this for organization changes without deleting/recreating.",
+        annotations(
+            read_only_hint = false,
+            destructive_hint = false,
+            idempotent_hint = true,
+            open_world_hint = false
+        )
     )]
     async fn move_project(
         &self,
@@ -186,7 +246,13 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
     }
 
     #[tool(
-        description = "update a project by id or name, modifying only provided fields. supports name, note, dates, flagged, tags replacement, sequential, completedByChildren, and reviewInterval. dates take YYYY-MM-DD or an ISO 8601 date-time; a bare date gets your omnifocus default time for that field."
+        description = "update a project by id or name, modifying only provided fields. supports name, note, dates, flagged, tags replacement, sequential, completedByChildren, and reviewInterval. dates take YYYY-MM-DD or an ISO 8601 date-time; a bare date gets your omnifocus default time for that field.",
+        annotations(
+            read_only_hint = false,
+            destructive_hint = false,
+            idempotent_hint = false,
+            open_world_hint = false
+        )
     )]
     async fn update_project(
         &self,
@@ -211,7 +277,13 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
     }
 
     #[tool(
-        description = "set a project's organizational status by id or name. allowed values: active, on_hold, dropped. semantics: dropped means intentionally abandoned/cancelled (not completed); for finished/closed projects use complete_project instead. when presenting planned/finished changes to users, prefer business-meaning labels (project name, folder, current->target status) and include raw ids only as secondary references."
+        description = "set a project's organizational status by id or name. allowed values: active, on_hold, dropped. semantics: dropped means intentionally abandoned/cancelled (not completed); for finished/closed projects use complete_project instead. when presenting planned/finished changes to users, prefer business-meaning labels (project name, folder, current->target status) and include raw ids only as secondary references.",
+        annotations(
+            read_only_hint = false,
+            destructive_hint = false,
+            idempotent_hint = true,
+            open_world_hint = false
+        )
     )]
     async fn set_project_status(
         &self,
