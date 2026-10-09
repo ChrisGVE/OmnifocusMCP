@@ -35,8 +35,10 @@ reply or error into a result.
 rust/
   Cargo.toml
   src/
-    main.rs             # entry point: --version/--help, stdio transport
+    main.rs             # entry point: --version/--help, stdio transport, exit status
     lib.rs              # declares the modules below
+    shutdown.rs         # which ends of the server are clean (exit 0) and which are failures
+                        #   (logged to stderr, non-zero exit)
     params/             # MCP parameter structs, one file per tool area (tasks, projects,
                         #   tags and folders); re-exported from server
     server/             # OmniFocusServer: mod.rs holds the handler, prompts, resources and

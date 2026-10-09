@@ -101,6 +101,10 @@ issue numbers in them, and every "upstream #N" below, refer to that project's tr
   `Apple Events` or `not running` (often from user input, such as a tag name) was reported as
   `macOS blocked Automation access to OmniFocus` or `OmniFocus is not running`. Those two messages
   now come only from `osascript`'s own failure output.
+- A client that sent another request before `initialize` made the server exit 0 without a
+  message, because the shutdown check matched words in rmcp's error text. The exit status now
+  follows the kind of error: the client closing its input (before or after the handshake) exits 0;
+  a handshake violation or a crashed service task is logged to stderr and exits non-zero.
 
 ## [2.0.0] - 2026-10-07
 
