@@ -4,7 +4,7 @@
 use serde_json::Value;
 
 use crate::{
-    error::{OmniFocusError, Result},
+    error::{to_json_string, OmniFocusError, Result},
     js_helpers::{
         JS_DATE_HELPERS, JS_PROJECT_STATUS, JS_RESOLVERS, JS_REVIEW_INTERVAL, JS_TASK_STATUS,
     },
@@ -228,7 +228,7 @@ pub async fn update_project<R: JxaRunner>(
     )?;
 
     let project_filter = escape_for_jxa(project_id_or_name.trim());
-    let updates_value = serde_json::to_string(&updates)?;
+    let updates_value = to_json_string(&updates)?;
     let script = format!(
         r#"{JS_DATE_HELPERS}
 {JS_PROJECT_STATUS}
@@ -352,7 +352,10 @@ fn project_updates(
         updates.insert("completedByChildren".to_string(), Value::Bool(value));
     }
     if let Some(value) = review_interval {
-        updates.insert("reviewInterval".to_string(), serde_json::to_value(value)?);
+        updates.insert(
+            "reviewInterval".to_string(),
+            serde_json::to_value(value).map_err(OmniFocusError::Encoding)?,
+        );
     }
     Ok(updates)
 }

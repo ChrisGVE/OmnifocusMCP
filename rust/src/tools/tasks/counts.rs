@@ -6,7 +6,7 @@
 //! itself is `COUNT_MATCHING_TASKS`.
 
 use crate::{
-    error::Result,
+    error::{from_result_value, Result},
     js_helpers::{
         JS_DATE_HELPERS, JS_PLANNED_DATE, JS_PROJECT_STATUS, JS_RESOLVERS, JS_TASK_STATUS,
     },
@@ -66,7 +66,7 @@ pub async fn get_task_counts_with_added_changed<R: JxaRunner>(
 
     let script = counts_script(&filters.literals(normalized_tag_filter_mode)?);
     let value = runner.run_omnijs(&script).await?;
-    Ok(serde_json::from_value(value)?)
+    from_result_value(value)
 }
 
 #[allow(clippy::too_many_arguments)]

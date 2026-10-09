@@ -10,7 +10,7 @@ use std::collections::HashSet;
 use serde_json::Value;
 
 use crate::{
-    error::{OmniFocusError, Result},
+    error::{to_json_string, OmniFocusError, Result},
     js_helpers::{
         JS_DATE_HELPERS, JS_PLANNED_DATE, JS_PROJECT_STATUS, JS_RESOLVERS, JS_TASK_STATUS,
     },
@@ -59,7 +59,7 @@ pub async fn create_tasks_batch<R: JxaRunner>(
         })
         .collect();
 
-    let tasks_value = serde_json::to_string(&normalized)?;
+    let tasks_value = to_json_string(&normalized)?;
     let script = format!(
         r#"{JS_DATE_HELPERS}
 {JS_PLANNED_DATE}
@@ -175,7 +175,7 @@ pub async fn delete_tasks_batch<R: JxaRunner>(runner: &R, task_ids: Vec<String>)
         seen_task_ids.insert(normalized_task_id.to_string());
         normalized_task_ids.push(normalized_task_id.to_string());
     }
-    let task_ids_value = serde_json::to_string(&normalized_task_ids)?;
+    let task_ids_value = to_json_string(&normalized_task_ids)?;
     let script = format!(
         r#"{JS_PROJECT_STATUS}
 {JS_TASK_STATUS}
@@ -243,7 +243,7 @@ pub async fn move_tasks_batch<R: JxaRunner>(
         }
     }
 
-    let task_ids_value = serde_json::to_string(&normalized_task_ids)?;
+    let task_ids_value = to_json_string(&normalized_task_ids)?;
     let project_value = js_trimmed_string_or_null(project);
     let parent_task_id_value = js_string_or_null(normalized_parent_task_id);
     let script = format!(

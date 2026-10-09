@@ -8,7 +8,7 @@
 //! `counts` reads them without caring which tool built the script.
 
 use crate::{
-    error::{OmniFocusError, Result},
+    error::{to_json_string, OmniFocusError, Result},
     jxa::escape_for_jxa,
     tools::js_values::{
         js_bool_or_null, js_number_or_null, js_string_or_null, js_trimmed_string_or_null,
@@ -110,7 +110,7 @@ impl TaskFilters<'_> {
         if merged_tag_names.is_empty() {
             Ok("null".to_string())
         } else {
-            Ok(serde_json::to_string(&merged_tag_names)?)
+            to_json_string(&merged_tag_names)
         }
     }
 }

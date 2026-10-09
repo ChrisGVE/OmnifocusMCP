@@ -79,6 +79,10 @@ issue numbers in them, and every "upstream #N" below, refer to that project's tr
   is available; their always-null `nextTask` no longer makes every such list stalled.
 - Completed task counts include tasks completed through a containing task or completed project,
   while dropped tasks and tasks in dropped projects remain excluded.
+- A script result that parses but does not have the shape a tool reads (a missing field, a value
+  of the wrong type) now fails with `OmniFocus returned a result in an unexpected shape: <detail>`,
+  naming the field, instead of `JXA command returned malformed JSON.`. Output that is not JSON at
+  all still reports `JXA command returned malformed JSON`, now followed by the parser's detail.
 
 ## [2.0.0] - 2026-10-07
 

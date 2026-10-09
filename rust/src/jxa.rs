@@ -112,12 +112,18 @@ pub async fn run_jxa_json(script: &str) -> Result<Value> {
 
 pub async fn run_jxa_json_with_timeout(script: &str, timeout_seconds: f64) -> Result<Value> {
     let stdout = run_jxa_with_timeout(script, timeout_seconds).await?;
+    parse_jxa_output(&stdout)
+}
+
+/// Parses osascript's trimmed stdout as JSON. Output that is not JSON is
+/// `MalformedOutput`, carrying serde's explanation.
+pub fn parse_jxa_output(stdout: &str) -> Result<Value> {
     if stdout.is_empty() {
         return Err(OmniFocusError::JxaExecution(
             "JXA command returned empty output.".to_string(),
         ));
     }
-    Ok(serde_json::from_str::<Value>(&stdout)?)
+    serde_json::from_str::<Value>(stdout).map_err(OmniFocusError::MalformedOutput)
 }
 
 pub async fn run_omnijs(script: &str) -> Result<Value> {

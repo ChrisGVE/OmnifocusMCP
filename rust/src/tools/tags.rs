@@ -1,7 +1,7 @@
 use serde_json::Value;
 
 use crate::{
-    error::{OmniFocusError, Result},
+    error::{to_json_string, OmniFocusError, Result},
     js_helpers::{JS_PROJECT_STATUS, JS_RESOLVERS, JS_TASK_STATUS},
     jxa::{escape_for_jxa, JxaRunner},
     tools::{
@@ -332,7 +332,7 @@ pub async fn delete_tags_batch<R: JxaRunner>(
 ) -> Result<Value> {
     let normalized_tag_ids_or_names = normalize_ids_or_names("tag", tag_ids_or_names)?;
 
-    let tag_ids_or_names_value = serde_json::to_string(&normalized_tag_ids_or_names)?;
+    let tag_ids_or_names_value = to_json_string(&normalized_tag_ids_or_names)?;
     let script = format!(
         r#"const tagIdsOrNames = {tag_ids_or_names_value};
 const requests = tagIdsOrNames.map((idOrName, index) => ({{ idOrName, index }}));

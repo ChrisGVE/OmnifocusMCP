@@ -64,7 +64,9 @@ impl JxaRunner for CapturingRunner {
             .lock()
             .expect("script lock")
             .push(script.to_string());
-        Box::pin(async move { Ok(serde_json::from_str(EMPTY_COUNTS)?) })
+        Box::pin(
+            async move { Ok(serde_json::from_str(EMPTY_COUNTS).expect("EMPTY_COUNTS is JSON")) },
+        )
     }
 }
 

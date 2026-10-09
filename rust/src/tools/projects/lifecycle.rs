@@ -4,7 +4,7 @@
 use serde_json::Value;
 
 use crate::{
-    error::{OmniFocusError, Result},
+    error::{to_json_string, OmniFocusError, Result},
     js_helpers::{JS_PROJECT_STATUS, JS_TASK_STATUS},
     jxa::{escape_for_jxa, JxaRunner},
     tools::batch_delete::{normalize_ids_or_names, BATCH_DELETE_SUMMARY},
@@ -120,7 +120,7 @@ pub async fn delete_projects_batch<R: JxaRunner>(
 ) -> Result<Value> {
     let normalized_project_ids_or_names = normalize_ids_or_names("project", project_ids_or_names)?;
 
-    let project_ids_or_names_value = serde_json::to_string(&normalized_project_ids_or_names)?;
+    let project_ids_or_names_value = to_json_string(&normalized_project_ids_or_names)?;
     let script = format!(
         r#"const projectIdsOrNames = {project_ids_or_names_value};
 const projects = document.flattenedProjects

@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::{
-    error::{OmniFocusError, Result},
+    error::{to_json_string, OmniFocusError, Result},
     js_helpers::{
         JS_DATE_HELPERS, JS_PLANNED_DATE, JS_PROJECT_STATUS, JS_RESOLVERS, JS_TASK_STATUS,
     },
@@ -201,7 +201,7 @@ impl NewTaskFields {
         estimated_minutes: Option<i32>,
     ) -> Result<Self> {
         let tags_value = match tags {
-            Some(values) => serde_json::to_string(&values)?,
+            Some(values) => to_json_string(&values)?,
             None => "null".to_string(),
         };
         Ok(Self {

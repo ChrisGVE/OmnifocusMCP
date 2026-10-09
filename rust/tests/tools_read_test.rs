@@ -808,7 +808,7 @@ async fn empty_results_return_empty_vec() {
 }
 
 #[tokio::test]
-async fn malformed_json_from_jxa_produces_json_parse_error() {
+async fn wrong_shape_from_jxa_produces_result_shape_error() {
     let malformed_runner = MockRunner {
         payload: json!({"unexpected": "shape"}),
     };
@@ -816,7 +816,10 @@ async fn malformed_json_from_jxa_produces_json_parse_error() {
     let inbox_err = get_inbox(&malformed_runner, 100)
         .await
         .expect_err("invalid inbox payload should fail");
-    assert!(matches!(inbox_err, OmniFocusError::JsonParse(_)));
+    assert!(matches!(
+        inbox_err,
+        OmniFocusError::UnexpectedResultShape(_)
+    ));
 
     let list_err = list_tasks(
         &malformed_runner,
@@ -836,7 +839,7 @@ async fn malformed_json_from_jxa_produces_json_parse_error() {
     )
     .await
     .expect_err("invalid list payload should fail");
-    assert!(matches!(list_err, OmniFocusError::JsonParse(_)));
+    assert!(matches!(list_err, OmniFocusError::UnexpectedResultShape(_)));
 }
 
 #[tokio::test]

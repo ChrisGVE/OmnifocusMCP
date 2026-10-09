@@ -4,7 +4,7 @@
 use serde_json::Value;
 
 use crate::{
-    error::{OmniFocusError, Result},
+    error::{to_json_string, OmniFocusError, Result},
     js_helpers::{
         JS_DATE_HELPERS, JS_PLANNED_DATE, JS_PROJECT_STATUS, JS_RESOLVERS, JS_TASK_STATUS,
     },
@@ -49,7 +49,7 @@ pub async fn update_task<R: JxaRunner>(
     );
 
     let task_id_value = escape_for_jxa(task_id.trim());
-    let updates_value = serde_json::to_string(&updates)?;
+    let updates_value = to_json_string(&updates)?;
 
     let script = format!(
         r#"{JS_DATE_HELPERS}

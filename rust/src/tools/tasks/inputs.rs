@@ -10,12 +10,12 @@
 use serde_json::Value;
 
 use crate::{
-    error::{OmniFocusError, Result},
+    error::{from_result_value, OmniFocusError, Result},
     types::TaskResult,
 };
 
 pub(super) fn parse_task_list(value: Value) -> Result<Vec<TaskResult>> {
-    Ok(serde_json::from_value(value)?)
+    from_result_value(value)
 }
 
 pub(super) fn normalize_tag_filter_mode_input(value: &str) -> Result<&'static str> {

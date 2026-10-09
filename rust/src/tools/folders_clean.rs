@@ -1,7 +1,7 @@
 use serde_json::Value;
 
 use crate::{
-    error::{OmniFocusError, Result},
+    error::{to_json_string, OmniFocusError, Result},
     js_helpers::{JS_FOLDER_STATUS, JS_PROJECT_STATUS, JS_RESOLVERS},
     jxa::{escape_for_jxa, JxaRunner},
     tools::batch_delete::{normalize_ids_or_names, BATCH_DELETE_SUMMARY},
@@ -241,7 +241,7 @@ pub async fn delete_folders_batch<R: JxaRunner>(
 ) -> Result<Value> {
     let normalized_folder_ids_or_names = normalize_ids_or_names("folder", folder_ids_or_names)?;
 
-    let folder_ids_or_names_value = serde_json::to_string(&normalized_folder_ids_or_names)?;
+    let folder_ids_or_names_value = to_json_string(&normalized_folder_ids_or_names)?;
     let script = format!(
         r#"const folderIdsOrNames = {folder_ids_or_names_value};
 const requests = folderIdsOrNames.map((idOrName, index) => ({{ idOrName, index }}));

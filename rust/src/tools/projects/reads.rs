@@ -4,7 +4,7 @@
 use serde_json::Value;
 
 use crate::{
-    error::{OmniFocusError, Result},
+    error::{from_result_value, OmniFocusError, Result},
     js_helpers::{JS_PROJECT_STATUS, JS_RESOLVERS, JS_REVIEW_INTERVAL, JS_TASK_STATUS},
     jxa::{escape_for_jxa, JxaRunner},
     types::ProjectCountsResult,
@@ -95,7 +95,7 @@ return counts;"#
     );
 
     let value = runner.run_omnijs(&script).await?;
-    Ok(serde_json::from_value(value)?)
+    from_result_value(value)
 }
 
 pub async fn get_project<R: JxaRunner>(runner: &R, project_id_or_name: &str) -> Result<Value> {
