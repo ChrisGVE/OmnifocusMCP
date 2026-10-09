@@ -3,8 +3,10 @@
 //! protocol layer, fails as a tool, or reaches OmniFocus at all.
 //!
 //! Test files include it with `#[path = "support/mcp_session.rs"] mod
-//! mcp_session;`. The runner records every script instead of contacting
-//! OmniFocus, so a test can assert that a rejected call ran nothing.
+//! mcp_session;`. `call_tool`'s runner records every script instead of
+//! contacting OmniFocus, so a test can assert that a rejected call ran
+//! nothing; `request` takes any runner, such as the strict OmniJS harness in
+//! `support/omnijs_harness.rs`.
 
 use std::{
     future::Future,
@@ -67,6 +69,20 @@ async fn receive<R: AsyncBufReadExt + Unpin>(lines: &mut tokio::io::Lines<R>) ->
 pub async fn call_tool(tool: &str, arguments: Value) -> ToolCall {
     let runner = RecordingRunner::default();
     let scripts = Arc::clone(&runner.scripts);
+    let response = request(
+        runner,
+        "tools/call",
+        json!({"name": tool, "arguments": arguments}),
+    )
+    .await;
+    let scripts = scripts.lock().expect("script lock").clone();
+    ToolCall { response, scripts }
+}
+
+/// Serves the real server around `runner`, completes the MCP handshake,
+/// sends one `method` request with `params` and returns its JSON-RPC
+/// response.
+pub async fn request<R: JxaRunner + 'static>(runner: R, method: &str, params: Value) -> Value {
     let (client_io, server_io) = tokio::io::duplex(64 * 1024);
     let serving = tokio::spawn(async move {
         let service = OmniFocusServer::new(runner)
@@ -93,8 +109,7 @@ pub async fn call_tool(tool: &str, arguments: Value) -> ToolCall {
     .await;
     send(
         &mut client_write,
-        json!({"jsonrpc": "2.0", "id": 2, "method": "tools/call",
-               "params": {"name": tool, "arguments": arguments}}),
+        json!({"jsonrpc": "2.0", "id": 2, "method": method, "params": params}),
     )
     .await;
     let response = receive(&mut lines).await;
@@ -106,8 +121,7 @@ pub async fn call_tool(tool: &str, arguments: Value) -> ToolCall {
         .await
         .expect("server stops once the client disconnects")
         .expect("server task does not panic");
-    let scripts = scripts.lock().expect("script lock").clone();
-    ToolCall { response, scripts }
+    response
 }
 
 /// Asserts a JSON-RPC error response (the call was rejected before the tool
