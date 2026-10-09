@@ -85,7 +85,7 @@ Date parameters take a bare date (`YYYY-MM-DD`) or an ISO 8601 date-time.
 
 An impossible or unparseable date fails before anything is created or changed. Dates are checked
 inside OmniFocus, so the error is an `internal_error` with the message
-`OmniFocus operation failed: <field> must be YYYY-MM-DD or an ISO 8601 date-time; received "<value>"`.
+`<field> must be YYYY-MM-DD or an ISO 8601 date-time; received "<value>"`.
 In `create_tasks_batch` the field is named with its position, for example `tasks[2].dueDate`.
 
 Filter bounds on due, defer, completion and planned dates are exclusive: `dueBefore: "2026-10-10"`
@@ -116,9 +116,9 @@ Where a tool takes `limit`, the default is 100 and the value must be at least 1
 | Kind | JSON-RPC error | Example message |
 | --- | --- | --- |
 | Invalid parameter (checked before OmniFocus is contacted) | `invalid_params` | `status must be one of: available, due_soon, overdue, on_hold, completed, all. received: "remaining".` |
-| Invalid date (checked inside OmniFocus) | `internal_error` | `OmniFocus operation failed: dueDate must be YYYY-MM-DD or an ISO 8601 date-time; received "2026-02-30"` |
+| Invalid date (checked inside OmniFocus) | `internal_error` | `dueDate must be YYYY-MM-DD or an ISO 8601 date-time; received "2026-02-30"` |
 | Object not found | `internal_error` | `Task not found: <id>`, `Project not found: <value>`, `Folder not found: <value>`, `Tag not found: <value>` |
-| Other error raised inside OmniFocus | `internal_error` | `OmniFocus operation failed: <message>` |
+| Other error raised inside OmniFocus | `internal_error` | The script's own message, unchanged, e.g. `Parent task not found: <id>` |
 | OmniFocus not running | `internal_error` | `JXA execution failed: OmniFocus is not running. Please open OmniFocus and try again.` |
 | Automation permission missing | `internal_error` | `JXA execution failed: macOS blocked Automation access to OmniFocus. Grant permission in System Settings > Privacy & Security > Automation.` |
 | Call took longer than 30 seconds | `internal_error` | `JXA command timed out after 30s.` |
@@ -390,7 +390,7 @@ Reopens a completed task.
 | `task_id` | string | yes | - | |
 
 On a task that is not completed it fails with
-`OmniFocus operation failed: Task is not completed: <id>`. On a task that is completed only through
+`Task is not completed: <id>`. On a task that is completed only through
 a completed project or containing task it fails with `Task <id> is completed through its project or
 a containing task; reopen that instead: <name>`, naming that project or task. Returns
 `{id, name, completed}`.
@@ -622,7 +622,7 @@ Changes only the fields you pass.
 | `reviewInterval` | string | no | - | `"N unit"`, N a whole number of at least 1, unit `day(s)`, `week(s)`, `month(s)` or `year(s)` in any letter case, e.g. `"2 weeks"`. |
 
 `reviewInterval` can only change an interval the project already has; on a project without one
-the call fails with `OmniFocus operation failed: Project has no review interval to update` and
+the call fails with `Project has no review interval to update` and
 nothing is modified. A malformed value fails before OmniFocus is contacted. As in `update_task`,
 this tool cannot clear a date. Returns the updated project.
 
@@ -656,7 +656,7 @@ Reopens a completed project.
 | `project_id_or_name` | string | yes | - | |
 
 On a project that is not completed it fails with
-`OmniFocus operation failed: Project is not completed: <value>`. Returns `{id, name, status}`.
+`Project is not completed: <value>`. Returns `{id, name, status}`.
 
 ### `move_project`
 

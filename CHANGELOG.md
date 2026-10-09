@@ -25,6 +25,12 @@ issue numbers in them, and every "upstream #N" below, refer to that project's tr
   the four `update_*` tools and `set_task_repetition`. None is open-world. The full table is in
   [Tool annotations](docs/tools.md#tool-annotations).
 
+### Changed
+- An error raised inside OmniFocus is reported with its own message, without the
+  `OmniFocus operation failed: ` prefix that every message outside `Task`/`Project`/`Tag`/`Folder
+  not found:` used to get (for example `Parent task not found: <id>`,
+  `Task is not completed: <id>`).
+
 ### Fixed
 - `list_notifications` and `add_notification` report a due-relative notification as
   `kind: "relative"` with its `relativeFireOffset`. The kind was inferred from `initialFireDate`,
@@ -83,6 +89,10 @@ issue numbers in them, and every "upstream #N" below, refer to that project's tr
   of the wrong type) now fails with `OmniFocus returned a result in an unexpected shape: <detail>`,
   naming the field, instead of `JXA command returned malformed JSON.`. Output that is not JSON at
   all still reports `JXA command returned malformed JSON`, now followed by the parser's detail.
+- An error raised inside OmniFocus whose text contained words such as `Not permitted`,
+  `Apple Events` or `not running` (often from user input, such as a tag name) was reported as
+  `macOS blocked Automation access to OmniFocus` or `OmniFocus is not running`. Those two messages
+  now come only from `osascript`'s own failure output.
 
 ## [2.0.0] - 2026-10-07
 

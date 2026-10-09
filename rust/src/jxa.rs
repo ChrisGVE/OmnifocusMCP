@@ -19,12 +19,22 @@ pub fn escape_for_jxa(value: &str) -> String {
     }
 }
 
+/// Turns osascript's stderr, after a non-zero exit, into the message a user
+/// can act on: OmniFocus not running, Automation access refused, or a script
+/// syntax error; anything else is returned trimmed.
+///
+/// This is the only classifier, and it only ever sees osascript's own stderr.
+/// A message our script raises inside OmniFocus comes back in the
+/// `{ok: false, error}` envelope instead and is passed through unchanged by
+/// `unwrap_omnijs_envelope`: OmniFocus was running and reachable for the
+/// script to run at all, and the message often echoes user input such as a
+/// tag name, which these substring checks would misread.
 pub fn friendly_jxa_error(stderr: &str) -> String {
     let lowered = stderr.to_lowercase();
-    if lowered.contains("not running") && lowered.contains("omnifocus") {
-        return "OmniFocus is not running. Please open OmniFocus and try again.".to_string();
-    }
-    if lowered.contains("application isn't running") && lowered.contains("omnifocus") {
+    let names_omnifocus = lowered.contains("omnifocus");
+    if names_omnifocus
+        && (lowered.contains("not running") || lowered.contains("application isn't running"))
+    {
         return "OmniFocus is not running. Please open OmniFocus and try again.".to_string();
     }
     if lowered.contains("not authorized")
@@ -39,33 +49,6 @@ pub fn friendly_jxa_error(stderr: &str) -> String {
         return format!("JXA script syntax error: {}", stderr.trim());
     }
     stderr.trim().to_string()
-}
-
-pub fn friendly_omnijs_error(error: &str) -> String {
-    let cleaned = error.trim();
-    let lowered = cleaned.to_lowercase();
-    if lowered.starts_with("task not found:")
-        || lowered.starts_with("project not found:")
-        || lowered.starts_with("tag not found:")
-        || lowered.starts_with("folder not found:")
-    {
-        return cleaned.to_string();
-    }
-    if lowered.contains("not running") && lowered.contains("omnifocus") {
-        return "OmniFocus is not running. Please open OmniFocus and try again.".to_string();
-    }
-    if lowered.contains("application isn't running") && lowered.contains("omnifocus") {
-        return "OmniFocus is not running. Please open OmniFocus and try again.".to_string();
-    }
-    if lowered.contains("not authorized")
-        || lowered.contains("not permitted")
-        || lowered.contains("not authorised")
-        || lowered.contains("apple events")
-        || lowered.contains("(-1743)")
-    {
-        return "macOS blocked Automation access to OmniFocus. Grant permission in System Settings > Privacy & Security > Automation.".to_string();
-    }
-    format!("OmniFocus operation failed: {}", cleaned)
 }
 
 pub async fn run_jxa(script: &str) -> Result<String> {
@@ -173,6 +156,9 @@ pub async fn run_omnijs_with_timeout(script: &str, timeout_seconds: f64) -> Resu
     unwrap_omnijs_envelope(envelope)
 }
 
+/// Reads the `{ok, data}` / `{ok: false, error}` envelope our OmniJS wrapper
+/// returns. A script error's message is returned as is (trimmed), whatever it
+/// says; see `friendly_jxa_error` for why it is not classified.
 pub fn unwrap_omnijs_envelope(envelope: Value) -> Result<Value> {
     let envelope_obj = envelope.as_object().ok_or_else(|| {
         OmniFocusError::OmniFocus("OmniFocus returned an unexpected response.".to_string())
@@ -182,7 +168,7 @@ pub fn unwrap_omnijs_envelope(envelope: Value) -> Result<Value> {
         if let Some(error) = envelope_obj.get("error").and_then(Value::as_str) {
             let cleaned = error.trim();
             if !cleaned.is_empty() {
-                return Err(OmniFocusError::OmniFocus(friendly_omnijs_error(cleaned)));
+                return Err(OmniFocusError::OmniFocus(cleaned.to_string()));
             }
         }
         return Err(OmniFocusError::OmniFocus(
