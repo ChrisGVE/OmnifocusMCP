@@ -90,7 +90,7 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
         description = "update a folder by id or name, modifying provided name and/or status.",
         annotations(
             read_only_hint = false,
-            destructive_hint = false,
+            destructive_hint = true,
             idempotent_hint = false,
             open_world_hint = false
         )

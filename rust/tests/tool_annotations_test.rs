@@ -13,9 +13,14 @@
 //! holds. How each tool was classified, from what its OmniJS script does:
 //!
 //! - Read-only: the script only reads the database.
-//! - Destructive: the script calls `deleteObject` or `removeNotification`.
-//!   Every other write changes or adds objects and is marked
-//!   non-destructive, so clients can tell deletions apart from edits.
+//! - Destructive: the tool can overwrite or remove existing content, as the
+//!   spec reads `destructiveHint: false` as "performs only additive
+//!   updates". That is every delete and `remove_notification`, plus the
+//!   tools that replace user-entered values: `update_task`,
+//!   `update_project`, `update_tag`, `update_folder`, and
+//!   `set_task_repetition` (replaces or clears the rule). Creates, appends,
+//!   moves, `complete_*`/`uncomplete_*` and `set_project_status` add
+//!   content or change a reversible state, and lose nothing.
 //! - Idempotent: repeating the identical call has no further effect. A
 //!   tool is NOT idempotent when a repeat creates another object
 //!   (`create_*`, `duplicate_task`, `add_notification`, `append_to_note`),
@@ -66,33 +71,36 @@ const READ: Hints = Hints {
     open_world: false,
 };
 
-/// A write that adds or changes objects; a repeat has a further effect.
-const WRITE: Hints = Hints {
+/// Adds content or changes a reversible state; a repeat has a further
+/// effect.
+const CHANGE: Hints = Hints {
     read_only: false,
     destructive: false,
     idempotent: false,
     open_world: false,
 };
 
-/// A write that adds or changes objects; a repeat has no further effect.
-const WRITE_IDEMPOTENT: Hints = Hints {
+/// Adds content or changes a reversible state; a repeat has no further
+/// effect.
+const CHANGE_IDEMPOTENT: Hints = Hints {
     read_only: false,
     destructive: false,
     idempotent: true,
     open_world: false,
 };
 
-/// A deletion addressed by id; a repeat finds nothing and changes nothing.
-const DELETE_IDEMPOTENT: Hints = Hints {
+/// Overwrites or removes existing content, addressed by id; a repeat
+/// changes nothing more.
+const DESTRUCTIVE_IDEMPOTENT: Hints = Hints {
     read_only: false,
     destructive: true,
     idempotent: true,
     open_world: false,
 };
 
-/// A deletion addressed by id or name; a repeat by name can delete a
-/// second object of the same name.
-const DELETE: Hints = Hints {
+/// Overwrites or removes existing content, addressed by id or name; a
+/// repeat by name can reach a second object of the same name.
+const DESTRUCTIVE: Hints = Hints {
     read_only: false,
     destructive: true,
     idempotent: false,
@@ -109,50 +117,50 @@ const EXPECTED: [(&str, Hints); 48] = [
     ("list_subtasks", READ),
     ("search_tasks", READ),
     // tasks: writes
-    ("duplicate_task", WRITE),
-    ("create_task", WRITE),
-    ("create_tasks_batch", WRITE),
-    ("create_subtask", WRITE),
-    ("complete_task", WRITE),
-    ("uncomplete_task", WRITE_IDEMPOTENT),
-    ("set_task_repetition", WRITE_IDEMPOTENT),
-    ("update_task", WRITE_IDEMPOTENT),
-    ("delete_task", DELETE_IDEMPOTENT),
-    ("delete_tasks_batch", DELETE_IDEMPOTENT),
-    ("move_task", WRITE_IDEMPOTENT),
-    ("move_tasks_batch", WRITE_IDEMPOTENT),
-    ("append_to_note", WRITE),
+    ("duplicate_task", CHANGE),
+    ("create_task", CHANGE),
+    ("create_tasks_batch", CHANGE),
+    ("create_subtask", CHANGE),
+    ("complete_task", CHANGE),
+    ("uncomplete_task", CHANGE_IDEMPOTENT),
+    ("set_task_repetition", DESTRUCTIVE_IDEMPOTENT),
+    ("update_task", DESTRUCTIVE_IDEMPOTENT),
+    ("delete_task", DESTRUCTIVE_IDEMPOTENT),
+    ("delete_tasks_batch", DESTRUCTIVE_IDEMPOTENT),
+    ("move_task", CHANGE_IDEMPOTENT),
+    ("move_tasks_batch", CHANGE_IDEMPOTENT),
+    ("append_to_note", CHANGE),
     // tasks: notifications
     ("list_notifications", READ),
-    ("add_notification", WRITE),
-    ("remove_notification", DELETE_IDEMPOTENT),
+    ("add_notification", CHANGE),
+    ("remove_notification", DESTRUCTIVE_IDEMPOTENT),
     // projects
     ("list_projects", READ),
     ("get_project_counts", READ),
     ("search_projects", READ),
     ("get_project", READ),
-    ("create_project", WRITE),
-    ("complete_project", WRITE),
-    ("uncomplete_project", WRITE_IDEMPOTENT),
-    ("delete_project", DELETE),
-    ("delete_projects_batch", DELETE),
-    ("move_project", WRITE_IDEMPOTENT),
-    ("update_project", WRITE),
-    ("set_project_status", WRITE_IDEMPOTENT),
+    ("create_project", CHANGE),
+    ("complete_project", CHANGE),
+    ("uncomplete_project", CHANGE_IDEMPOTENT),
+    ("delete_project", DESTRUCTIVE),
+    ("delete_projects_batch", DESTRUCTIVE),
+    ("move_project", CHANGE_IDEMPOTENT),
+    ("update_project", DESTRUCTIVE),
+    ("set_project_status", CHANGE_IDEMPOTENT),
     // tags
     ("search_tags", READ),
     ("list_tags", READ),
-    ("create_tag", WRITE),
-    ("update_tag", WRITE),
-    ("delete_tag", DELETE),
-    ("delete_tags_batch", DELETE),
+    ("create_tag", CHANGE),
+    ("update_tag", DESTRUCTIVE),
+    ("delete_tag", DESTRUCTIVE),
+    ("delete_tags_batch", DESTRUCTIVE),
     // folders
     ("list_folders", READ),
-    ("create_folder", WRITE),
+    ("create_folder", CHANGE),
     ("get_folder", READ),
-    ("update_folder", WRITE),
-    ("delete_folder", DELETE),
-    ("delete_folders_batch", DELETE),
+    ("update_folder", DESTRUCTIVE),
+    ("delete_folder", DESTRUCTIVE),
+    ("delete_folders_batch", DESTRUCTIVE),
     // views
     ("get_forecast", READ),
     ("list_perspectives", READ),
@@ -310,10 +318,15 @@ fn the_table_follows_the_naming_rules() {
         let is_read = ["list_", "get_", "search_"]
             .iter()
             .any(|prefix| name.starts_with(prefix));
-        let is_removal = name.starts_with("delete_") || name.starts_with("remove_");
+        // Removes or overwrites: the delete, remove and update tools, and
+        // `set_task_repetition`, the one `set_` tool that replaces content.
+        let removes_or_overwrites = ["delete_", "remove_", "update_"]
+            .iter()
+            .any(|prefix| name.starts_with(prefix))
+            || *name == "set_task_repetition";
         assert_eq!(hints.read_only, is_read, "{name}: read-only by its name");
         assert_eq!(
-            hints.destructive, is_removal,
+            hints.destructive, removes_or_overwrites,
             "{name}: destructive by its name"
         );
         assert!(!hints.open_world, "{name}: OmniFocus is a closed world");

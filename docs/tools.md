@@ -127,20 +127,23 @@ The server runs one OmniFocus script at a time. Concurrent calls wait for each o
 
 ### Tool annotations
 
-Every tool states the four MCP annotation hints in `tools/list`, so a client can ask before a
-deletion without asking before every read. `openWorldHint` is `false` for all tools: they work only
-on the local OmniFocus database. A client that does not read annotations sees no difference.
+Every tool states the four MCP annotation hints in `tools/list`, so a client can ask before a call
+that loses data without asking before every read. `openWorldHint` is `false` for all tools: they
+work only on the local OmniFocus database. A client that does not read annotations sees no
+difference.
+
+Destructive means the tool can overwrite or remove existing content. That covers the deletes and
+also the update tools and `set_task_repetition`, which replace values you entered (`update_task`
+replaces the note, and its `tags` replaces the task's tags). Creates, appends, moves, completing
+or reopening, and `set_project_status` only add content or change a state you can change back.
 
 | Kind | `readOnlyHint` | `destructiveHint` | `idempotentHint` | Tools |
 | --- | --- | --- | --- | --- |
 | Read | `true` | `false` | `true` | `get_inbox`, `list_tasks`, `get_task_counts`, `get_task`, `list_subtasks`, `search_tasks`, `list_notifications`, `list_projects`, `get_project_counts`, `search_projects`, `get_project`, `search_tags`, `list_tags`, `list_folders`, `get_folder`, `get_forecast`, `list_perspectives` |
-| Change, safe to repeat | `false` | `false` | `true` | `update_task`, `set_task_repetition`, `uncomplete_task`, `move_task`, `move_tasks_batch`, `uncomplete_project`, `move_project`, `set_project_status` |
-| Change | `false` | `false` | `false` | `create_task`, `create_subtask`, `create_tasks_batch`, `duplicate_task`, `complete_task`, `append_to_note`, `add_notification`, `create_project`, `complete_project`, `update_project`, `create_tag`, `update_tag`, `create_folder`, `update_folder` |
-| Delete, safe to repeat | `false` | `true` | `true` | `delete_task`, `delete_tasks_batch`, `remove_notification` |
-| Delete | `false` | `true` | `false` | `delete_project`, `delete_projects_batch`, `delete_tag`, `delete_tags_batch`, `delete_folder`, `delete_folders_batch` |
-
-Only deletions are marked destructive. The change tools overwrite what they are given (`update_task`
-replaces the note, and its `tags` replaces the task's tags), but they remove no object.
+| Change, safe to repeat | `false` | `false` | `true` | `uncomplete_task`, `move_task`, `move_tasks_batch`, `uncomplete_project`, `move_project`, `set_project_status` |
+| Change | `false` | `false` | `false` | `create_task`, `create_subtask`, `create_tasks_batch`, `duplicate_task`, `complete_task`, `append_to_note`, `add_notification`, `create_project`, `complete_project`, `create_tag`, `create_folder` |
+| Destructive, safe to repeat | `false` | `true` | `true` | `update_task`, `set_task_repetition`, `delete_task`, `delete_tasks_batch`, `remove_notification` |
+| Destructive | `false` | `true` | `false` | `update_project`, `update_tag`, `update_folder`, `delete_project`, `delete_projects_batch`, `delete_tag`, `delete_tags_batch`, `delete_folder`, `delete_folders_batch` |
 
 A tool is marked safe to repeat only when calling it again with the same arguments changes nothing
 more. These are not:

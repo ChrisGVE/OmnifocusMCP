@@ -249,7 +249,7 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
         description = "update a project by id or name, modifying only provided fields. supports name, note, dates, flagged, tags replacement, sequential, completedByChildren, and reviewInterval. dates take YYYY-MM-DD or an ISO 8601 date-time; a bare date gets your omnifocus default time for that field.",
         annotations(
             read_only_hint = false,
-            destructive_hint = false,
+            destructive_hint = true,
             idempotent_hint = false,
             open_world_hint = false
         )

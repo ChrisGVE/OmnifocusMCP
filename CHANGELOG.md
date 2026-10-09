@@ -20,8 +20,9 @@ issue numbers in them, and every "upstream #N" below, refer to that project's tr
   tools return now include `plannedDate` (ISO string or `null`).
 - Every tool declares MCP annotations (`readOnlyHint`, `destructiveHint`, `idempotentHint`,
   `openWorldHint`) in `tools/list`. Without them a client had to treat every tool, `list_tasks`
-  included, as destructive; now only the delete tools and `remove_notification` are marked
-  destructive, the 17 read tools are marked read-only, and none is open-world. The full table is in
+  included, as destructive. Now the 17 read tools are marked read-only, and only the tools that can
+  overwrite or remove existing content are marked destructive: the deletes, `remove_notification`,
+  the four `update_*` tools and `set_task_repetition`. None is open-world. The full table is in
   [Tool annotations](docs/tools.md#tool-annotations).
 
 ### Fixed

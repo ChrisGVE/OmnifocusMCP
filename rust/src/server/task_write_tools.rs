@@ -193,7 +193,7 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
         description = "set or clear a task repetition rule by id. pass rule_string plus schedule_type (regularly/from_completion/none), or null rule_string to clear.",
         annotations(
             read_only_hint = false,
-            destructive_hint = false,
+            destructive_hint = true,
             idempotent_hint = true,
             open_world_hint = false
         )
@@ -217,7 +217,7 @@ impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
         description = "update an existing task by id, modifying only provided fields. supports name, note, due/defer/planned dates, flagged, tags replacement, and estimatedMinutes. dates take YYYY-MM-DD or an ISO 8601 date-time; a bare date gets your omnifocus default time for that field.",
         annotations(
             read_only_hint = false,
-            destructive_hint = false,
+            destructive_hint = true,
             idempotent_hint = true,
             open_world_hint = false
         )
