@@ -459,8 +459,10 @@ Lists a task's notifications.
 | --- | --- | --- | --- | --- |
 | `task_id` | string | yes | - | |
 
-Returns `id`, `kind` (`absolute` or `relative`), `absoluteFireDate`, `relativeFireOffset`,
-`nextFireDate` and `isSnoozed` for each notification.
+Returns `id`, `kind`, `absoluteFireDate`, `relativeFireOffset`, `nextFireDate` and `isSnoozed` for
+each notification. `kind` is `absolute` (only `absoluteFireDate` is set), `relative` (fires relative
+to the task's due date; only `relativeFireOffset` is set) or `unknown` (any other kind, such as
+a notification OmniFocus reports in an invalid state; both are `null`).
 
 ### `add_notification`
 

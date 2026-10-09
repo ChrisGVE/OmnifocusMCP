@@ -20,6 +20,11 @@ issue numbers in them, and every "upstream #N" below, refer to that project's tr
   tools return now include `plannedDate` (ISO string or `null`).
 
 ### Fixed
+- `list_notifications` and `add_notification` report a due-relative notification as
+  `kind: "relative"` with its `relativeFireOffset`. The kind was inferred from `initialFireDate`,
+  which OmniFocus sets for relative notifications too, so every one read `kind: "absolute"` with
+  `relativeFireOffset: null`. Any other kind, such as OmniFocus's invalid-state `Unknown`, is
+  reported as `kind: "unknown"` with neither fire-date field read.
 - `get_project` and `list_projects` no longer report a project's own root task as its next task
   (`nextTaskId`/`nextTaskName` named the project itself when no child was next, for example once
   it was completed); such a project reports `null`, and stall detection treats it the same way.

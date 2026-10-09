@@ -373,3 +373,42 @@ function resolveTag(value) {
   return tag;
 }
 "#;
+
+/// A task notification as the notification tools report it (audit CR-002).
+///
+/// `notification.kind` is a `Task.Notification.Kind` enum value, compared to
+/// the documented members directly, like the status helpers above:
+///
+/// | `Task.Notification.Kind` | `kind`       | fire-date field read  |
+/// | ------------------------ | ------------ | --------------------- |
+/// | `Absolute`               | `"absolute"` | `absoluteFireDate`    |
+/// | `DueRelative`            | `"relative"` | `relativeFireOffset`  |
+/// | anything else            | `"unknown"`  | neither               |
+///
+/// The kind cannot be inferred from `initialFireDate`: OmniFocus sets it for
+/// relative notifications too ("For due or defer-relative notifications, this
+/// date will change with its `task` object's due and defer dates"). And only
+/// the matching field may be read, because reading `absoluteFireDate` on a
+/// notification that is not absolute, or `relativeFireOffset` on one that is
+/// not due- or defer-relative, throws (`OFMAlarm` in OmniFocus's
+/// `OmniFocusModel-Interfaces.strings`). `Unknown` marks a notification "in
+/// an invalid state", so neither field is read and the kind says so.
+///
+/// Defined function: `summarizeNotification(notification)`, returning
+/// `{id, kind, absoluteFireDate, relativeFireOffset, nextFireDate,
+/// isSnoozed}`; the field that does not apply is `null`.
+pub const JS_NOTIFICATION_SUMMARY: &str = r#"function summarizeNotification(notification) {
+  const kind = notification.kind;
+  const isAbsolute = kind === Task.Notification.Kind.Absolute;
+  const isRelative = kind === Task.Notification.Kind.DueRelative;
+  const absoluteFireDate = isAbsolute ? notification.absoluteFireDate : null;
+  return {
+    id: notification.id.primaryKey,
+    kind: isAbsolute ? "absolute" : (isRelative ? "relative" : "unknown"),
+    absoluteFireDate: absoluteFireDate ? absoluteFireDate.toISOString() : null,
+    relativeFireOffset: isRelative ? notification.relativeFireOffset : null,
+    nextFireDate: notification.nextFireDate ? notification.nextFireDate.toISOString() : null,
+    isSnoozed: notification.isSnoozed
+  };
+}
+"#;

@@ -6,6 +6,7 @@ use std::{
 
 use omnifocus_mcp::{
     error::OmniFocusError,
+    js_helpers::JS_NOTIFICATION_SUMMARY,
     jxa::JxaRunner,
     tools::{
         folders::{get_folder, list_folders},
@@ -1368,10 +1369,8 @@ async fn list_notifications_script_maps_notification_fields() {
         .expect("script capture lock should succeed")
         .clone();
     assert!(script.contains(r#"const taskId = "t3";"#));
-    assert!(script.contains("return task.notifications.map(n => ({"));
-    assert!(script.contains(r#"kind: n.initialFireDate ? "absolute" : "relative","#));
-    assert!(script.contains("relativeFireOffset: n.initialFireDate ? null : n.relativeFireOffset,"));
-    assert!(script.contains("isSnoozed: n.isSnoozed"));
+    assert!(script.contains(JS_NOTIFICATION_SUMMARY));
+    assert!(script.contains("return task.notifications.map(summarizeNotification);"));
 }
 
 #[tokio::test]
@@ -1430,9 +1429,8 @@ async fn add_notification_script_handles_absolute_and_relative_modes() {
     assert!(relative_script_text.contains("const absoluteDate = null;"));
     assert!(relative_script_text.contains("const relativeOffset = -3600;"));
     assert!(relative_script_text.contains("notification = task.addNotification(relativeOffset);"));
-    assert!(relative_script_text.contains(
-        "relativeFireOffset: notification.initialFireDate ? null : notification.relativeFireOffset,"
-    ));
+    assert!(relative_script_text.contains(JS_NOTIFICATION_SUMMARY));
+    assert!(relative_script_text.contains("return summarizeNotification(notification);"));
 }
 
 #[tokio::test]

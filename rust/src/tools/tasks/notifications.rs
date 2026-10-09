@@ -5,7 +5,7 @@ use serde_json::Value;
 
 use crate::{
     error::{OmniFocusError, Result},
-    js_helpers::{JS_DATE_HELPERS, JS_PROJECT_STATUS, JS_TASK_STATUS},
+    js_helpers::{JS_DATE_HELPERS, JS_NOTIFICATION_SUMMARY, JS_PROJECT_STATUS, JS_TASK_STATUS},
     jxa::{escape_for_jxa, JxaRunner},
 };
 
@@ -20,19 +20,13 @@ pub async fn list_notifications<R: JxaRunner>(runner: &R, task_id: &str) -> Resu
     let script = format!(
         r#"{JS_PROJECT_STATUS}
 {JS_TASK_STATUS}
+{JS_NOTIFICATION_SUMMARY}
 const taskId = {task_id_filter};
 const task = document.flattenedTasks.find(item => item.id.primaryKey === taskId && !isProjectRootTask(item));
 if (!task) {{
   throw new Error(`Task not found: ${{taskId}}`);
 }}
-return task.notifications.map(n => ({{
-  id: n.id.primaryKey,
-  kind: n.initialFireDate ? "absolute" : "relative",
-  absoluteFireDate: n.initialFireDate ? n.initialFireDate.toISOString() : null,
-  relativeFireOffset: n.initialFireDate ? null : n.relativeFireOffset,
-  nextFireDate: n.nextFireDate ? n.nextFireDate.toISOString() : null,
-  isSnoozed: n.isSnoozed
-}}));"#
+return task.notifications.map(summarizeNotification);"#
     );
 
     runner.run_omnijs(&script).await
@@ -74,6 +68,7 @@ pub async fn add_notification<R: JxaRunner>(
         r#"{JS_DATE_HELPERS}
 {JS_PROJECT_STATUS}
 {JS_TASK_STATUS}
+{JS_NOTIFICATION_SUMMARY}
 const taskId = {task_id_filter};
 const absoluteDate = {absolute_date_value};
 const relativeOffset = {relative_offset_value};
@@ -94,14 +89,7 @@ if (absoluteDate !== null) {{
 if (!notification) {{
   throw new Error("Failed to create notification.");
 }}
-return {{
-  id: notification.id.primaryKey,
-  kind: notification.initialFireDate ? "absolute" : "relative",
-  absoluteFireDate: notification.initialFireDate ? notification.initialFireDate.toISOString() : null,
-  relativeFireOffset: notification.initialFireDate ? null : notification.relativeFireOffset,
-  nextFireDate: notification.nextFireDate ? notification.nextFireDate.toISOString() : null,
-  isSnoozed: notification.isSnoozed
-}};"#
+return summarizeNotification(notification);"#
     );
 
     runner.run_omnijs(&script).await
