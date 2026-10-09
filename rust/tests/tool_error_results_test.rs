@@ -254,7 +254,11 @@ async fn omnifocus_not_running_is_a_tool_error_with_the_message() {
 #[tokio::test]
 async fn timeout_is_a_tool_error_with_the_message() {
     let response = call_tool(
-        runner(|| Err(OmniFocusError::Timeout { seconds: 30.0 })),
+        runner(|| {
+            Err(OmniFocusError::Timeout {
+                after: Duration::from_secs(30),
+            })
+        }),
         "list_tags",
         json!({}),
     )
@@ -300,7 +304,11 @@ async fn missing_required_argument_stays_a_protocol_error() {
 #[tokio::test]
 async fn failing_prompt_stays_a_protocol_error() {
     let response = request(
-        runner(|| Err(OmniFocusError::Timeout { seconds: 30.0 })),
+        runner(|| {
+            Err(OmniFocusError::Timeout {
+                after: Duration::from_secs(30),
+            })
+        }),
         "prompts/get",
         json!({"name": "daily_review"}),
     )
@@ -312,7 +320,11 @@ async fn failing_prompt_stays_a_protocol_error() {
 #[tokio::test]
 async fn failing_resource_stays_a_protocol_error() {
     let response = request(
-        runner(|| Err(OmniFocusError::Timeout { seconds: 30.0 })),
+        runner(|| {
+            Err(OmniFocusError::Timeout {
+                after: Duration::from_secs(30),
+            })
+        }),
         "resources/read",
         json!({"uri": "omnifocus://inbox"}),
     )

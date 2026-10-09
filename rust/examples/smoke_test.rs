@@ -2,7 +2,7 @@ use std::{
     future::Future,
     pin::Pin,
     process::Command,
-    time::{SystemTime, UNIX_EPOCH},
+    time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
 use omnifocus_mcp::{
@@ -44,7 +44,7 @@ impl JxaRunner for SmokeJxaRunner {
         &'a self,
         script: &'a str,
     ) -> Pin<Box<dyn Future<Output = Result<Value>> + Send + 'a>> {
-        Box::pin(async move { run_omnijs_with_timeout(script, 120.0).await })
+        Box::pin(async move { run_omnijs_with_timeout(script, Duration::from_secs(120)).await })
     }
 }
 

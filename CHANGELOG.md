@@ -50,6 +50,11 @@ issue numbers in them, and every "upstream #N" below, refer to that project's tr
   an `isError` result, `rule_string is required: pass a repetition rule to set, or null to clear
   the repetition.`, and changes nothing. The schema lists `rule_string` as required (type string
   or null).
+- For code using the library crate: `run_jxa_with_timeout`, `run_jxa_json_with_timeout` and
+  `run_omnijs_with_timeout` take the time limit as a `std::time::Duration` instead of a number of
+  seconds (`f64`), which panicked when negative, NaN or too large. `OmniFocusError::Timeout`
+  carries it as `after: Duration`, and a limit under one second is reported in milliseconds
+  (`500ms`) instead of as `0s`.
 
 ### Fixed
 - `list_notifications` and `add_notification` report a due-relative notification as

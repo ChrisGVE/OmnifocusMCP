@@ -32,7 +32,9 @@ fn omnifocus_error_display_messages_match_expected() {
     let validation = OmniFocusError::Validation("limit must be greater than 0.".to_string());
     assert_eq!(validation.to_string(), "limit must be greater than 0.");
 
-    let timeout = OmniFocusError::Timeout { seconds: 30.0 };
+    let timeout = OmniFocusError::Timeout {
+        after: std::time::Duration::from_secs(30),
+    };
     assert_eq!(timeout.to_string(), "JXA command timed out after 30s.");
 
     let io = OmniFocusError::Io(std::io::Error::other("denied"));

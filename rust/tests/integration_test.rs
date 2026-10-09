@@ -6,7 +6,7 @@ use std::{
     pin::Pin,
     process::Command,
     sync::OnceLock,
-    time::{SystemTime, UNIX_EPOCH},
+    time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
 use omnifocus_mcp::{
@@ -31,7 +31,7 @@ use serde_json::Value;
 use tokio::sync::Mutex;
 
 static TEST_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
-const INTEGRATION_TIMEOUT_SECONDS: f64 = 60.0;
+const INTEGRATION_TIMEOUT: Duration = Duration::from_secs(60);
 
 #[derive(Default)]
 struct CleanupRegistry {
@@ -137,7 +137,7 @@ impl JxaRunner for IntegrationRunner {
         &'a self,
         script: &'a str,
     ) -> Pin<Box<dyn Future<Output = omnifocus_mcp::error::Result<Value>> + Send + 'a>> {
-        Box::pin(async move { run_omnijs_with_timeout(script, INTEGRATION_TIMEOUT_SECONDS).await })
+        Box::pin(async move { run_omnijs_with_timeout(script, INTEGRATION_TIMEOUT).await })
     }
 }
 

@@ -5,7 +5,7 @@ use tokio::{process::Command, sync::Mutex, time::timeout};
 
 use crate::error::{OmniFocusError, Result};
 
-const DEFAULT_TIMEOUT_SECONDS: f64 = 30.0;
+const DEFAULT_TIMEOUT: Duration = Duration::from_secs(30);
 static JXA_CALL_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
 
 fn jxa_call_lock() -> &'static Mutex<()> {
@@ -52,13 +52,11 @@ pub fn friendly_jxa_error(stderr: &str) -> String {
 }
 
 pub async fn run_jxa(script: &str) -> Result<String> {
-    run_jxa_with_timeout(script, DEFAULT_TIMEOUT_SECONDS).await
+    run_jxa_with_timeout(script, DEFAULT_TIMEOUT).await
 }
 
-pub async fn run_jxa_with_timeout(script: &str, timeout_seconds: f64) -> Result<String> {
+pub async fn run_jxa_with_timeout(script: &str, time_limit: Duration) -> Result<String> {
     let _guard = jxa_call_lock().lock().await;
-    let duration = Duration::from_secs_f64(timeout_seconds);
-
     let child = Command::new("osascript")
         .arg("-l")
         .arg("JavaScript")
@@ -70,12 +68,10 @@ pub async fn run_jxa_with_timeout(script: &str, timeout_seconds: f64) -> Result<
         .kill_on_drop(true)
         .spawn()?;
 
-    let output = match timeout(duration, child.wait_with_output()).await {
+    let output = match timeout(time_limit, child.wait_with_output()).await {
         Ok(output) => output?,
         Err(_) => {
-            return Err(OmniFocusError::Timeout {
-                seconds: timeout_seconds,
-            });
+            return Err(OmniFocusError::Timeout { after: time_limit });
         }
     };
 
@@ -90,11 +86,11 @@ pub async fn run_jxa_with_timeout(script: &str, timeout_seconds: f64) -> Result<
 }
 
 pub async fn run_jxa_json(script: &str) -> Result<Value> {
-    run_jxa_json_with_timeout(script, DEFAULT_TIMEOUT_SECONDS).await
+    run_jxa_json_with_timeout(script, DEFAULT_TIMEOUT).await
 }
 
-pub async fn run_jxa_json_with_timeout(script: &str, timeout_seconds: f64) -> Result<Value> {
-    let stdout = run_jxa_with_timeout(script, timeout_seconds).await?;
+pub async fn run_jxa_json_with_timeout(script: &str, time_limit: Duration) -> Result<Value> {
+    let stdout = run_jxa_with_timeout(script, time_limit).await?;
     parse_jxa_output(&stdout)
 }
 
@@ -110,10 +106,10 @@ pub fn parse_jxa_output(stdout: &str) -> Result<Value> {
 }
 
 pub async fn run_omnijs(script: &str) -> Result<Value> {
-    run_omnijs_with_timeout(script, DEFAULT_TIMEOUT_SECONDS).await
+    run_omnijs_with_timeout(script, DEFAULT_TIMEOUT).await
 }
 
-pub async fn run_omnijs_with_timeout(script: &str, timeout_seconds: f64) -> Result<Value> {
+pub async fn run_omnijs_with_timeout(script: &str, time_limit: Duration) -> Result<Value> {
     let wrapped_omnijs = format!(
         r#"(function() {{
   try {{
@@ -152,7 +148,7 @@ pub async fn run_omnijs_with_timeout(script: &str, timeout_seconds: f64) -> Resu
         escape_for_jxa(&wrapped_omnijs)
     );
 
-    let envelope = run_jxa_json_with_timeout(&outer_jxa, timeout_seconds).await?;
+    let envelope = run_jxa_json_with_timeout(&outer_jxa, time_limit).await?;
     unwrap_omnijs_envelope(envelope)
 }
 

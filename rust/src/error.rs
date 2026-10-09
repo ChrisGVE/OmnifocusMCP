@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use thiserror::Error;
 
 pub type Result<T> = std::result::Result<T, OmniFocusError>;
@@ -25,8 +27,31 @@ pub enum OmniFocusError {
     Validation(String),
     #[error("I/O error while running JXA: {0}")]
     Io(#[from] std::io::Error),
-    #[error("JXA command timed out after {seconds:.0}s.")]
-    Timeout { seconds: f64 },
+    #[error("JXA command timed out after {}.", describe_duration(*.after))]
+    Timeout { after: Duration },
+}
+
+/// Names a duration in the largest unit it fills at least once (s, ms, µs,
+/// ns), with up to three decimals and no trailing zeros: `30s`, `1.5s`,
+/// `500ms`. Zero reads `0s`.
+pub fn describe_duration(duration: Duration) -> String {
+    const UNITS: [(u128, &str); 4] = [
+        (1_000_000_000, "s"),
+        (1_000_000, "ms"),
+        (1_000, "µs"),
+        (1, "ns"),
+    ];
+    let nanos = duration.as_nanos();
+    if nanos == 0 {
+        return "0s".to_string();
+    }
+    let (unit_nanos, suffix) = UNITS
+        .into_iter()
+        .find(|(unit_nanos, _)| nanos >= *unit_nanos)
+        .unwrap_or((1, "ns"));
+    let value = format!("{:.3}", nanos as f64 / unit_nanos as f64);
+    let value = value.trim_end_matches('0').trim_end_matches('.');
+    format!("{value}{suffix}")
 }
 
 /// Reads a script's JSON result into the type a tool returns.
