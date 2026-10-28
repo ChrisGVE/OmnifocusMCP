@@ -23,7 +23,7 @@ anything. See
 
 ## How a call flows
 
-`main.rs` runs the MCP server defined in `server.rs` on stdio. Each tool handler in `server.rs`
+`main.rs` runs the MCP server defined in `server.rs` on stdio, or with `--http` on streamable HTTP behind the bearer check in `http.rs`. Each tool handler in `server.rs`
 deserializes its parameter struct and calls a function in `src/tools/`. That function validates the
 input in Rust, builds an Omni Automation script (prepending shared snippets from `js_helpers.rs`),
 and runs it through `jxa.rs`, which wraps it in a JXA script, feeds that to `osascript` on standard
@@ -35,7 +35,8 @@ input and turns the JSON reply or error into a result.
 rust/
   Cargo.toml
   src/
-    main.rs             # entry point: --version/--help, stdio transport, exit status
+    main.rs             # entry point: --version/--help, stdio or --http transport, exit status
+    http.rs             # streamable-HTTP router and the bearer-token check in front of it
     lib.rs              # declares the modules below
     shutdown.rs         # which ends of the server are clean (exit 0) and which are failures
                         #   (logged to stderr, non-zero exit)

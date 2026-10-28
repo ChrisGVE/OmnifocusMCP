@@ -1,5 +1,6 @@
 pub mod error;
 pub mod flexible_tags;
+pub mod http;
 pub mod js_helpers;
 pub mod jxa;
 pub mod lenient_scalars;

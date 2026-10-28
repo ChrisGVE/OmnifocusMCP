@@ -11,6 +11,11 @@ issue numbers in them, and every "upstream #N" below, refer to that project's tr
 ## [Unreleased]
 
 ### Added
+- `--http <ADDR>` serves the MCP streamable-HTTP transport at `/mcp` instead of stdio, for clients
+  on other machines. Every request needs `Authorization: Bearer <token>` matching
+  `OMNIFOCUS_MCP_TOKEN` (at least 32 visible ASCII characters, compared in constant time); any
+  other request gets `401` and reaches no tool. The server stops cleanly on SIGINT or SIGTERM.
+  stdio stays the default.
 - `create_task`, `create_subtask`, `create_tasks_batch` and `update_task` accept an optional
   `plannedDate`, written the same way as `dueDate` and `deferDate` (a bare `YYYY-MM-DD` becomes
   that local day at the default planned time; the server uses 09:00 when it cannot read the

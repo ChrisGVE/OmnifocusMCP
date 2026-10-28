@@ -88,6 +88,25 @@ Apple silicon and `/usr/local/bin/omnifocus-mcp` on Intel.
 Enable only one OmniFocus MCP server per client. This server and the upstream one offer the same
 tool names, so with both enabled the assistant could call either.
 
+### Over HTTP, for clients on other machines
+
+`--http <ADDR>` serves the MCP streamable-HTTP transport at `http://<ADDR>/mcp` instead of stdio,
+so a client on another machine (an agent on a Raspberry Pi, say) can use your OmniFocus. Every
+request must carry `Authorization: Bearer <token>`; the server reads the token from
+`OMNIFOCUS_MCP_TOKEN`, refuses to start without one of at least 32 visible ASCII characters, and
+answers any request without the exact token with `401` before it reaches a tool.
+
+```bash
+export OMNIFOCUS_MCP_TOKEN="$(openssl rand -base64 32)"   # keep it in your password manager
+omnifocus-mcp --http 100.101.102.103:8765                    # your Mac's Tailscale address
+```
+
+The token is the only check, and the tools can delete data, so bind to an address only your own
+machines can reach: a Tailscale (or other VPN) address, or `127.0.0.1` behind a tunnel. Never
+`0.0.0.0` on a shared network. The server must run in your logged-in session, because OmniFocus
+automation needs it: start it from a LaunchAgent (`~/Library/LaunchAgents`), not a LaunchDaemon.
+The first call triggers the macOS prompt to allow `osascript` to control OmniFocus.
+
 ## Upgrade from the upstream server
 
 The upstream project also publishes a Homebrew formula named `omnifocus-mcp` that installs a
