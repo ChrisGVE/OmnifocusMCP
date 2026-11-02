@@ -117,8 +117,12 @@ fn task_updates(
 
 /// Parses the given dates and resolves the given tags before changing
 /// anything, then applies each given field; `tags` replaces the task's tags.
-const APPLY_TASK_UPDATES: &str = r#"{JS_RESOLVERS}
-const has = (key) => Object.prototype.hasOwnProperty.call(updates, key);
+///
+/// Plain text, not a `format!` template: a `{NAME}` written here reaches
+/// OmniFocus literally. The helpers it calls (`resolveTag`, the date and
+/// planned-date helpers) come from the `format!` in `update_task` that
+/// splices this in.
+const APPLY_TASK_UPDATES: &str = r#"const has = (key) => Object.prototype.hasOwnProperty.call(updates, key);
 const supportsPlannedDate = detectPlannedDateSupport(document.flattenedTasks);
 const parsedDueDate = has("dueDate") ? parseWriteDate(updates.dueDate, "dueDate", "DefaultDueTime", "17:00") : null;
 const parsedDeferDate = has("deferDate") ? parseWriteDate(updates.deferDate, "deferDate", "DefaultStartTime", "00:00") : null;
