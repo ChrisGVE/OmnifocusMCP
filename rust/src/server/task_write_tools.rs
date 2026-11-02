@@ -36,7 +36,7 @@ use super::{tool_result, OmniFocusServer};
 #[tool_router(router = task_write_tools, vis = "pub(super)")]
 impl<R: JxaRunner + Send + Sync + 'static> OmniFocusServer<R> {
     #[tool(
-        description = "duplicate a task with all its properties. if the task has subtasks, they are cloned too by default.",
+        description = "duplicate a task with all its properties, including repetition, notifications, and tags. if the task has subtasks, they are cloned too by default.",
         annotations(
             read_only_hint = false,
             destructive_hint = false,

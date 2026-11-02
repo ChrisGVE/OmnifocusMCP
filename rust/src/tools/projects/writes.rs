@@ -118,7 +118,8 @@ pub async fn move_project<R: JxaRunner>(
         .map(|value| escape_for_jxa(value.trim()))
         .unwrap_or_else(|| "null".to_string());
     let script = format!(
-        r#"{JS_RESOLVERS}
+        r#"{JS_PROJECT_STATUS}
+{JS_RESOLVERS}
 const projectFilter = {project_filter};
 const folderName = {folder_name};
 const project = resolveProject(projectFilter);
@@ -161,7 +162,8 @@ pub async fn set_project_status<R: JxaRunner>(
     let project_filter = escape_for_jxa(project_id_or_name.trim());
     let status_value = escape_for_jxa(status);
     let script = format!(
-        r#"{JS_RESOLVERS}
+        r#"{JS_PROJECT_STATUS}
+{JS_RESOLVERS}
 const projectFilter = {project_filter};
 const statusValue = {status_value};
 const project = resolveProject(projectFilter);
@@ -182,7 +184,7 @@ project.status = targetStatus;
 return {{
   id: project.id.primaryKey,
   name: project.name,
-  status: statusValue
+  status: normalizeProjectStatus(project)
 }};"#
     );
 

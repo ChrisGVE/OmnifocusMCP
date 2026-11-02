@@ -169,7 +169,8 @@ return {
   inInbox: task.inInbox,
   tags: task.tags.map(tag => tag.name),
   sequential: task.sequential,
-  estimatedMinutes: task.estimatedMinutes
+  estimatedMinutes: task.estimatedMinutes,
+  taskStatus: normalizeTaskStatus(task)
 };"#;
 
 pub async fn set_task_repetition<R: JxaRunner>(

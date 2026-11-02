@@ -38,7 +38,7 @@ impl Listing<'_> {
         let limit = self.limit;
         Ok(format!(
             "{declarations}\n\n{filter}\n\n{SORT_LISTED_TASKS}\n\n\
-             const tasks = sortedTasks.slice(0, {limit});\n\n{MAP_LISTED_TASKS}"
+             const tasks = sortedTasks.slice(0, {limit});\n\n{MAP_LISTED_TASKS}\nreturn tasks.map(mapListedTask);"
         ))
     }
 
@@ -219,12 +219,12 @@ const sortedTasks = sortBy === null ? filteredTasks : filteredTasks.slice().sort
 /// Reads planned dates for the summary mapper without requiring them: on a
 /// database not migrated for planned dates every `plannedDate` is `null`.
 /// Needs `JS_PLANNED_DATE`. Used by reads that take no planned-date filter.
-pub(super) const READ_PLANNED_DATES: &str = r#"const supportsPlannedDate = detectPlannedDateSupport(document.flattenedTasks);
+pub(crate) const READ_PLANNED_DATES: &str = r#"const supportsPlannedDate = detectPlannedDateSupport(document.flattenedTasks);
 const getPlannedDate = (task) => readPlannedDate(task, supportsPlannedDate);"#;
 
 /// Maps `tasks` to the task summary every listing tool returns (`list_tasks`,
 /// `search_tasks`, `get_inbox`, `list_subtasks`). Needs `getPlannedDate`.
-pub(super) const MAP_LISTED_TASKS: &str = r#"return tasks.map(task => {
+pub(crate) const MAP_LISTED_TASKS: &str = r#"function mapListedTask(task) {
   const tags = task.tags.map(taskTag => taskTag.name);
   const plannedDate = getPlannedDate(task);
   return {
@@ -245,16 +245,6 @@ pub(super) const MAP_LISTED_TASKS: &str = r#"return tasks.map(task => {
     inInbox: task.inInbox,
     hasChildren: task.hasChildren,
     sequential: task.sequential,
-    taskStatus: (() => {
-      const s = String(task.taskStatus);
-      if (s.includes("Available")) return "available";
-      if (s.includes("Blocked")) return "blocked";
-      if (s.includes("Next")) return "next";
-      if (s.includes("DueSoon")) return "due_soon";
-      if (s.includes("Overdue")) return "overdue";
-      if (s.includes("Completed")) return "completed";
-      if (s.includes("Dropped")) return "dropped";
-      return "unknown";
-    })()
+    taskStatus: normalizeTaskStatus(task)
   };
-});"#;
+}"#;

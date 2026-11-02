@@ -30,10 +30,11 @@ pub async fn get_inbox<R: JxaRunner>(runner: &R, limit: i32) -> Result<Vec<TaskR
 {JS_PLANNED_DATE}
 {READ_PLANNED_DATES}
 const tasks = inbox
-  .filter(task => !task.completed)
+  .filter(task => isTaskRemaining(task))
   .slice(0, {limit});
 
-{MAP_LISTED_TASKS}"#
+{MAP_LISTED_TASKS}
+return tasks.map(mapListedTask);"#
     );
 
     let value = runner.run_omnijs(&script).await?;
@@ -61,19 +62,13 @@ const children = task.children.map(child => {{
   return {{
     id: child.id.primaryKey,
     name: child.name,
-    completed: isTaskCompleted(child)
+    completed: isTaskCompleted(child),
+    taskStatus: normalizeTaskStatus(child)
   }};
 }});
 
 const repetitionRule = task.repetitionRule ? task.repetitionRule.ruleString : null;
-const plannedDate = (() => {{
-  try {{
-    const value = task.plannedDate;
-    return value === undefined ? null : value;
-  }} catch (e) {{
-    return null;
-  }}
-}})();
+const plannedDate = readPlannedDate(task, supportsPlannedDate);
 const effectivePlannedDate = (() => {{
   try {{
     const value = task.effectivePlannedDate;
@@ -108,17 +103,7 @@ const TASK_DETAILS_RESULT: &str = r#"return {
   modified: task.modified ? task.modified.toISOString() : null,
   plannedDate: plannedDate ? plannedDate.toISOString() : null,
   effectivePlannedDate: effectivePlannedDate ? effectivePlannedDate.toISOString() : null,
-  taskStatus: (() => {
-    const s = String(task.taskStatus);
-    if (s.includes("Available")) return "available";
-    if (s.includes("Blocked")) return "blocked";
-    if (s.includes("Next")) return "next";
-    if (s.includes("DueSoon")) return "due_soon";
-    if (s.includes("Overdue")) return "overdue";
-    if (s.includes("Completed")) return "completed";
-    if (s.includes("Dropped")) return "dropped";
-    return "unknown";
-  })(),
+  taskStatus: normalizeTaskStatus(task),
   projectName: task.containingProject ? task.containingProject.name : null,
   inInbox: task.inInbox,
   tags: task.tags.map(tag => tag.name),
@@ -156,7 +141,8 @@ const taskId = {task_id_filter};
 const task = resolveTask(taskId);
 
 const tasks = task.children.slice(0, {limit});
-{MAP_LISTED_TASKS}"#
+{MAP_LISTED_TASKS}
+return tasks.map(mapListedTask);"#
     );
 
     let value = runner.run_omnijs(&script).await?;

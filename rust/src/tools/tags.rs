@@ -2,7 +2,7 @@ use serde_json::Value;
 
 use crate::{
     error::{to_json_string, OmniFocusError, Result},
-    js_helpers::{JS_PROJECT_STATUS, JS_RESOLVERS, JS_TASK_STATUS},
+    js_helpers::{JS_PROJECT_STATUS, JS_RESOLVERS, JS_TAG_STATUS, JS_TASK_STATUS},
     jxa::{escape_for_jxa, JxaRunner},
     tools::{
         batch_delete::{normalize_ids_or_names, tree_batch_delete_script, TAG_TREE},
@@ -25,14 +25,13 @@ pub async fn list_tags<R: JxaRunner>(
     let script = format!(
         r#"{JS_PROJECT_STATUS}
 {JS_TASK_STATUS}
+{JS_TAG_STATUS}
 const statusFilter = {status_filter_value};
 const sortBy = {sort_by_value};
 const sortOrder = {sort_order_value};
 const now = new Date();
 
 {TAG_TASK_COUNTS}
-
-{NORMALIZE_TAG_STATUS}
 
 const compareValues = (left, right) => {{
   if (left < right) return sortOrder === "asc" ? -1 : 1;
@@ -114,23 +113,6 @@ document.flattenedTasks.forEach(task => {
   });
 });"#;
 
-/// Reads a tag's status as `active`, `on_hold` or `dropped`.
-const NORMALIZE_TAG_STATUS: &str = r#"const normalizeTagStatus = (tag) => {
-  const rawStatus = String(tag.status || "").toLowerCase();
-  const flattened = rawStatus
-    .replace(/^\[object_/g, "")
-    .replace(/[\[\]{}()]/g, " ")
-    .replace(/status/g, " ")
-    .replace(/[:.=]/g, " ")
-    .replace(/[_-]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-  if (flattened.includes("onhold") || /(^|\s)on\s*hold(\s|$)/.test(flattened)) return "on_hold";
-  if (flattened.includes("dropped")) return "dropped";
-  if (flattened.includes("active")) return "active";
-  return "active";
-};"#;
-
 pub async fn search_tags<R: JxaRunner>(runner: &R, query: &str, limit: i32) -> Result<Value> {
     if query.trim().is_empty() {
         return Err(OmniFocusError::Validation(
@@ -145,22 +127,8 @@ pub async fn search_tags<R: JxaRunner>(runner: &R, query: &str, limit: i32) -> R
 
     let query_value = escape_for_jxa(query.trim());
     let script = format!(
-        r#"const queryValue = {query_value};
-const normalizeTagStatus = (tag) => {{
-  const rawStatus = String(tag.status || "").toLowerCase();
-  const flattened = rawStatus
-    .replace(/^\[object_/g, "")
-    .replace(/[\[\]{{}}()]/g, " ")
-    .replace(/status/g, " ")
-    .replace(/[:.=]/g, " ")
-    .replace(/[_-]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-  if (flattened.includes("onhold") || /(^|\s)on\s*hold(\s|$)/.test(flattened)) return "on_hold";
-  if (flattened.includes("dropped")) return "dropped";
-  if (flattened.includes("active")) return "active";
-  return "active";
-}};
+        r#"{JS_TAG_STATUS}
+const queryValue = {query_value};
 
 return tagsMatching(queryValue)
   .slice(0, {limit})
@@ -199,6 +167,7 @@ pub async fn create_tag<R: JxaRunner>(
         .unwrap_or_else(|| "null".to_string());
     let script = format!(
         r#"{JS_RESOLVERS}
+{JS_TAG_STATUS}
 const tagName = {tag_name};
 const parentName = {parent_name};
 const tag = (() => {{
@@ -257,6 +226,7 @@ pub async fn update_tag<R: JxaRunner>(
         .unwrap_or_else(|| "null".to_string());
     let script = format!(
         r#"{JS_RESOLVERS}
+{JS_TAG_STATUS}
 const tagFilter = {tag_filter};
 const newName = {new_name};
 const statusValue = {status_value};
@@ -277,21 +247,6 @@ if (statusValue !== null) {{
   }}
   tag.status = targetStatus;
 }}
-const normalizeTagStatus = (tag) => {{
-  const rawStatus = String(tag.status || "").toLowerCase();
-  const flattened = rawStatus
-    .replace(/^\[object_/g, "")
-    .replace(/[\[\]{{}}()]/g, " ")
-    .replace(/status/g, " ")
-    .replace(/[:.=]/g, " ")
-    .replace(/[_-]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-  if (flattened.includes("onhold") || /(^|\s)on\s*hold(\s|$)/.test(flattened)) return "on_hold";
-  if (flattened.includes("dropped")) return "dropped";
-  if (flattened.includes("active")) return "active";
-  return "active";
-}};
 return {{ id: tag.id.primaryKey, name: tag.name, status: normalizeTagStatus(tag) }};"#
     );
     runner.run_omnijs(&script).await

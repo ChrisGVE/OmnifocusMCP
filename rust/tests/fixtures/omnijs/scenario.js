@@ -19,6 +19,7 @@
   const office = h.tag({ id: "tag-office", name: "Office" });
   const desk = h.tag({ id: "tag-desk", name: "Desk", in: office });
   h.tag({ id: "tag-waiting", name: "Waiting", status: Tag.Status.OnHold });
+  h.tag({ id: "tag-dropped", name: "Dropped", status: Tag.Status.Dropped });
   h.tag({ id: "tag-scrap", name: "Scrap Tag" });
   h.tag({ id: "tag-scrap-2", name: "Scrap Tag Two" });
 
@@ -90,7 +91,7 @@
     plannedDate: h.date("2026-10-09T09:00:00Z"),
     tags: [home, desk],
   });
-  h.task({
+  const water = h.task({
     id: "task-water",
     name: "Water plants",
     in: errands,
@@ -100,6 +101,7 @@
       Task.RepetitionScheduleType.Regularly,
     ),
   });
+  h.notify(water, h.date("2026-10-11T08:00:00Z"), "notification-water");
 
   // The inbox: an overdue task, one with a note, three to delete.
   h.task({
@@ -115,6 +117,7 @@
   h.task({ id: "task-scrap", name: "Scrap Task" });
   h.task({ id: "task-scrap-2", name: "Scrap Task Two" });
   h.task({ id: "task-scrap-3", name: "Scrap Task Three" });
+  h.task({ id: "task-dropped-inbox", name: "Dropped inbox item", dropDate: h.date("2026-10-08T12:00:00Z") });
 
   h.perspective({ id: "perspective-weekly", name: "Weekly Review" });
 })(__harness);

@@ -26,6 +26,12 @@ issue numbers in them, and every "upstream #N" below, refer to that project's tr
   [Tool annotations](docs/tools.md#tool-annotations).
 
 ### Changed
+- Task status and tag status results now use the documented OmniFocus enum values with an
+  `unknown` fallback; task-shaped write, child and project-root results include `taskStatus`.
+  Forecast and duplication use the shared task summary, and inbox reads exclude dropped items.
+- Lifecycle and project-status responses now report state read back from OmniFocus. Repeating task
+  completion returns the completed occurrence, and duplication preserves repetition and notifications
+  even when subtasks are excluded.
 - **Visible to clients:** a tool that fails while running now returns a normal tool result with
   `isError: true` and the error message as its text, instead of a JSON-RPC error. This covers
   invalid parameter values, objects not found, errors raised inside OmniFocus, OmniFocus not

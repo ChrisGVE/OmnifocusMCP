@@ -20,6 +20,7 @@ use crate::{
 };
 
 use super::inputs::validate_non_negative_minutes;
+use super::listing_script::{MAP_LISTED_TASKS, READ_PLANNED_DATES};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CreateTaskInput {
@@ -274,31 +275,14 @@ pub async fn duplicate_task<R: JxaRunner>(
     let script = format!(
         r#"{JS_PROJECT_STATUS}
 {JS_TASK_STATUS}
+{JS_PLANNED_DATE}
+{READ_PLANNED_DATES}
+{MAP_LISTED_TASKS}
 {JS_RESOLVERS}
 const taskId = {task_id_filter};
 const includeChildren = {include_children_value};
 const task = resolveTask(taskId);
 const insertionLocation = task.containingProject ? task.containingProject.ending : inbox.ending;
-
-const taskStatusValue = (taskItem) => {{
-  const s = String(taskItem.taskStatus);
-  if (s.includes("Available")) return "available";
-  if (s.includes("Blocked")) return "blocked";
-  if (s.includes("Next")) return "next";
-  if (s.includes("DueSoon")) return "due_soon";
-  if (s.includes("Overdue")) return "overdue";
-  if (s.includes("Completed")) return "completed";
-  if (s.includes("Dropped")) return "dropped";
-  return "unknown";
-}};
-
-const plannedDateValue = (taskItem) => {{
-  try {{
-    return taskItem.plannedDate ? taskItem.plannedDate.toISOString() : null;
-  }} catch (e) {{
-    return null;
-  }}
-}};
 
 let duplicatedTask;
 if (includeChildren) {{
@@ -308,17 +292,8 @@ if (includeChildren) {{
   }}
   duplicatedTask = duplicated[0];
 }} else {{
-  duplicatedTask = new Task(task.name, insertionLocation);
-  duplicatedTask.note = task.note;
-  duplicatedTask.flagged = task.flagged;
-  duplicatedTask.dueDate = task.dueDate;
-  duplicatedTask.deferDate = task.deferDate;
-  duplicatedTask.estimatedMinutes = task.estimatedMinutes;
-  task.tags.forEach(tag => duplicatedTask.addTag(tag));
-  try {{
-    duplicatedTask.plannedDate = task.plannedDate;
-  }} catch (e) {{
-  }}
+  const duplicated = duplicateTasks([task], insertionLocation);
+  duplicatedTask = duplicated[0];
 }}
 
 {DUPLICATED_TASK_RESULT}"#
@@ -328,23 +303,8 @@ if (includeChildren) {{
 }
 
 /// The summary `duplicate_task` returns for the copy.
-const DUPLICATED_TASK_RESULT: &str = r#"return {
-  id: duplicatedTask.id.primaryKey,
-  name: duplicatedTask.name,
-  note: duplicatedTask.note,
-  flagged: duplicatedTask.flagged,
-  dueDate: duplicatedTask.dueDate ? duplicatedTask.dueDate.toISOString() : null,
-  addedDate: duplicatedTask.added ? duplicatedTask.added.toISOString() : null,
-  changedDate: duplicatedTask.modified ? duplicatedTask.modified.toISOString() : null,
-  deferDate: duplicatedTask.deferDate ? duplicatedTask.deferDate.toISOString() : null,
-  completed: isTaskCompleted(duplicatedTask),
-  completionDate: duplicatedTask.completionDate ? duplicatedTask.completionDate.toISOString() : null,
-  plannedDate: plannedDateValue(duplicatedTask),
-  projectName: duplicatedTask.containingProject ? duplicatedTask.containingProject.name : null,
-  inInbox: duplicatedTask.inInbox,
-  tags: duplicatedTask.tags.map(tag => tag.name),
-  estimatedMinutes: duplicatedTask.estimatedMinutes,
-  hasChildren: duplicatedTask.hasChildren,
-  sequential: duplicatedTask.sequential,
-  taskStatus: taskStatusValue(duplicatedTask)
-};"#;
+const DUPLICATED_TASK_RESULT: &str = r#"const result = mapListedTask(duplicatedTask);
+result.repetitionRule = duplicatedTask.repetitionRule
+  ? duplicatedTask.repetitionRule.ruleString : null;
+result.notifications = duplicatedTask.notifications.map(notification => notification.id.primaryKey);
+return result;"#;

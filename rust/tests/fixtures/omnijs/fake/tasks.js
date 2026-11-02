@@ -47,6 +47,21 @@
   // "If the task is not completed, marks it as complete with the given
   // completion date (or the current date if no date is specified)."
   F.markTaskComplete = (task, date) => {
+    if (task.repetitionRule) {
+      const occurrence = F.createTaskRecord({
+        name: task.name,
+        note: task.note,
+        flagged: task.flagged,
+        dueDate: task.dueDate,
+        deferDate: task.deferDate,
+        plannedDate: task.plannedDate,
+        estimatedMinutes: task.estimatedMinutes,
+        repetitionRule: null,
+        completionDate: date || F.now(),
+      });
+      occurrence.tags = task.tags.slice();
+      return occurrence;
+    }
     if (!task.completionDate) {
       task.completionDate = date || F.now();
       task.modified = F.now();

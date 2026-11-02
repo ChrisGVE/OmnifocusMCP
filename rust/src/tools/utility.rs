@@ -41,7 +41,8 @@ task.markIncomplete();
 return {{
   id: task.id.primaryKey,
   name: task.name,
-  completed: isTaskCompleted(task)
+  completed: isTaskCompleted(task),
+  taskStatus: normalizeTaskStatus(task)
 }};"#
     );
     runner.run_omnijs(&script).await

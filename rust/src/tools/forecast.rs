@@ -2,8 +2,9 @@ use serde_json::Value;
 
 use crate::{
     error::{OmniFocusError, Result},
-    js_helpers::{JS_PROJECT_STATUS, JS_TASK_STATUS},
+    js_helpers::{JS_PLANNED_DATE, JS_PROJECT_STATUS, JS_TASK_STATUS},
     jxa::JxaRunner,
+    tools::tasks::listing_script::{MAP_LISTED_TASKS, READ_PLANNED_DATES},
 };
 
 pub async fn get_forecast<R: JxaRunner>(runner: &R, limit: i32) -> Result<Value> {
@@ -16,12 +17,14 @@ pub async fn get_forecast<R: JxaRunner>(runner: &R, limit: i32) -> Result<Value>
     let script = format!(
         r#"{JS_PROJECT_STATUS}
 {JS_TASK_STATUS}
+{JS_PLANNED_DATE}
+{READ_PLANNED_DATES}
 const now = new Date();
 const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 const endOfToday = new Date(startOfToday.getTime() + (24 * 60 * 60 * 1000));
 const endOfWeek = new Date(now.getTime() + (7 * 24 * 60 * 60 * 1000));
 
-{FORECAST_TASK_SUMMARY}
+{MAP_LISTED_TASKS}
 
 const openTasks = document.flattenedTasks.filter(task => {{
   return !isProjectRootTask(task) && isTaskRemaining(task);
@@ -43,23 +46,23 @@ const counts = {{
 openTasks.forEach(task => {{
   if (task.dueDate !== null && task.dueDate < startOfToday) {{
     counts.overdueCount += 1;
-    if (overdue.length < {limit}) overdue.push(toTaskSummary(task));
+            if (overdue.length < {limit}) overdue.push(mapListedTask(task));
   }}
   if (task.dueDate !== null && task.dueDate >= startOfToday && task.dueDate < endOfToday) {{
     counts.dueTodayCount += 1;
-    if (dueToday.length < {limit}) dueToday.push(toTaskSummary(task));
+            if (dueToday.length < {limit}) dueToday.push(mapListedTask(task));
   }}
   if (task.flagged) {{
     counts.flaggedCount += 1;
-    if (flagged.length < {limit}) flagged.push(toTaskSummary(task));
+            if (flagged.length < {limit}) flagged.push(mapListedTask(task));
   }}
   if (task.deferDate !== null && task.deferDate > now) {{
     counts.deferredCount += 1;
-    if (deferred.length < {limit}) deferred.push(toTaskSummary(task));
+            if (deferred.length < {limit}) deferred.push(mapListedTask(task));
   }}
   if (task.dueDate !== null && task.dueDate >= endOfToday && task.dueDate < endOfWeek) {{
     counts.dueThisWeekCount += 1;
-    if (dueThisWeek.length < {limit}) dueThisWeek.push(toTaskSummary(task));
+            if (dueThisWeek.length < {limit}) dueThisWeek.push(mapListedTask(task));
   }}
 }});
 
@@ -75,34 +78,3 @@ return {{
 
     runner.run_omnijs(&script).await
 }
-
-/// Defines `toTaskSummary`, the summary each forecast section lists.
-const FORECAST_TASK_SUMMARY: &str = r#"const toTaskSummary = (task) => {
-  return {
-    id: task.id.primaryKey,
-    name: task.name,
-    note: task.note,
-    flagged: task.flagged,
-    completed: isTaskCompleted(task),
-    dueDate: task.dueDate ? task.dueDate.toISOString() : null,
-    deferDate: task.deferDate ? task.deferDate.toISOString() : null,
-    completionDate: task.completionDate ? task.completionDate.toISOString() : null,
-    taskStatus: (() => {
-      const s = String(task.taskStatus);
-      if (s.includes("Available")) return "available";
-      if (s.includes("Blocked")) return "blocked";
-      if (s.includes("Next")) return "next";
-      if (s.includes("DueSoon")) return "due_soon";
-      if (s.includes("Overdue")) return "overdue";
-      if (s.includes("Completed")) return "completed";
-      if (s.includes("Dropped")) return "dropped";
-      return "unknown";
-    })(),
-    projectName: task.containingProject ? task.containingProject.name : null,
-    tags: task.tags.map(tag => tag.name),
-    estimatedMinutes: task.estimatedMinutes,
-    inInbox: task.inInbox,
-    sequential: task.sequential,
-    hasChildren: task.hasChildren
-  };
-};"#;

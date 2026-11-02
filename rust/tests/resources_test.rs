@@ -24,7 +24,7 @@ impl JxaRunner for ResourceRunner {
                 }]));
             }
             if script.contains("const now = new Date();")
-                && script.contains("const toTaskSummary = (task) =>")
+                && script.contains("function mapListedTask(task)")
             {
                 return Ok(json!({
                     "overdue": [{"id": "task-2", "name": "overdue item"}],

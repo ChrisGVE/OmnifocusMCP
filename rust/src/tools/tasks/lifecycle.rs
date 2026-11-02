@@ -25,12 +25,13 @@ pub async fn complete_task<R: JxaRunner>(runner: &R, task_id: &str) -> Result<Va
 const taskId = {task_id_value};
 const task = resolveTask(taskId);
 
-task.markComplete();
+const completedTask = task.markComplete() || task;
 
 return {{
   id: task.id.primaryKey,
   name: task.name,
-  completed: isTaskCompleted(task)
+  completed: isTaskCompleted(completedTask),
+  taskStatus: normalizeTaskStatus(completedTask)
 }};"#
     );
     runner.run_omnijs(&script).await

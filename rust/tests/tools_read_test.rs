@@ -1163,9 +1163,7 @@ async fn get_inbox_script_includes_completion_and_children_fields() {
     assert!(script.contains("addedDate: task.added ? task.added.toISOString() : null,"));
     assert!(script.contains("changedDate: task.modified ? task.modified.toISOString() : null,"));
     assert!(script.contains("hasChildren: task.hasChildren"));
-    assert!(script.contains("taskStatus: (() => {"));
-    assert!(script.contains("if (s.includes(\"Available\")) return \"available\";"));
-    assert!(script.contains("taskStatus: (() => {"));
+    assert!(script.contains("taskStatus: normalizeTaskStatus(task)"));
 }
 
 #[tokio::test]
@@ -1272,9 +1270,7 @@ async fn get_forecast_script_includes_deferred_due_this_week_counts_and_enriched
         "completionDate: task.completionDate ? task.completionDate.toISOString() : null,"
     ));
     assert!(script.contains("hasChildren: task.hasChildren"));
-    assert!(script.contains("taskStatus: (() => {"));
-    assert!(script.contains("if (s.includes(\"Dropped\")) return \"dropped\";"));
-    assert!(script.contains("if (s.includes(\"Dropped\")) return \"dropped\";"));
+    assert!(script.contains("taskStatus: normalizeTaskStatus(task)"));
 }
 
 #[tokio::test]
@@ -1328,8 +1324,7 @@ async fn get_task_and_list_subtasks_scripts_include_task_status_mapper() {
     assert!(get_task_script_text.contains(
         "effectivePlannedDate: effectivePlannedDate ? effectivePlannedDate.toISOString() : null,"
     ));
-    assert!(get_task_script_text.contains("taskStatus: (() => {"));
-    assert!(get_task_script_text.contains("String(task.taskStatus)"));
+    assert!(get_task_script_text.contains("taskStatus: normalizeTaskStatus(task)"));
 
     let list_subtasks_script = Arc::new(Mutex::new(String::new()));
     let list_subtasks_runner = CapturingRunner {
@@ -1343,8 +1338,7 @@ async fn get_task_and_list_subtasks_scripts_include_task_status_mapper() {
         .lock()
         .expect("script capture lock should succeed")
         .clone();
-    assert!(list_subtasks_script_text.contains("taskStatus: (() => {"));
-    assert!(list_subtasks_script_text.contains("String(task.taskStatus)"));
+    assert!(list_subtasks_script_text.contains("taskStatus: normalizeTaskStatus(task)"));
 }
 
 #[tokio::test]
@@ -1509,8 +1503,7 @@ async fn duplicate_task_script_supports_children_and_manual_clone_modes() {
         .expect("script capture lock should succeed")
         .clone();
     assert!(without_children_script_text.contains("const includeChildren = false;"));
-    assert!(without_children_script_text.contains("new Task(task.name, insertionLocation);"));
-    assert!(without_children_script_text.contains("addTag(tag)"));
+    assert!(without_children_script_text.contains("duplicateTasks([task], insertionLocation)"));
 }
 
 #[tokio::test]
@@ -1893,16 +1886,9 @@ async fn list_tags_sort_and_status_filter_are_in_script() {
     assert!(
         script.contains(r#"statusFilter === "all" || normalizeTagStatus(tag) === statusFilter"#)
     );
-    assert!(script.contains(r#".replace(/^\[object_/g, "")"#));
-    assert!(script.contains(r#".replace(/status/g, " ")"#));
-    assert!(script.contains(r#".replace(/[:.=]/g, " ")"#));
-    assert!(script.contains(r#".replace(/[_-]/g, " ")"#));
-    assert!(script.contains(r#"/(^|\s)on\s*hold(\s|$)/.test(flattened)"#));
-    assert!(script.contains(r#".replace(/[_-]/g, " ")"#));
-    assert!(script.contains(r#"/(^|\s)on\s*hold(\s|$)/.test(flattened)"#));
-    assert!(script.contains(r#"flattened.includes("onhold")"#));
-    assert!(script.contains(r#"if (flattened.includes("dropped")) return "dropped";"#));
-    assert!(script.contains(r#"if (flattened.includes("active")) return "active";"#));
+    assert!(script.contains("Tag.Status.Active"));
+    assert!(script.contains("Tag.Status.OnHold"));
+    assert!(script.contains("Tag.Status.Dropped"));
     assert!(script.contains("return sortedTags.slice(0, 7);"));
 }
 
@@ -1938,15 +1924,9 @@ async fn get_folder_script_compares_folder_status_enum_members() {
         .lock()
         .expect("script capture lock should succeed")
         .clone();
-    assert!(tags_script.contains("toLowerCase()"));
-    assert!(tags_script.contains(r#".replace(/^\[object_/g, "")"#));
-    assert!(tags_script.contains(r#".replace(/[\[\]{}()]/g, " ")"#));
-    assert!(tags_script.contains(r#".replace(/status/g, " ")"#));
-    assert!(tags_script.contains(r#".replace(/[:.=]/g, " ")"#));
-    assert!(tags_script.contains(r#".replace(/[_-]/g, " ")"#));
-    assert!(tags_script.contains(r#"/(^|\s)on\s*hold(\s|$)/.test(flattened)"#));
-    assert!(tags_script.contains(r#"flattened.includes("onhold")"#));
-    assert!(tags_script.contains(r#"if (flattened.includes("dropped")) return "dropped";"#));
+    assert!(tags_script.contains("Tag.Status.Active"));
+    assert!(tags_script.contains("Tag.Status.OnHold"));
+    assert!(tags_script.contains("Tag.Status.Dropped"));
 
     let last_script = Arc::new(Mutex::new(String::new()));
     let runner = CapturingRunner {
@@ -2127,9 +2107,7 @@ async fn list_tasks_date_filter_script_contains_expected_logic() {
         "completionDate: task.completionDate ? task.completionDate.toISOString() : null,"
     ));
     assert!(script.contains("hasChildren: task.hasChildren"));
-    assert!(script.contains("taskStatus: (() => {"));
-    assert!(script.contains("if (s.includes(\"Available\")) return \"available\";"));
-    assert!(script.contains("if (s.includes(\"Available\")) return \"available\";"));
+    assert!(script.contains("taskStatus: normalizeTaskStatus(task)"));
     assert!(script.contains("must be YYYY-MM-DD or an ISO 8601 date-time; received "));
 }
 

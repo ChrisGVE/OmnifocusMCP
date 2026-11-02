@@ -1878,7 +1878,7 @@ async fn duplicate_task_script_supports_child_toggle_and_summary_fields() {
         captured.contains("const duplicated = duplicateTasks([task], insertionLocation);")
             || captured.contains("const duplicates = duplicateTasks([task], insertionLocation);")
     );
-    assert!(captured.contains("new Task(task.name, insertionLocation);"));
+    assert!(captured.contains("duplicateTasks([task], insertionLocation)"));
     assert!(captured.contains("estimatedMinutes"));
 }
 
@@ -1900,8 +1900,7 @@ async fn rich_task_write_results_emit_live_inbox_and_sequential_values() {
         .last()
         .cloned()
         .expect("duplicate script should be captured");
-    assert!(duplicate_script.contains("inInbox: duplicatedTask.inInbox,"));
-    assert!(duplicate_script.contains("sequential: duplicatedTask.sequential,"));
+    assert!(duplicate_script.contains("const result = mapListedTask(duplicatedTask);"));
 
     update_task(
         &runner, "task-1", None, None, None, None, None, None, None, None,

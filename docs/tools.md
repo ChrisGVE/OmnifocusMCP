@@ -406,7 +406,8 @@ Marks a task completed.
 | --- | --- | --- | --- | --- |
 | `task_id` | string | yes | - | |
 
-Returns `{id, name, completed}`.
+Returns `{id, name, completed, taskStatus}`. For repeating tasks, the returned
+object is the occurrence that OmniFocus actually completed.
 
 ### `uncomplete_task`
 
@@ -436,7 +437,7 @@ Returns `{id, name, repetitionRule}`.
 
 ### `duplicate_task`
 
-Copies a task.
+Copies a task with its task properties, repetition, notifications and tags.
 
 | Key | Type | Required | Default | Notes |
 | --- | --- | --- | --- | --- |
@@ -444,7 +445,8 @@ Copies a task.
 | `includeChildren` | boolean | no | `true` | Copy the subtasks too. |
 
 Creates the copy at the end of the task's project, or in the inbox when the task has no project;
-a copied subtask is not placed under the original's parent. Returns the new task.
+a copied subtask is not placed under the original's parent. Returns the new task summary plus
+`repetitionRule` and notification ids.
 
 ### `move_task`
 
@@ -672,7 +674,7 @@ Marks a project completed.
 | --- | --- | --- | --- | --- |
 | `project_id_or_name` | string | yes | - | |
 
-Returns `{id, name, completed}`.
+Returns `{id, name, completed, status}`, where `status` is the live project status (`completed`).
 
 ### `uncomplete_project`
 

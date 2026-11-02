@@ -144,6 +144,16 @@ pub const JS_FOLDER_STATUS: &str = r#"function normalizeFolderStatus(folder) {
 }
 "#;
 
+/// Tag status naming through the documented `Tag.Status` enum.
+pub const JS_TAG_STATUS: &str = r#"function normalizeTagStatus(tag) {
+  const status = tag.status;
+  if (status === Tag.Status.Active) return "active";
+  if (status === Tag.Status.OnHold) return "on_hold";
+  if (status === Tag.Status.Dropped) return "dropped";
+  return "unknown";
+}
+"#;
+
 /// Planned-date capability detection and request validation.
 ///
 /// Older OmniFocus databases throw when `task.plannedDate` is read. Read tools
@@ -278,6 +288,17 @@ function isTaskCompleted(task) {
     || status === Task.Status.Completed
     || ofTaskStatusIsSet(task.effectiveCompletionDate)
     || projectStatus === "completed";
+}
+function normalizeTaskStatus(task) {
+  const status = task.taskStatus;
+  if (status === Task.Status.Available) return "available";
+  if (status === Task.Status.Blocked) return "blocked";
+  if (status === Task.Status.Next) return "next";
+  if (status === Task.Status.DueSoon) return "due_soon";
+  if (status === Task.Status.Overdue) return "overdue";
+  if (status === Task.Status.Completed) return "completed";
+  if (status === Task.Status.Dropped) return "dropped";
+  return "unknown";
 }
 function isTaskRemaining(task) {
   if (isTaskCompleted(task)) return false;

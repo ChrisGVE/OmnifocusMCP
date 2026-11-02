@@ -132,6 +132,7 @@ const rootTasks = project.tasks.map(task => {{
     dueDate: task.dueDate ? task.dueDate.toISOString() : null,
     deferDate: task.deferDate ? task.deferDate.toISOString() : null,
     completed: isTaskCompleted(task),
+    taskStatus: normalizeTaskStatus(task),
     tags: task.tags.map(tag => tag.name),
     inInbox: task.inInbox,
     sequential: task.sequential,

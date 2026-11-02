@@ -23,7 +23,7 @@ mod filters;
 mod inputs;
 mod lifecycle;
 mod list;
-mod listing_script;
+pub(crate) mod listing_script;
 mod moves;
 mod notifications;
 mod reads;

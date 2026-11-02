@@ -19,16 +19,18 @@ pub async fn complete_project<R: JxaRunner>(runner: &R, project_id_or_name: &str
 
     let project_filter = escape_for_jxa(project_id_or_name.trim());
     let script = format!(
-        r#"{JS_RESOLVERS}
+        r#"{JS_PROJECT_STATUS}
+{JS_RESOLVERS}
 const projectFilter = {project_filter};
 const project = resolveProject(projectFilter);
 
-project.markComplete();
+const completedProject = project.markComplete() || project;
 
 return {{
   id: project.id.primaryKey,
   name: project.name,
-  completed: true
+  completed: normalizeProjectStatus(completedProject) === "completed",
+  status: normalizeProjectStatus(completedProject)
 }};"#
     );
 
@@ -47,7 +49,8 @@ pub async fn uncomplete_project<R: JxaRunner>(
 
     let project_filter = escape_for_jxa(project_id_or_name.trim());
     let script = format!(
-        r#"{JS_RESOLVERS}
+        r#"{JS_PROJECT_STATUS}
+{JS_RESOLVERS}
 const projectFilter = {project_filter};
 const project = resolveProject(projectFilter);
 if (!project.completed) {{
@@ -59,7 +62,7 @@ project.markIncomplete();
 return {{
   id: project.id.primaryKey,
   name: project.name,
-  status: "active"
+  status: normalizeProjectStatus(project)
 }};"#
     );
 
