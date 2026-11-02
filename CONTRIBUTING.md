@@ -59,6 +59,9 @@ without the variable proves nothing about OmniFocus.
   is reported per entry rather than thrown), and tasks with `resolveTask`. Prepend the snippet;
   do not write another copy.
 - Every bug fix starts with a failing unit test that reproduces it.
+- Every new tool needs a row in `rows()` of `rust/tests/all_tools_jsc_test.rs`, which runs its
+  script against a strict fake of OmniJS; the test fails until the row exists. See
+  [Testing](rust/README.md#testing).
 - A change to a tool's parameters or behaviour updates [`docs/tools.md`](docs/tools.md) and
   [`CHANGELOG.md`](CHANGELOG.md) in the same pull request.
 
