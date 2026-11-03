@@ -251,6 +251,7 @@
   const harness = {
     violations: F.violations,
     gaps: F.gaps,
+    auditFixtures: F.AUDIT_FIXTURES,
     date: (text) => {
       const date = new F.Date(text);
       if (Number.isNaN(date.getTime()))

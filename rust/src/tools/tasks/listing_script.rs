@@ -14,7 +14,7 @@ use crate::{
     tools::js_values::js_string_or_null,
 };
 
-use super::filters::{FilterLiterals, TaskFilters, PARSED_BOUND_LINES};
+use super::filters::{FilterLiterals, TaskFilters, PARSED_BOUND_LINES, TASK_MATCHES_FILTERS};
 
 /// One validated `list_tasks` or `search_tasks` request.
 pub(super) struct Listing<'a> {
@@ -82,6 +82,7 @@ const statusFilter = {status_filter};
 const sortBy = {sort_by_filter};
 const sortOrder = {sort_order_filter};
 {PARSED_BOUND_LINES}
+{TASK_MATCHES_FILTERS}
 const includeCompletedForDateFilter = completedBefore !== null || completedAfter !== null;
 const supportsPlannedDate = detectPlannedDateSupport(document.flattenedTasks);
 requirePlannedDateSupport(supportsPlannedDate, plannedBeforeRaw, plannedAfterRaw, sortBy);
@@ -99,7 +100,6 @@ fn filter_fragment(has_query: bool) -> String {
 
 const FILTER_HEAD: &str = r#"const filteredTasks = document.flattenedTasks
   .filter(task => {
-    if (isProjectRootTask(task)) return false;
 "#;
 
 const QUERY_MATCH_LINES: &str = r#"    const name = (task.name || "").toLowerCase();
@@ -111,53 +111,8 @@ const QUERY_MATCH_LINES: &str = r#"    const name = (task.name || "").toLowerCas
 /// Project, tag, flagged, status, date bound and duration tests. A
 /// completed task passes a non-completed status only when a completion
 /// date bound asked for completed tasks.
-const FILTER_PREDICATE: &str = r#"    if (filterProject !== null) {
-      const containing = task.containingProject;
-      if (!containing || containing.id.primaryKey !== filterProject.id.primaryKey) return false;
-    }
-
-    if (!taskMatchesTagFilter(task)) return false;
-
-    if (flaggedFilter !== null && task.flagged !== flaggedFilter) return false;
-
-    let statusMatches = false;
-    if (statusFilter === "all") {
-      statusMatches = true;
-    } else if (statusFilter === "completed") {
-      statusMatches = isTaskCompleted(task);
-    } else if (isTaskCompleted(task)) {
-      statusMatches = includeCompletedForDateFilter;
-    } else if (isTaskRemaining(task)) {
-      const dueDate = task.dueDate;
-      if (statusFilter === "available") {
-        statusMatches = isTaskAvailable(task, now);
-      } else if (statusFilter === "overdue") {
-        statusMatches = dueDate !== null && dueDate < now;
-      } else if (statusFilter === "due_soon") {
-        statusMatches = dueDate !== null && dueDate >= now && dueDate <= soon;
-      } else if (statusFilter === "on_hold") {
-        statusMatches = task.containingProject !== null && normalizeProjectStatus(task.containingProject) === "on_hold";
-      }
-    }
-    if (!statusMatches) return false;
-    if (dueBefore !== null && !(task.dueDate !== null && task.dueDate < dueBefore)) return false;
-    if (dueAfter !== null && !(task.dueDate !== null && task.dueDate > dueAfter)) return false;
-    if (deferBefore !== null && !(task.deferDate !== null && task.deferDate < deferBefore)) return false;
-    if (deferAfter !== null && !(task.deferDate !== null && task.deferDate > deferAfter)) return false;
-    if (completedBefore !== null && !(task.completionDate !== null && task.completionDate < completedBefore)) return false;
-    if (completedAfter !== null && !(task.completionDate !== null && task.completionDate > completedAfter)) return false;
-    if (addedBefore !== null && !(task.added !== null && task.added <= addedBefore)) return false;
-    if (addedAfter !== null && !(task.added !== null && task.added >= addedAfter)) return false;
-    if (changedBefore !== null && !(task.modified !== null && task.modified <= changedBefore)) return false;
-    if (changedAfter !== null && !(task.modified !== null && task.modified >= changedAfter)) return false;
-    if (supportsPlannedDate) {
-      const plannedDate = getPlannedDate(task);
-      if (plannedBefore !== null && !(plannedDate !== null && plannedDate < plannedBefore)) return false;
-      if (plannedAfter !== null && !(plannedDate !== null && plannedDate > plannedAfter)) return false;
-    }
-    if (maxEstimatedMinutes !== null && !(task.estimatedMinutes !== null && task.estimatedMinutes <= maxEstimatedMinutes)) return false;
-    return true;
-  });"#;
+const FILTER_PREDICATE: &str =
+    "    if (!taskMatchesFilters(task)) return false;\n    return true;\n  });";
 
 /// Sorts the matches by `sortBy` in `sortOrder`; tasks without a value
 /// for the sort field go last.

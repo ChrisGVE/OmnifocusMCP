@@ -204,10 +204,10 @@ const maxEstimatedMinutes = {max_estimated_minutes_filter};"#
     }
 }
 
-/// Declares `now`, `soon` (seven days from now) and every date bound parsed
+/// Declares `now`, the configured due-soon interval and every date bound parsed
 /// from its raw value, so a malformed date fails the script up front.
 pub(super) const PARSED_BOUND_LINES: &str = r#"const now = new Date();
-const soon = new Date(now.getTime() + (7 * 24 * 60 * 60 * 1000));
+const dueSoonSeconds = readDueSoonInterval();
 const dueBefore = parseOptionalLocalDate(dueBeforeRaw, "dueBefore");
 const dueAfter = parseOptionalLocalDate(dueAfterRaw, "dueAfter");
 const deferBefore = parseOptionalLocalDate(deferBeforeRaw, "deferBefore");
@@ -220,3 +220,53 @@ const changedAfter = parseOptionalLocalDate(changedAfterRaw, "changed_after");
 const changedBefore = parseOptionalLocalDate(changedBeforeRaw, "changed_before");
 const plannedBefore = parseOptionalLocalDate(plannedBeforeRaw, "plannedBefore");
 const plannedAfter = parseOptionalLocalDate(plannedAfterRaw, "plannedAfter");"#;
+
+/// The one task predicate shared by listing and counting scripts.
+pub(super) const TASK_MATCHES_FILTERS: &str = r#"function taskMatchesFilters(task) {
+  if (isProjectRootTask(task)) return false;
+  if (filterProject !== null) {
+    const containing = task.containingProject;
+    if (!containing || containing.id.primaryKey !== filterProject.id.primaryKey) return false;
+  }
+  if (!taskMatchesTagFilter(task)) return false;
+  if (flaggedFilter !== null && task.flagged !== flaggedFilter) return false;
+
+  let statusMatches = false;
+  if (statusFilter === "all") {
+    statusMatches = true;
+  } else if (statusFilter === "completed") {
+    statusMatches = isTaskCompleted(task);
+  } else if (isTaskCompleted(task)) {
+    statusMatches = includeCompletedForDateFilter;
+  } else if (isTaskRemaining(task)) {
+    if (statusFilter === "available") {
+      statusMatches = isTaskAvailable(task, now);
+    } else if (statusFilter === "overdue") {
+      statusMatches = isOverdue(task, now);
+    } else if (statusFilter === "due_soon") {
+      statusMatches = isDueSoon(task, now, dueSoonSeconds);
+    } else if (statusFilter === "on_hold") {
+      statusMatches = task.containingProject !== null && normalizeProjectStatus(task.containingProject) === "on_hold";
+    }
+  }
+  if (!statusMatches) return false;
+  const dueDate = ofTaskStatusDueDate(task);
+  const deferDate = ofTaskStatusDeferDate(task);
+  if (dueBefore !== null && !(dueDate !== null && dueDate < dueBefore)) return false;
+  if (dueAfter !== null && !(dueDate !== null && dueDate > dueAfter)) return false;
+  if (deferBefore !== null && !(deferDate !== null && deferDate < deferBefore)) return false;
+  if (deferAfter !== null && !(deferDate !== null && deferDate > deferAfter)) return false;
+  if (completedBefore !== null && !(task.completionDate !== null && task.completionDate < completedBefore)) return false;
+  if (completedAfter !== null && !(task.completionDate !== null && task.completionDate > completedAfter)) return false;
+  if (addedBefore !== null && !(task.added !== null && task.added <= addedBefore)) return false;
+  if (addedAfter !== null && !(task.added !== null && task.added >= addedAfter)) return false;
+  if (changedBefore !== null && !(task.modified !== null && task.modified <= changedBefore)) return false;
+  if (changedAfter !== null && !(task.modified !== null && task.modified >= changedAfter)) return false;
+  if (supportsPlannedDate) {
+    const plannedDate = getPlannedDate(task);
+    if (plannedBefore !== null && !(plannedDate !== null && plannedDate < plannedBefore)) return false;
+    if (plannedAfter !== null && !(plannedDate !== null && plannedDate > plannedAfter)) return false;
+  }
+  if (maxEstimatedMinutes !== null && !(task.estimatedMinutes !== null && task.estimatedMinutes <= maxEstimatedMinutes)) return false;
+  return true;
+}"#;

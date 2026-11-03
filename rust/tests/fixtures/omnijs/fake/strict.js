@@ -103,6 +103,7 @@
   Object.defineProperty(FixedClockDate, "name", { value: "Date" });
   global.Date = FixedClockDate;
   Object.assign(F, { RealDate, Date: FixedClockDate, FIXED_NOW: fixedNow });
+  F.AUDIT_FIXTURES = config.auditFixtures === true;
   F.now = () => new FixedClockDate();
 
   F.INTERNAL = Symbol("fake internal record");

@@ -21,7 +21,7 @@ pub async fn get_forecast<R: JxaRunner>(runner: &R, limit: i32) -> Result<Value>
 {READ_PLANNED_DATES}
 const now = new Date();
 const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-const endOfToday = new Date(startOfToday.getTime() + (24 * 60 * 60 * 1000));
+const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
 const endOfWeek = new Date(now.getTime() + (7 * 24 * 60 * 60 * 1000));
 
 {MAP_LISTED_TASKS}
@@ -44,11 +44,12 @@ const counts = {{
 }};
 
 openTasks.forEach(task => {{
-  if (task.dueDate !== null && task.dueDate < startOfToday) {{
+  if (isOverdue(task, startOfToday)) {{
     counts.overdueCount += 1;
             if (overdue.length < {limit}) overdue.push(mapListedTask(task));
   }}
-  if (task.dueDate !== null && task.dueDate >= startOfToday && task.dueDate < endOfToday) {{
+  const dueDate = ofTaskStatusDueDate(task);
+  if (dueDate !== null && dueDate >= startOfToday && dueDate < endOfToday) {{
     counts.dueTodayCount += 1;
             if (dueToday.length < {limit}) dueToday.push(mapListedTask(task));
   }}
@@ -56,11 +57,11 @@ openTasks.forEach(task => {{
     counts.flaggedCount += 1;
             if (flagged.length < {limit}) flagged.push(mapListedTask(task));
   }}
-  if (task.deferDate !== null && task.deferDate > now) {{
+  if (isDeferred(task, now)) {{
     counts.deferredCount += 1;
             if (deferred.length < {limit}) deferred.push(mapListedTask(task));
   }}
-  if (task.dueDate !== null && task.dueDate >= endOfToday && task.dueDate < endOfWeek) {{
+  if (dueDate !== null && dueDate >= endOfToday && dueDate < endOfWeek) {{
     counts.dueThisWeekCount += 1;
             if (dueThisWeek.length < {limit}) dueThisWeek.push(mapListedTask(task));
   }}

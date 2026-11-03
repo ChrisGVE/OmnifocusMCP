@@ -15,7 +15,7 @@ use crate::{
 };
 
 use super::{
-    filters::{FilterLiterals, TaskFilters, PARSED_BOUND_LINES},
+    filters::{FilterLiterals, TaskFilters, PARSED_BOUND_LINES, TASK_MATCHES_FILTERS},
     inputs::{normalize_tag_filter_mode_input, validate_max_estimated_minutes},
 };
 
@@ -123,10 +123,13 @@ fn counts_script(literals: &FilterLiterals) -> String {
 {selection}
 {bounds}
 {PARSED_BOUND_LINES}
+const statusFilter = "all";
+const includeCompletedForDateFilter = false;
 const supportsPlannedDate = detectPlannedDateSupport(document.flattenedTasks);
 requirePlannedDateSupport(supportsPlannedDate, plannedBeforeRaw, plannedAfterRaw, null);
 const getPlannedDate = (task) => readPlannedDate(task, supportsPlannedDate);
 
+{TASK_MATCHES_FILTERS}
 {COUNT_MATCHING_TASKS}"#
     )
 }
@@ -145,29 +148,7 @@ const COUNT_MATCHING_TASKS: &str = r#"const counts = {
 };
 
 for (const task of document.flattenedTasks) {
-  if (isProjectRootTask(task)) continue;
-  if (filterProject !== null) {
-    const containing = task.containingProject;
-    if (!containing || containing.id.primaryKey !== filterProject.id.primaryKey) continue;
-  }
-  if (!taskMatchesTagFilter(task)) continue;
-  if (flaggedFilter !== null && task.flagged !== flaggedFilter) continue;
-  if (dueBefore !== null && !(task.dueDate !== null && task.dueDate < dueBefore)) continue;
-  if (dueAfter !== null && !(task.dueDate !== null && task.dueDate > dueAfter)) continue;
-  if (deferBefore !== null && !(task.deferDate !== null && task.deferDate < deferBefore)) continue;
-  if (deferAfter !== null && !(task.deferDate !== null && task.deferDate > deferAfter)) continue;
-  if (completedBefore !== null && !(task.completionDate !== null && task.completionDate < completedBefore)) continue;
-  if (completedAfter !== null && !(task.completionDate !== null && task.completionDate > completedAfter)) continue;
-  if (addedBefore !== null && !(task.added !== null && task.added <= addedBefore)) continue;
-  if (addedAfter !== null && !(task.added !== null && task.added >= addedAfter)) continue;
-  if (changedBefore !== null && !(task.modified !== null && task.modified <= changedBefore)) continue;
-  if (changedAfter !== null && !(task.modified !== null && task.modified >= changedAfter)) continue;
-  if (supportsPlannedDate) {
-    const plannedDate = getPlannedDate(task);
-    if (plannedBefore !== null && !(plannedDate !== null && plannedDate < plannedBefore)) continue;
-    if (plannedAfter !== null && !(plannedDate !== null && plannedDate > plannedAfter)) continue;
-  }
-  if (maxEstimatedMinutes !== null && !(task.estimatedMinutes !== null && task.estimatedMinutes <= maxEstimatedMinutes)) continue;
+  if (!taskMatchesFilters(task)) continue;
 
   counts.total += 1;
   if (task.flagged) counts.flagged += 1;
@@ -177,8 +158,8 @@ for (const task of document.flattenedTasks) {
   }
   if (!isTaskRemaining(task)) continue;
   if (isTaskAvailable(task, now)) counts.available += 1;
-  if (task.deferDate !== null && task.deferDate > now) counts.deferred += 1;
-  if (task.dueDate !== null && task.dueDate < now) counts.overdue += 1;
-  if (task.dueDate !== null && task.dueDate >= now && task.dueDate <= soon) counts.dueSoon += 1;
+  if (isDeferred(task, now)) counts.deferred += 1;
+  if (isOverdue(task, now)) counts.overdue += 1;
+  if (isDueSoon(task, now, dueSoonSeconds)) counts.dueSoon += 1;
 }
 return counts;"#;

@@ -3461,17 +3461,18 @@ async fn get_task_counts_added_changed_filters_are_included_in_script() {
     assert!(script.contains("const changedAfterRaw = \"2026-03-01T00:00:00Z\";"));
     assert!(script.contains("const changedBeforeRaw = \"2026-03-31T23:59:59Z\";"));
     assert!(script.contains(
-        "if (addedBefore !== null && !(task.added !== null && task.added <= addedBefore)) continue;"
+        "if (addedBefore !== null && !(task.added !== null && task.added <= addedBefore)) return false;"
     ));
     assert!(script.contains(
-        "if (addedAfter !== null && !(task.added !== null && task.added >= addedAfter)) continue;"
+        "if (addedAfter !== null && !(task.added !== null && task.added >= addedAfter)) return false;"
     ));
     assert!(script.contains(
-        "if (changedBefore !== null && !(task.modified !== null && task.modified <= changedBefore)) continue;"
+        "if (changedBefore !== null && !(task.modified !== null && task.modified <= changedBefore)) return false;"
     ));
     assert!(script.contains(
-        "if (changedAfter !== null && !(task.modified !== null && task.modified >= changedAfter)) continue;"
+        "if (changedAfter !== null && !(task.modified !== null && task.modified >= changedAfter)) return false;"
     ));
+    assert!(script.contains("if (!taskMatchesFilters(task)) continue;"));
 }
 
 #[tokio::test]

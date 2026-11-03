@@ -315,9 +315,39 @@ function isTaskAvailable(task, now) {
   if (!ofTaskStatusIsActionable(task.taskStatus)) return false;
   const project = task.containingProject;
   if (project && normalizeProjectStatus(project) !== "active") return false;
-  const deferDate = task.effectiveDeferDate;
+  const deferDate = ofTaskStatusDeferDate(task);
   if (ofTaskStatusIsSet(deferDate) && deferDate > now) return false;
   return !task.tags.some(tag => tag.status === Tag.Status.OnHold);
+}
+function readDueSoonInterval() {
+  if (typeof settings === "undefined" || settings === null) return 172800;
+  try {
+    const value = settings.objectForKey("DueSoonInterval");
+    return typeof value === "number" && Number.isFinite(value) && value >= 0
+      ? value
+      : 172800;
+  } catch (error) {
+    return 172800;
+  }
+}
+function ofTaskStatusDueDate(task) {
+  return ofTaskStatusIsSet(task.effectiveDueDate) ? task.effectiveDueDate : task.dueDate;
+}
+function ofTaskStatusDeferDate(task) {
+  return ofTaskStatusIsSet(task.effectiveDeferDate) ? task.effectiveDeferDate : task.deferDate;
+}
+function isOverdue(task, now) {
+  const dueDate = ofTaskStatusDueDate(task);
+  return ofTaskStatusIsSet(dueDate) && dueDate < now;
+}
+function isDueSoon(task, now, dueSoonSeconds) {
+  const dueDate = ofTaskStatusDueDate(task);
+  const soon = new Date(now.getTime() + (dueSoonSeconds * 1000));
+  return ofTaskStatusIsSet(dueDate) && dueDate >= now && dueDate <= soon;
+}
+function isDeferred(task, now) {
+  const deferDate = ofTaskStatusDeferDate(task);
+  return ofTaskStatusIsSet(deferDate) && deferDate > now;
 }
 function projectNextTask(project) {
   const candidate = project.nextTask;

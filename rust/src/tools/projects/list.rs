@@ -197,6 +197,7 @@ const sortedProjects = sortBy === null ? mappedProjects : mappedProjects.slice()
     bValue = b.taskCount;
   }
 
+  if (aValue === null && bValue === null) return 0;
   if (aValue === null) return 1;
   if (bValue === null) return -1;
 

@@ -52,6 +52,31 @@
   });
   h.project({ id: "project-scrap", name: "Scrap Project" });
   h.project({ id: "project-scrap-2", name: "Scrap Project Two" });
+  if (h.auditFixtures) {
+    h.project({ id: "project-null-sort-a", name: "Null Sort A" });
+    h.project({ id: "project-null-sort-b", name: "Null Sort B" });
+  }
+
+  // A task whose due and defer dates are inherited only from its project.
+  const inheritedDates = h.project({
+    id: "project-inherited-dates",
+    name: "Inherited Dates",
+    dueDate: h.date("2026-10-08T09:00:00Z"),
+    deferDate: h.date("2026-10-12T09:00:00Z"),
+  });
+  h.task({ id: "task-inherited-dates", name: "Inherited dates", in: inheritedDates });
+  if (h.auditFixtures) {
+    h.task({
+      id: "task-dst-autumn",
+      name: "DST autumn",
+      dueDate: h.date("2026-10-25T23:30:00"),
+    });
+    h.task({
+      id: "task-dst-spring",
+      name: "DST spring",
+      dueDate: h.date("2026-03-30T00:30:00"),
+    });
+  }
 
   // Tasks in Launch: a due task with two levels of subtasks and two
   // notifications, a flagged deferred task, and a completed task.

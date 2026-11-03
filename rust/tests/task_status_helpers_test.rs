@@ -196,6 +196,47 @@ fn missing_effective_properties_read_as_unset() {
     );
 }
 
+#[test]
+fn effective_dates_drive_overdue_due_soon_and_deferred_classification() {
+    let prelude = format!(
+        "{FAKES}\nvar settings = {{ objectForKey: function (key) {{ return key === \"DueSoonInterval\" ? undefined : null; }} }};\n{JS_PROJECT_STATUS}\n{JS_TASK_STATUS}"
+    );
+    let verdict = common::run_jsc(
+        &prelude,
+        r#"
+var now = new Date(Date.UTC(2026, 4, 10, 12, 0));
+var inherited = fakeTask({
+  taskStatus: Task.Status.Overdue,
+  effectiveDueDate: new Date(Date.UTC(2026, 4, 9, 12, 0)),
+  effectiveDeferDate: new Date(Date.UTC(2026, 4, 9, 12, 0))
+});
+print(JSON.stringify([
+  isOverdue(inherited, now),
+  isDueSoon(inherited, now, readDueSoonInterval()),
+  isDeferred(inherited, now),
+  readDueSoonInterval()
+]));
+"#,
+    );
+    assert_eq!(verdict, "[true,false,false,172800]");
+}
+
+#[test]
+fn configured_due_soon_interval_replaces_factory_default() {
+    let prelude = format!(
+        "{FAKES}\nvar settings = {{ objectForKey: function (key) {{ return key === \"DueSoonInterval\" ? 86400 : null; }} }};\n{JS_PROJECT_STATUS}\n{JS_TASK_STATUS}"
+    );
+    let verdict = common::run_jsc(
+        &prelude,
+        r#"
+var now = new Date(Date.UTC(2026, 4, 10, 12, 0));
+var task = fakeTask({ effectiveDueDate: new Date(Date.UTC(2026, 4, 11, 12, 0)) });
+print(JSON.stringify([readDueSoonInterval(), isDueSoon(task, now, readDueSoonInterval())]));
+"#,
+    );
+    assert_eq!(verdict, "[86400,true]");
+}
+
 // ---------------------------------------------------------------- containing project
 
 #[test]

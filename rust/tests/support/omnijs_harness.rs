@@ -91,7 +91,10 @@ pub struct ScriptRun {
 #[derive(Clone)]
 pub struct StrictOmniJs {
     time_zone: &'static str,
+    fixed_now: String,
+    audit_fixtures: bool,
     runs: Arc<Mutex<Vec<ScriptRun>>>,
+    scripts: Arc<Mutex<Vec<String>>>,
 }
 
 impl StrictOmniJs {
@@ -99,7 +102,21 @@ impl StrictOmniJs {
     pub fn new(time_zone: &'static str) -> Self {
         Self {
             time_zone,
+            fixed_now: FIXED_NOW.to_string(),
+            audit_fixtures: false,
             runs: Arc::default(),
+            scripts: Arc::default(),
+        }
+    }
+
+    #[allow(dead_code)]
+    pub fn with_now(time_zone: &'static str, fixed_now: &str) -> Self {
+        Self {
+            time_zone,
+            fixed_now: fixed_now.to_string(),
+            audit_fixtures: true,
+            runs: Arc::default(),
+            scripts: Arc::default(),
         }
     }
 
@@ -108,8 +125,23 @@ impl StrictOmniJs {
         self.runs.lock().expect("run log lock").clone()
     }
 
+    #[allow(dead_code)]
+    pub fn scripts(&self) -> Vec<String> {
+        self.scripts.lock().expect("script log lock").clone()
+    }
+
     async fn run(&self, script: &str) -> Result<Value> {
-        let program = harness_program(&omnijs_jxa_script(script));
+        if self.audit_fixtures {
+            self.scripts
+                .lock()
+                .expect("script log lock")
+                .push(script.to_string());
+        }
+        let program = harness_program(
+            &omnijs_jxa_script(script),
+            &self.fixed_now,
+            self.audit_fixtures,
+        );
         let mut command = tokio::process::Command::from(jsc_command(self.time_zone));
         let output = command
             .arg("-e")
@@ -169,10 +201,11 @@ fn js_string(text: &str) -> String {
 
 /// The jsc program for one run: set up the OmniJS realm, define the JXA
 /// `Application`, evaluate the production osascript program, print a report.
-fn harness_program(osascript_program: &str) -> String {
+fn harness_program(osascript_program: &str, fixed_now: &str, audit_fixtures: bool) -> String {
     let config = js_string(&format!(
-        "globalThis.__HARNESS_CONFIG = {{ now: {} }};",
-        js_string(FIXED_NOW)
+        "globalThis.__HARNESS_CONFIG = {{ now: {}, auditFixtures: {} }};",
+        js_string(fixed_now),
+        audit_fixtures
     ));
     format!(
         r#"const omni = $262.createRealm();
